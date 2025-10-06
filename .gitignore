@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+.cursor/
+.cursorindexingignore
+.specstory/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Trained models
+*.pkl
+*.pkl.gz
+
+# Development files
+PROMPT_CURSOR.md
