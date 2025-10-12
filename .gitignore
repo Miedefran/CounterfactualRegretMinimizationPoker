@@ -39,13 +39,21 @@ PROMPT_CURSOR.md
 play_vs_agent.py
 test_data/
 
-# LaTeX
-latex/
+# LaTeX auxiliary files
 *.aux
 *.log
 *.out
 *.toc
-*.pdf
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.cb
+*.cb2
+*.bbl
+*.blg
+
+# LaTeX output (keep main.pdf)
+# *.pdf
 
 # Reference projects and literature
 githubProjects/

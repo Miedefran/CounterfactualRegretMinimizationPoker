@@ -1,0 +1,103 @@
+%%
+%% Berliner Hochschule für Technik -- Abschlussarbeit
+%%
+%% Hauptdokument
+%%
+%% 23.01.09 Tschirley V.01 Beuth Hochschule
+%% 26.08.21 Tschirley V2.0 Umbenennung zur Berliner Hochschule für Technik
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[11pt, a4paper]{book}
+%\documentclass[11pt, a4paper, oneside]{book}
+%% Übersetzen als Entwurf
+%\usepackage[entwurf]{bhtThesis}
+%% Übersetzen für die Abgabe
+\usepackage[abgabe]{bhtThesis}
+\typeout{BHT-Abschlussarbeit V2.0 26.08.21 S.Tschirley}
+
+\usepackage{blindtext}   %für Blindtext in Kapitel 2
+\usepackage{listings}
+\lstset{ 
+  literate={ö}{{\"o}}1
+           {ä}{{\"a}}1
+           {ü}{{\"u}}1
+           {Ö}{{\"O}}1
+           {Ä}{{\"A}}1
+           {Ü}{{\"U}}1
+           {ß}{{\ss}}1
+}
+%%\usepackage{hyperref}
+
+%%
+%% Es folgen einige Zusätze, die in Kapitel 1 beschriben sind. 
+%% Alles was nicht notwendig ist, kann auskommentiert werden
+%%
+\usepackage{trsym}
+%\usepackage{showkeys}
+\usepackage{bytefield}
+
+%%
+%% Pfad zu den Bildern
+%%
+\graphicspath{
+  {pictures/},
+  {einleitung/pictures},
+  {kapitel1/pictures/},
+  {kapitel2/pictures/}
+}
+
+%%
+%% Einbinden persönlicher macros 
+%%
+\input{personalMacros.tex}
+
+%% Message
+\typeout{-----------------------------------------------------------}
+\typeout{----> main.tex ---- Zentrales Dokument---------------------}
+\typeout{-----------------------------------------------------------}
+
+\version{0.1$\alpha$}    % word im Entwurf auf der Titelseite vermerkt
+\datum{\today}
+%%
+%% Titel, Autor und Betreuer
+%%
+\fachbereich{VII -- Elektrotechnik -- Mechatronik -- Optometrie} 
+\studiengang{Elektrotechnik}
+\autor{Anthony Mealtime}
+\edvnr{123 456}
+\titel{Entwurf und Implementierung einer DSP-Basierten Ansteuerung für Brushless
+  DC-Motoren} 
+\untertitel{Ein Testsystem für die Lehre}
+\betreuerFeld{
+  \begin{tabular}{lr}
+    \multicolumn{2}{l}{\textbf{Gutachter}}\\
+    Prof.~Dr.~A.~Fiese-Frage & Berliner Hochschule für Technik\\
+    Prof.~Dr.-Ing. H. Scharfnstrich& Berliner Hochschule für Technik
+  \end{tabular}
+}
+
+%%\renewcommand{\baselinestretch}{1.05} 
+\begin{document}
+\pagestyle{fancy}
+
+\input{titelseiten.tex}
+
+\pagenumbering{arabic}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Die Kapitel der Arbeitw
+
+\input{kapitel1/ch1.tex}
+\input{kapitel2/ch2.tex}
+
+\begin{appendix}
+  \input{anhang.tex}
+\end{appendix}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Literaturverzeichnis
+
+\clearpage\newpage
+\addcontentsline{toc}{chapter}{Literatur- und Quellenverzeichnis}
+\bibliographystyle{myapalike}
+\bibliography{bhtThesis}
+
+\end{document}

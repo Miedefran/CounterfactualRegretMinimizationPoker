@@ -1,0 +1,83 @@
+%%
+%% Berliner Hochschule für Technik -- Bachelorarbeit
+%%
+%% Hauptdokument
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[11pt, a4paper]{book}
+
+%% Übersetzen für die Abgabe
+\usepackage[abgabe]{bhtThesis}
+\typeout{BHT-Abschlussarbeit V2.0}
+
+\usepackage{xspace}
+\usepackage{listings}
+\lstset{ 
+  literate={ö}{{\"o}}1
+           {ä}{{\"a}}1
+           {ü}{{\"u}}1
+           {Ö}{{\"O}}1
+           {Ä}{{\"A}}1
+           {Ü}{{\"U}}1
+           {ß}{{\ss}}1
+}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%%
+%% Pfad zu den Bildern
+%%
+\graphicspath{
+  {figures/}
+}
+
+\version{1.0}
+\datum{\today}
+
+%%
+%% Titel, Autor und Betreuer
+%%
+\fachbereich{VI -- Informatik und Medien} 
+\studiengang{Informatik}
+\autor{Friedemann Doll}
+\edvnr{924315}
+\titel{Implementierung von Counterfactual Regret Minimization in zunehmend komplexen Pokervarianten} 
+\untertitel{}
+\betreuerFeld{
+  \begin{tabular}{lr}
+    \multicolumn{2}{l}{\textbf{Gutachter}}\\
+    Prof.~Dr.-Ing.~Stefan Edlich & Berliner Hochschule für Technik
+  \end{tabular}
+}
+
+\begin{document}
+\pagestyle{fancy}
+
+\maketitle
+\clearpage
+
+
+%% Inhaltsverzeichnis
+\tableofcontents
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Die Kapitel der Arbeit
+
+\input{chapters/01_einleitung.tex}
+\input{chapters/02_grundlagen.tex}
+\input{chapters/03_cfr_algorithmus.tex}
+\input{chapters/04_implementierung.tex}
+\input{chapters/05_evaluation.tex}
+\input{chapters/06_fazit.tex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Literaturverzeichnis
+
+\clearpage\newpage
+\addcontentsline{toc}{chapter}{Literaturverzeichnis}
+\bibliographystyle{plain}
+\bibliography{bibliography}
+
+\end{document}
+
