@@ -1,5 +1,6 @@
 import pickle as pkl
 import gzip
+import time
 
 class CFRSolver:
     
@@ -18,12 +19,20 @@ class CFRSolver:
             self.strategy_sum[info_set_key] = {a: 0.0 for a in legal_actions}
     
     def train(self, iterations):
+        start_time = time.time()
+        
         for i in range(iterations):
             self.cfr_iteration()
             self.iteration_count += 1
             
             if i % 1000 == 0:
                 print(f"Iteration {i}")
+        
+        end_time = time.time()
+        training_time = end_time - start_time
+        print(f"Training completed in {training_time:.2f} seconds")
+        
+        self.average_strategy = self.get_average_strategy()
     
     def cfr_iteration(self):
         for combination in self.combinations:
@@ -108,26 +117,29 @@ class CFRSolver:
             #If there are no positive regrets, play everything equally
             return {a: 1.0 / len(legal_actions) for a in legal_actions}
         
-    def get_average_strategy(self):
-        """Equation 4 from Zinkevich et al. (2007)"""
-        
+    @staticmethod
+    def average_from_strategy_sum(strategy_sum):
         average_strategy = {}
         
-        for info_set_key in self.strategy_sum:
-            total = sum(self.strategy_sum[info_set_key].values())
+        for info_set_key in strategy_sum:
+            total = sum(strategy_sum[info_set_key].values())
             if total > 0:
                 average_strategy[info_set_key] = {
-                    action: self.strategy_sum[info_set_key][action] / total
-                    for action in self.strategy_sum[info_set_key]
+                    action: strategy_sum[info_set_key][action] / total
+                    for action in strategy_sum[info_set_key]
                 }
             else:
-                num_actions = len(self.strategy_sum[info_set_key])
+                num_actions = len(strategy_sum[info_set_key])
                 average_strategy[info_set_key] = {
                     action: 1.0 / num_actions
-                    for action in self.strategy_sum[info_set_key]
+                    for action in strategy_sum[info_set_key]
                 }
         
         return average_strategy
+    
+    def get_average_strategy(self):
+        """Equation 4 from Zinkevich et al. (2007)"""
+        return self.average_from_strategy_sum(self.strategy_sum)
     
     
     
@@ -159,6 +171,7 @@ class CFRSolver:
         data = {
             'regret_sum': self.regret_sum,
             'strategy_sum': self.strategy_sum,
+            'average_strategy': self.average_strategy,
             'iteration_count': self.iteration_count
         }
         
@@ -173,6 +186,7 @@ class CFRSolver:
         
         self.regret_sum = data['regret_sum']
         self.strategy_sum = data['strategy_sum']
+        self.average_strategy = data['average_strategy']
         self.iteration_count = data['iteration_count']
         
         print(f"Loaded from {filepath}")

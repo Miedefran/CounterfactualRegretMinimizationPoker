@@ -6,7 +6,8 @@ from envs.leduc_holdem.game import LeducHoldemGame
 from utils.poker_utils import (
     GAME_CONFIGS,
     KuhnPokerCombinations,
-    LeducHoldemCombinations
+    LeducHoldemCombinations,
+    get_model_path
 )
 
 def main():
@@ -31,10 +32,10 @@ def main():
     solver = CFRSolver(game, combo_gen)
     solver.train(args.iterations)
     
-    filename = f"{args.game}_{args.iterations}.pkl.gz"
-    solver.save_gzip(filename)
+    filepath = get_model_path(args.game, args.iterations)
+    solver.save_gzip(filepath)
     
-    avg_strategy = solver.get_average_strategy()
+    avg_strategy = solver.average_strategy
     print(f"{len(avg_strategy)} information sets")
     
     if args.game.startswith('kuhn'):

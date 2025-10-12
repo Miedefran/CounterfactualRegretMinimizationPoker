@@ -1,3 +1,5 @@
+import os
+
 GAME_CONFIGS = {
     'kuhn_case1': {
         'ante': 2,
@@ -21,6 +23,21 @@ GAME_CONFIGS = {
         'bet_limit': 2
     }
 }
+
+def get_model_path(game, iterations):
+    base_dir = 'models'
+    filename = f"{game}_{iterations}.pkl.gz"
+    
+    if game.startswith('kuhn'):
+        case = game.split('_')[1]
+        path = os.path.join(base_dir, 'kuhn', case, filename)
+    elif game == 'leduc':
+        path = os.path.join(base_dir, 'leduc', filename)
+    else:
+        path = os.path.join(base_dir, filename)
+    
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    return path
 
 class PokerCombinationGenerator:
     
@@ -51,7 +68,20 @@ class KuhnPokerCombinations(PokerCombinationGenerator):
 class LeducHoldemCombinations(PokerCombinationGenerator):
     
     def get_all_combinations(self):
-        pass
+        deck = ['J', 'J', 'Q', 'Q', 'K', 'K']
+        combinations = []
+        
+        for i, card1 in enumerate(deck):
+            for j, card2 in enumerate(deck):
+                if i != j:
+                    for k, public in enumerate(deck):
+                        if k != i and k != j:
+                            combinations.append((card1, card2, public))
+        
+        return combinations
     
     def setup_game_with_combination(self, game, combination):
-        pass
+        game.reset(0)
+        game.players[0].private_card = combination[0]
+        game.players[1].private_card = combination[1]
+        game.dealer.deck = [combination[2]]

@@ -1,8 +1,11 @@
 import pickle as pkl
 import gzip
 import argparse
+import random
 from envs.kuhn_poker.game import KuhnPokerGame
+from envs.leduc_holdem.game import LeducHoldemGame
 from agents.strategy_agent import StrategyAgent
+from utils.poker_utils import GAME_CONFIGS
 
 def play_single_game(agent0, agent1, game):
     game.reset(0)
@@ -25,49 +28,49 @@ def play_single_game(agent0, agent1, game):
     
     return None
 
+def run_self_play(game, strategy_file, num_games):
+    with gzip.open(strategy_file, 'rb') as f:
+        data = pkl.load(f)
+    
+    avg_strategy = data['average_strategy']
+    
+    agent0 = StrategyAgent(avg_strategy, 0)
+    agent1 = StrategyAgent(avg_strategy, 1)
+    
+    results_p0 = []
+    
+    for _ in range(num_games):
+        payoffs = play_single_game(agent0, agent1, game)
+        results_p0.append(payoffs[0])
+    
+    avg_p0 = sum(results_p0) / len(results_p0)
+    avg_p1 = -avg_p0
+    return avg_p0, avg_p1
+
 def main():
     parser = argparse.ArgumentParser(description='Self-Play Evaluation for CFR Strategy')
+    parser.add_argument('game', type=str,
+                       choices=['kuhn_case1', 'kuhn_case2', 'kuhn_case3', 'kuhn_case4', 'leduc'],
+                       help='Poker variant')
     parser.add_argument('strategy_file', type=str,
                        help='Path to strategy pickle file')
     parser.add_argument('--games', type=int, default=1000,
                        help='Number of games to play')
     
     args = parser.parse_args()
+    config = GAME_CONFIGS[args.game]
     
-    print(f"Self-play: {args.strategy_file}, {args.games} games\n")
+    if args.game.startswith('kuhn'):
+        game = KuhnPokerGame(ante=config['ante'], bet_size=config['bet_size'])
+    elif args.game == 'leduc':
+        game = LeducHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
     
-    with gzip.open(args.strategy_file, 'rb') as f:
-        data = pkl.load(f)
+    print(f"Self-play: {args.game}, {args.games} games")
+    print(f"Strategy: {args.strategy_file}\n")
     
-    strategy_sum = data['strategy_sum']
-    avg_strategy = {}
-    
-    for info_set_key in strategy_sum:
-        total = sum(strategy_sum[info_set_key].values())
-        if total > 0:
-            avg_strategy[info_set_key] = {
-                action: strategy_sum[info_set_key][action] / total
-                for action in strategy_sum[info_set_key]
-            }
-    
-    game = KuhnPokerGame(ante=1, bet_size=1)
-    agent0 = StrategyAgent(avg_strategy, 0)
-    agent1 = StrategyAgent(avg_strategy, 1)
-    
-    results_p0 = []
-    
-    for i in range(args.games):
-        payoffs = play_single_game(agent0, agent1, game)
-        results_p0.append(payoffs[0])
-    
-    avg_p0 = sum(results_p0) / len(results_p0)
-    avg_p1 = -avg_p0
-    expected = -1/18
-    
+    avg_p0, avg_p1 = run_self_play(game, args.strategy_file, args.games)
     print(f"Player 0: {avg_p0:.6f}")
     print(f"Player 1: {avg_p1:.6f}")
-    print(f"Expected: {expected:.6f} (-1/18)")
-    print(f"Difference: {abs(avg_p0 - expected):.6f}")
 
 if __name__ == "__main__":
     main()

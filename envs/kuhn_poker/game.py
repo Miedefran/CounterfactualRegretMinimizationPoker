@@ -32,7 +32,7 @@ class KuhnPokerGame:
         
     def step(self, action):
             
-        self.state_stack.append(self._save_state())
+        self.state_stack.append(self.save_state())
         self.history.append(action)
         
         if action == 'bet':
@@ -72,7 +72,7 @@ class KuhnPokerGame:
             'legal_actions': self.get_legal_actions()
         }
         
-    def _save_state(self):
+    def save_state(self):
         return {
             'player_hands': [self.players[0].private_card, self.players[1].private_card],
             'history': self.history.copy(),
@@ -82,7 +82,7 @@ class KuhnPokerGame:
             'player_bets': self.player_bets.copy()
         }
     
-    def _restore_state(self, saved_state):
+    def restore_state(self, saved_state):
         self.players[0].private_card = saved_state['player_hands'][0]
         self.players[1].private_card = saved_state['player_hands'][1]
         self.history = saved_state['history']
@@ -94,7 +94,7 @@ class KuhnPokerGame:
     def step_back(self):
         if self.state_stack:
             previous_state = self.state_stack.pop()
-            self._restore_state(previous_state)
+            self.restore_state(previous_state)
         else:
             raise ValueError("No saved state available for step_back")
     

@@ -22,7 +22,7 @@ def test_single_game():
     step_count = 0
     betting_round = 0
     
-    while not game.is_over():
+    while not game.done:
         current_player = game.round.current_player
         current_state = game.get_state(current_player)
         print(f"\nStep {step_count}: Player {current_player}'s turn (Betting Round {game.betting_round})")
@@ -46,7 +46,7 @@ def test_single_game():
                 print(f"Player 1 hand: {game.players[1].private_card} + {game.public_card}")
         
         if result:
-            print(f"\nFinal Pot: {game.pot}, Player Bets: {game.player_bets}")
+            print(f"\nFinal Pot: {game.round.pot}, Player Bets: {game.round.total_bets}")
             print(f"Result: {result}")
             break
     

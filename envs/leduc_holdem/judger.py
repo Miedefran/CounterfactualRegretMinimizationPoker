@@ -5,25 +5,28 @@ class LeducHoldemJudger(KuhnPokerJudger):
     def __init__(self):
         super().__init__()
 
-    def judge(self, players, history, current_player):
-        last_action = history[-1]
-        if last_action == 'fold':
+    def judge(self, players, history, current_player, pot, player_bets):
+        if history[-1] == 'fold':
             fold_player = 1 - current_player
             winner = current_player
-            if winner == 0:
-                return [1, -1]
-            else:
-                return [-1, 1]
-        
-        hand0 = self._evaluate_hand(players[0])
-        hand1 = self._evaluate_hand(players[1])
-        
-        if hand0 > hand1:
-            return [1, -1]  
-        elif hand1 > hand0:
-            return [-1, 1]  
         else:
-            return [0, 0]  
+            hand0 = self._evaluate_hand(players[0])
+            hand1 = self._evaluate_hand(players[1])
+            
+            if hand0 > hand1:
+                winner = 0
+            elif hand1 > hand0:
+                winner = 1
+            else:
+                return [0, 0]
+        
+        loser = 1 - winner
+        
+        payoffs = [0, 0]
+        payoffs[winner] = pot - player_bets[winner]
+        payoffs[loser] = -player_bets[loser]
+        
+        return payoffs  
     
     def _evaluate_hand(self, player):
         private = player.private_card
