@@ -1,40 +1,24 @@
-from envs.kuhn_poker.game import KuhnPokerGame
-from envs.leduc_holdem.dealer import LeducHoldemDealer
-from envs.leduc_holdem.player import LeducHoldemPlayer
-from envs.leduc_holdem.judger import LeducHoldemJudger
-from envs.leduc_holdem.round import LeducHoldemRound
+from envs.leduc_holdem.game import LeducHoldemGame
+from envs.rhode_island.dealer import RhodeIslandDealer
+from envs.rhode_island.player import RhodeIslandPlayer
+from envs.rhode_island.judger import RhodeIslandJudger
+from envs.rhode_island.round import RhodeIslandRound
 
-class LeducHoldemGame(KuhnPokerGame):
+class RhodeIslandGame(LeducHoldemGame):
    
-    def __init__(self, ante=1, bet_sizes=[2, 4], bet_limit=2):
-        self.ante = ante
-        self.bet_size = bet_sizes[0]
-        self.dealer = LeducHoldemDealer()
-        self.players = [LeducHoldemPlayer(0), LeducHoldemPlayer(1)]
-        self.judger = LeducHoldemJudger()
-        self.round = LeducHoldemRound(bet_sizes=bet_sizes, bet_limit=bet_limit)
-        self.history = []
-        self.state_stack = []
-        self.done = False
-        self.betting_round = 0  
-        self.public_card = None
-        self.current_player = 0
-        self.pot = 0
-        self.total_bets = [0, 0]
-        self.starting_player = 0 
-
+    def __init__(self, ante=5, bet_sizes=[10, 20, 20], bet_limit=3):
+        super().__init__(ante, bet_sizes, bet_limit)
+        self.dealer = RhodeIslandDealer()
+        self.players = [RhodeIslandPlayer(0), RhodeIslandPlayer(1)]
+        self.judger = RhodeIslandJudger()
+        self.round = RhodeIslandRound(bet_sizes=bet_sizes, bet_limit=bet_limit)
+        self.public_cards = []
     
     def reset(self, starting_player):
         super().reset(starting_player)
-        self.betting_round = 0
-        self.public_card = None
-        self.starting_player = starting_player
-        self.total_bets = [self.ante, self.ante]
-        
-        self.round.start_new_round(starting_player, self.betting_round) 
+        self.public_cards = []
         
     def step(self, action):
-        
         self.state_stack.append(self.save_state())
         self.history.append(action)
     
@@ -50,7 +34,11 @@ class LeducHoldemGame(KuhnPokerGame):
                 self.deal_public_card()
                 self.betting_round = 1
                 self.round.start_new_round(self.starting_player, self.betting_round)
-                
+            elif self.betting_round == 1:
+                self.history.append('|')
+                self.deal_public_card()
+                self.betting_round = 2
+                self.round.start_new_round(self.starting_player, self.betting_round)
             else:
                 self.done = True
                 return self.judger.judge(self.players, self.history, self.current_player, self.pot, self.total_bets)
@@ -58,17 +46,16 @@ class LeducHoldemGame(KuhnPokerGame):
         return None
     
     def deal_public_card(self):
-        self.public_card = self.dealer.deal_card()
-        self.players[0].set_public_card(self.public_card)
-        self.players[1].set_public_card(self.public_card)
+        card = self.dealer.deal_card()
+        self.public_cards.append(card)
+        self.players[0].public_cards.append(card)
+        self.players[1].public_cards.append(card)
     
-    def get_legal_actions(self):
-        return self.round.get_legal_actions(self)
     
     def get_state(self, player_id):
         return {
             'hand': self.players[player_id].private_card,
-            'public_card': self.public_card,
+            'public_cards': list(self.public_cards),
             'history': list(self.history),
             'current_player': self.current_player,
             'betting_round': self.betting_round,
@@ -83,7 +70,7 @@ class LeducHoldemGame(KuhnPokerGame):
         return {
             'hand_p0': self.players[0].private_card,
             'hand_p1': self.players[1].private_card,
-            'public_card': self.public_card,
+            'public_cards': list(self.public_cards),
             'history': list(self.history),
             'current_player': self.current_player,
             'betting_round': self.betting_round,
@@ -100,7 +87,9 @@ class LeducHoldemGame(KuhnPokerGame):
     def restore_state(self, saved_state):
         self.players[0].private_card = saved_state['hand_p0']
         self.players[1].private_card = saved_state['hand_p1']
-        self.public_card = saved_state['public_card']
+        self.public_cards = list(saved_state['public_cards'])
+        self.players[0].public_cards = list(saved_state['public_cards'])
+        self.players[1].public_cards = list(saved_state['public_cards'])
         self.history = list(saved_state['history'])
         self.current_player = saved_state['current_player']
         self.betting_round = saved_state['betting_round']
@@ -116,14 +105,11 @@ class LeducHoldemGame(KuhnPokerGame):
     def get_info_set_key(self, player_id):
         return (
             self.players[player_id].private_card,
-            self.public_card if self.public_card is not None else 'None',
+            tuple(self.public_cards) if self.public_cards else (),
             tuple(self.history),
             self.current_player
         )
-    
-    def get_payoff(self, player_id):
-        if not self.done:
-            raise ValueError("Game isnt done yet")
         
-        payoffs = self.judger.judge(self.players, self.history, self.current_player, self.pot, self.total_bets)
-        return payoffs[player_id]
+        
+
+

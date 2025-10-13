@@ -1,14 +1,16 @@
 import pickle as pkl
 import gzip
-import sys
+import argparse
+from utils.test_logger import log_nash, extract_iterations_from_filename, extract_game_from_filename
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python test_nash_equilibrium.py <strategy_file>")
-        sys.exit(1)
-
-    strategy_file = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Nash Equilibrium Test for Kuhn Poker')
+    parser.add_argument('strategy_file', type=str, help='Path to strategy pickle file')
+    parser.add_argument('--save', action='store_true', help='Save results to CSV')
+    args = parser.parse_args()
+    
+    strategy_file = args.strategy_file
 
     print(f"Testing Nash Equilibrium: {strategy_file}\n")
 
@@ -44,7 +46,7 @@ def main():
 
     alpha_ok = abs(alpha - alpha_expected) < 0.01
     beta_ok = abs(beta - beta_expected) < 0.01
-    xi_ok = abs(xi - 1/3) < 0.01
+    xi_ok = abs(xi - 1/3) < 0.0
     eta_ok = abs(eta - 1/3) < 0.01
 
     print("Constraints:")
@@ -53,8 +55,25 @@ def main():
     print(f"  ξ = 1/3 → {xi:.4f} vs 0.3333 ({'PASS' if xi_ok else 'FAIL'})")
     print(f"  η = 1/3 → {eta:.4f} vs 0.3333 ({'PASS' if eta_ok else 'FAIL'})\n")
 
-    if alpha_ok and beta_ok and xi_ok and eta_ok:
+    all_passed = alpha_ok and beta_ok and xi_ok and eta_ok
+    
+    if all_passed:
         print("Valid Nash Equilibrium")
+    
+    if args.save:
+        iterations = extract_iterations_from_filename(strategy_file)
+        game_name = extract_game_from_filename(strategy_file)
+        
+        if iterations and game_name:
+            log_nash('vanilla_cfr', game_name, iterations,
+                     alpha=alpha,
+                     beta=beta,
+                     gamma=gamma,
+                     xi=xi,
+                     eta=eta,
+                     passed=1 if all_passed else 0)
+        else:
+            print("Warning: Could not extract iterations/game from filename, skipping save")
 
 
 if __name__ == "__main__":

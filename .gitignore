@@ -37,7 +37,7 @@ models/
 # Development files
 PROMPT_CURSOR.md
 play_vs_agent.py
-test_data/
+
 
 # LaTeX auxiliary files
 *.aux

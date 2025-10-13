@@ -10,8 +10,8 @@ class LeducHoldemJudger(KuhnPokerJudger):
             fold_player = 1 - current_player
             winner = current_player
         else:
-            hand0 = self._evaluate_hand(players[0])
-            hand1 = self._evaluate_hand(players[1])
+            hand0 = self.evaluate_hand(players[0])
+            hand1 = self.evaluate_hand(players[1])
             
             if hand0 > hand1:
                 winner = 0
@@ -28,7 +28,7 @@ class LeducHoldemJudger(KuhnPokerJudger):
         
         return payoffs  
     
-    def _evaluate_hand(self, player):
+    def evaluate_hand(self, player):
         private = player.private_card
         public = player.public_card
         

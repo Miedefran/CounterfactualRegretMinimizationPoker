@@ -1,11 +1,11 @@
-from envs.leduc_holdem.game import LeducHoldemGame
+from envs.rhode_island.game import RhodeIslandGame
 from agents.random_agent import RandomAgent
 import random
 
 def test_single_game():
-    print("Testing Leduc Hold'em")
+    print("Testing Rhode Island Hold'em")
     
-    game = LeducHoldemGame()
+    game = RhodeIslandGame()
     agent0 = RandomAgent(0)
     agent1 = RandomAgent(1)
     
@@ -40,10 +40,10 @@ def test_single_game():
         
         if game.betting_round != betting_round:
             betting_round = game.betting_round
-            if game.public_card:
-                print(f"\nPublic card: {game.public_card}")
-                print(f"Player 0 hand: {game.players[0].private_card} + {game.public_card}")
-                print(f"Player 1 hand: {game.players[1].private_card} + {game.public_card}")
+            if game.public_cards:
+                print(f"\nPublic cards: {game.public_cards}")
+                print(f"Player 0 hand: {game.players[0].private_card} + {game.public_cards}")
+                print(f"Player 1 hand: {game.players[1].private_card} + {game.public_cards}")
         
         if result:
             print(f"\nFinal Pot: {game.pot}, Player Bets: {game.total_bets}")
@@ -54,3 +54,4 @@ def test_single_game():
 
 if __name__ == "__main__":
     test_single_game()
+

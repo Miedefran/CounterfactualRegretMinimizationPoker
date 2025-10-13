@@ -6,6 +6,7 @@ from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from agents.strategy_agent import StrategyAgent
 from utils.poker_utils import GAME_CONFIGS
+from utils.test_logger import log_performance, extract_iterations_from_filename
 
 def play_single_game(agent0, agent1, game):
     game.reset(0)
@@ -56,8 +57,15 @@ def main():
                        help='Path to strategy pickle file')
     parser.add_argument('--games', type=int, default=1000,
                        help='Number of games to play')
+    parser.add_argument('--seed', type=int, default=None,
+                       help='Random seed for reproducibility')
+    parser.add_argument('--save', action='store_true',
+                       help='Save results to CSV')
     
     args = parser.parse_args()
+    
+    if args.seed is not None:
+        random.seed(args.seed)
     config = GAME_CONFIGS[args.game]
     
     if args.game.startswith('kuhn'):
@@ -71,6 +79,17 @@ def main():
     avg_p0, avg_p1 = run_self_play(game, args.strategy_file, args.games)
     print(f"Player 0: {avg_p0:.6f}")
     print(f"Player 1: {avg_p1:.6f}")
+    
+    if args.save:
+        iterations = extract_iterations_from_filename(args.strategy_file)
+        
+        if iterations:
+            log_performance('vanilla_cfr', args.game, iterations,
+                          'self_play_ev_p0', avg_p0,
+                          seed=args.seed,
+                          games=args.games)
+        else:
+            print("Warning: Could not extract iterations from filename, skipping save")
 
 if __name__ == "__main__":
     main()
