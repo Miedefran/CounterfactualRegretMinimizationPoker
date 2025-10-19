@@ -51,5 +51,7 @@ def extract_game_from_filename(filepath):
         return 'kuhn_case4'
     elif 'leduc' in filepath:
         return 'leduc'
+    elif 'rhode_island' in filepath:
+        return 'rhode_island'
     return None
 

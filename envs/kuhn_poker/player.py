@@ -12,4 +12,4 @@ class KuhnPokerPlayer:
         
     def reset(self):
         self.set_private_card(None)
-        self.set_public_card(None)
+        self.set_public_card(None)      
