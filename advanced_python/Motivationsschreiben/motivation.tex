@@ -1,0 +1,42 @@
+\documentclass[12pt,german,english]{article}
+\usepackage{geometry,graphicx,wrapfig,lipsum}
+\usepackage{datetime}
+\usepackage{blindtext}
+
+\newdateformat{todayfmtde}{\THEDAY{.}\THEMONTH{.}\THEYEAR}
+
+\geometry{a4paper}
+
+\begin{document}
+
+\begin{center}
+
+    \includegraphics[width=0.4\textwidth]{bht-logo.png}
+
+    \vspace{1.5cm}
+
+    {\huge Titel}
+
+    \vspace*{1cm}
+
+    Motivationsschreiben im Modul Advanced Python, B TI, WiSe25/26
+
+    \vspace{0.5cm}
+
+    Dozent: Markus Schubert (markus.schubert@bht-berlin.de)
+
+    \vspace{0.5cm}
+
+    \todayfmtde\today
+
+    \vspace{1cm}
+
+    Vorname Name (Matr.-Nr.: *******, email)
+
+\end{center}
+
+\vspace*{1cm}
+
+\par\blindtext
+
+\end{document}
