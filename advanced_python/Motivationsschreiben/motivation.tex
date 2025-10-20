@@ -61,7 +61,7 @@ Ich habe im Github meiner Bachelorarbeit einen separaten Branch dafür angelegt,
 https://github.com/Miedefran/CounterfactualRegretMinimizationPoker
 
 
-\subsection{Idee}
+\section{Idee}
 Das GUI Projekt soll drei verschiedene Modi umfassen. Einen Visualizer für Agent gegen Agent Duelle mit Play, Pause, Step Forward und Step Backward Funktionen.
 
 
@@ -71,7 +71,7 @@ Ein Modus in welchem ein Mensch lokal gegen einen Agenten spielen kann.
 Und einen Multiplayer Modus in dem ein Mensch Online gegen einen anderen Mensch spielen kann.
 
 
-\subsection{Ansatz}
+\section{Ansatz}
 Die Architektur basiert auf einer Basis GUI Klasse, von der die drei verschiedenen Modi erben. Dadurch kann ich Teile des Codes wiederverwenden und die Benutzeroberfläche bleibt so konsistent wie möglich.
 
 
@@ -84,11 +84,11 @@ Die Agent vs Human Anwendung stellt zusätzlich eine Möglichkeit für den User 
 Der Human vs Human Multiplayer soll einen Flask Server mit WebSockets verwenden, um es zwei Spielern zu ermöglichen in Echtzeit gegeneinander Poker zu spielen.
 
 
-\subsection{Technologien}
+\section{Technologien}
 Als Technologien verwende ich PyQt6 für die Desktop GUI, Flask mit Flask-SocketIO für den WebSocket Server, und die bereits existierenden Spielumgebungen aus meiner Bachelorarbeit.
 Die Strategien werden aus den trainierten Pickle Dateien geladen und vom Strategy Agent verwendet.
 
 
-\subsection{Ausblick}
+\section{Ausblick}
 Mögliche Erweiterungen wären ein Scoreboard/Leaderboard für Human vs Agent und Human vs Human Spiele oder eine Strategievisualisierung, bei welcher dem User angezeigt wird, welche Strategie ein bestimmter Strategy Agent in dieser Situation spielen würde. Dies könnte man mittels einer einfachen Tabelle oder einer Heatmap tun.
 \end{document}
