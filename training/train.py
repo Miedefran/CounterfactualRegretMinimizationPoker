@@ -1,5 +1,7 @@
 import argparse
 from training.cfr_solver import CFRSolver
+from training.cfr_plus_solver import CFRPlusSolver
+from training.mccfr_solver import MCCFRSolver
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
@@ -19,6 +21,11 @@ def main():
                        help='Poker variant to train on')
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
+    parser.add_argument('algorithm', type=str,
+                       choices=['cfr', 'cfr_plus', 'mccfr'],
+                       nargs='?',
+                       default='cfr',
+                       help='Algorithm to use (default: cfr)')
     args = parser.parse_args()
     config = GAME_CONFIGS[args.game]
     
@@ -34,10 +41,16 @@ def main():
         game = RhodeIslandGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = RhodeIslandCombinations()
     
-    solver = CFRSolver(game, combo_gen)
+    if args.algorithm == 'cfr':
+        solver = CFRSolver(game, combo_gen)
+    elif args.algorithm == 'cfr_plus':
+        solver = CFRPlusSolver(game, combo_gen)
+    elif args.algorithm == 'mccfr':
+        solver = MCCFRSolver(game, combo_gen)
+    
     solver.train(args.iterations)
     
-    filepath = get_model_path(args.game, args.iterations)
+    filepath = get_model_path(args.game, args.iterations, args.algorithm)
     solver.save_gzip(filepath)
     
     avg_strategy = solver.average_strategy

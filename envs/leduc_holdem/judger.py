@@ -32,8 +32,11 @@ class LeducHoldemJudger(KuhnPokerJudger):
         private = player.private_card
         public = player.public_card
         
-        if private == public:
-            return (1, self.hand_rank[private], 0)
+        private_rank = private[0] if len(private) > 1 else private
+        public_rank = public[0] if len(public) > 1 else public
         
-        cards = sorted([self.hand_rank[private], self.hand_rank[public]], reverse=True)
+        if private_rank == public_rank:
+            return (1, self.hand_rank[private_rank], 0)
+        
+        cards = sorted([self.hand_rank[private_rank], self.hand_rank[public_rank]], reverse=True)
         return (0, cards[0], cards[1])  

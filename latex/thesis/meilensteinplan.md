@@ -1,13 +1,14 @@
 # Implementierung
 
-1. Evaluationstools            
-1.1 Best Response Agent
+# Hier grade am debuggen
+1. Evaluationstools                 
+1.1 Best Response Agent 
 1.2 Exploitability Berechnung
 1.3 Konvergenzplots
 1.4 Andere Plots EV, ?
 
 2.Optimierte CFR Algorithmen
-2.1 CFR+ (sollte einfach sein)
+2.1 CFR+ (sollte einfach sein) 	✅										
 2.2 MCCFR (same)
 (2.3 MCCFR mit Multithreading)
 
@@ -20,6 +21,7 @@
 # Dokumentation:
 
 # Kapitel 1: Einleitung
+
 
 # Kapitel 2: Theoretische Grundlagen
 
@@ -167,19 +169,4 @@ CFR Solver Klassendiagramm + Sequenzdiagramm einer Iteration
 
 
 
-
-
-
-
-
-# Fragen:
-
-Ich hab ein paar Fragen dazu, was in die verschiedenen Kapitel der Arbeit gehört, anhand ihrer im Leitfaden vorgegeben Struktur.
-1. Einleitung is klar denk ich
-2. Theoretische Grundlagen wirkt auf mich so wie das größte Kapitel, ist das sinnvoll ?
-3. Was genau soll in der Analyse passieren, beschreibe ich da quasi WAS ich brauche, aber noch nicht WIE ich es mache ?
-4. Ist das Design Kapitel quasi nur UML und über UML reden ?
-5. Implementierung ist klar denk ich, code beispiele bequatschen hautpsächlich
-6. Evaluation krieg ich auch hin denk ich
-7. Fazit guckt man dann später
 

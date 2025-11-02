@@ -1,12 +1,92 @@
 \chapter{Theoretische Grundlagen}
 
-\section{Spieltheorie und Extensive Games with Imperfect Information}
+\section{Grundlagen der Spieltheorie}
 
-\section{Nash-Equilibrium und Strategieapproximation}
+\subsection{Definition und Konzepte}
+Was ist Spieltheorie
 
-\section{Counterfactual Regret Minimization}
+Was ist ein Spiel
 
-\section{CFR+ und Monte Carlo CFR}
+Was ist eine Lösung
 
-\section{Abstraktionsmethoden}
+Spieltypen (Strategic Games, Extensive Games (Perfect/Imperfect Information))
 
+\subsection{Extensive Games with Imperfect Information}
+Information Sets
+
+Strategien in Extensive Games
+
+Mixed Strategies
+
+\subsection{Nash Equilibrium}
+Definition
+
+Nash Equilibrium in Extensive Games
+
+Manuelle Berechnung Kuhn 1951
+
+Grenzen der manuellen Berechnung
+
+\section{Counter Factual Regret Minimization}
+
+\subsection{Regret Minimization}
+Was ist Regret
+
+Verbindung zu Nash Equilibrium
+
+Problem: Regret Minimization in Extensive Games
+
+\subsection{Counterfactual Regret}
+Was ist Counterfactual Utility
+
+Was ist Immediate Counterfactual Regret
+
+Overall Regret $\leq$ Sum of Counterfactual Regret
+
+\subsection{Regret Matching}
+Strategy Update
+
+Konvergenz zum Nash Equilibrium
+
+\subsection{CFR Algorithmus}
+CFR Iteration
+
+Average Strategy
+
+\section{CFR+}
+
+\subsection{Regret-Matching+}
+Unterschied zu Regret-Matching
+
+Tracking Regret
+
+\subsection{Linearly Weighted Average}
+Weighted Average Strategy
+
+\subsection{Theoretische Eigenschaften}
+Regret Bounds
+
+Konvergenz-Eigenschaften
+
+Vergleich zu CFR
+
+\section{MCCFR}
+
+\subsection{Motivation und Framework}
+Problem: Vanilla CFR traversiert gesamten Game Tree
+
+MCCFR Framework: Sampling mit Blocks
+
+Unbiased Estimator
+
+\subsection{Sampling-Strategien}
+Outcome-Sampling MCCFR
+
+External-Sampling MCCFR
+
+\subsection{Theoretische Eigenschaften}
+Regret Bounds
+
+Konvergenz-Eigenschaften
+
+Vergleich zu CFR

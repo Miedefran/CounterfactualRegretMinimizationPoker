@@ -29,19 +29,19 @@ GAME_CONFIGS = {
     }
 }
 
-def get_model_path(game, iterations):
+def get_model_path(game, iterations, algorithm='cfr'):
     base_dir = 'models'
     filename = f"{game}_{iterations}.pkl.gz"
     
     if game.startswith('kuhn'):
         case = game.split('_')[1]
-        path = os.path.join(base_dir, 'kuhn', case, filename)
+        path = os.path.join(base_dir, 'kuhn', case, algorithm, filename)
     elif game == 'leduc':
-        path = os.path.join(base_dir, 'leduc', filename)
+        path = os.path.join(base_dir, 'leduc', algorithm, filename)
     elif game == 'rhode_island':
-        path = os.path.join(base_dir, 'rhode_island', filename)
+        path = os.path.join(base_dir, 'rhode_island', algorithm, filename)
     else:
-        path = os.path.join(base_dir, filename)
+        path = os.path.join(base_dir, algorithm, filename)
     
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path
@@ -75,7 +75,7 @@ class KuhnPokerCombinations(PokerCombinationGenerator):
 class LeducHoldemCombinations(PokerCombinationGenerator):
     
     def get_all_combinations(self):
-        deck = ['J', 'J', 'Q', 'Q', 'K', 'K']
+        deck = ['Js', 'Jh', 'Qs', 'Qh', 'Ks', 'Kh']
         combinations = []
         
         for i, card1 in enumerate(deck):

@@ -11,6 +11,7 @@ class CFRSolver:
         self.regret_sum = {}
         self.strategy_sum = {}
         self.iteration_count = 0
+        self.training_time = 0
     
     def ensure_init(self, info_set_key, legal_actions):
         if info_set_key not in self.regret_sum:
@@ -25,12 +26,19 @@ class CFRSolver:
             self.cfr_iteration()
             self.iteration_count += 1
             
-            if i % 1000 == 0:
+            if i % 100 == 0:
                 print(f"Iteration {i}")
+        
+        self.training_time = time.time() - start_time
         
         end_time = time.time()
         training_time = end_time - start_time
-        print(f"Training completed in {training_time:.2f} seconds")
+        
+        if training_time >= 60:
+            minutes = training_time / 60
+            print(f"Training completed in {minutes:.2f} minutes")
+        else:
+            print(f"Training completed in {training_time:.2f} seconds")
         
         self.average_strategy = self.get_average_strategy()
     
@@ -89,18 +97,22 @@ class CFRSolver:
         
         current_utility = sum(current_strategy[action] * action_utilities[action] for action in legal_actions)
         
-        #Update regrets (Equation 7)
         counterfactual_weight = reach_probabilities[1 - player_id]
+        player_reach = reach_probabilities[player_id]
+        
+        self.update_regrets(info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight)
+        self.update_strategy_sum(info_set_key, legal_actions, current_strategy, player_reach)
+        
+        return current_utility
+    
+    def update_regrets(self, info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight):
         for action in legal_actions:
             instantaneous_regret = counterfactual_weight * (action_utilities[action] - current_utility)
             self.regret_sum[info_set_key][action] += instantaneous_regret
-        
-        #Update strategy sum (Equation 4)
-        player_reach = reach_probabilities[player_id]
+    
+    def update_strategy_sum(self, info_set_key, legal_actions, current_strategy, player_reach):
         for action in legal_actions:
             self.strategy_sum[info_set_key][action] += player_reach * current_strategy[action]
-        
-        return current_utility
     
     def get_current_strategy(self, info_set_key, legal_actions):
         """Equation 8 from Zinkevich et al. (2007)"""
@@ -172,7 +184,8 @@ class CFRSolver:
             'regret_sum': self.regret_sum,
             'strategy_sum': self.strategy_sum,
             'average_strategy': self.average_strategy,
-            'iteration_count': self.iteration_count
+            'iteration_count': self.iteration_count,
+            'training_time': self.training_time
         }
         
         with gzip.open(filepath, 'wb') as f:
@@ -188,5 +201,6 @@ class CFRSolver:
         self.strategy_sum = data['strategy_sum']
         self.average_strategy = data['average_strategy']
         self.iteration_count = data['iteration_count']
+        self.training_time = data.get('training_time', 0)
         
         print(f"Loaded from {filepath}")

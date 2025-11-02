@@ -6,4 +6,4 @@ class LeducHoldemDealer(KuhnPokerDealer):
         super().__init__()
     
     def reset(self):
-        self.deck = ['J', 'J', 'Q', 'Q', 'K', 'K']
+        self.deck = ['Js', 'Jh', 'Qs', 'Qh', 'Ks', 'Kh']
