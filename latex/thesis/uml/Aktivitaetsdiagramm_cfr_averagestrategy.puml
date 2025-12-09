@@ -1,0 +1,31 @@
+@startuml
+
+skinparam activity {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+    FontSize 10
+}
+
+start
+
+:get_average_strategy();
+
+:average_strategy = {};
+
+repeat :For each info_set_key in strategy_sum;
+  :total = sum(strategy_sum[info_set_key].values());
+  if (total > 0?) then (yes)
+    :average_strategy[info_set_key] = {action: strategy_sum[info_set_key][action] / total for action in strategy_sum[info_set_key]};
+  else (no)
+    :num_actions = len(strategy_sum[info_set_key]);
+    :average_strategy[info_set_key] = {action: 1.0 / num_actions for action in strategy_sum[info_set_key]};
+  endif
+repeat while (More info_set_keys?) is (yes)
+-> no;
+
+:return average_strategy;
+
+stop
+
+@enduml
+

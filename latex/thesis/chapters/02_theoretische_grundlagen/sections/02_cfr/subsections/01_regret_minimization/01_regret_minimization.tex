@@ -1,0 +1,45 @@
+\subsection{Regret Minimization}
+Zunächst definieren wir das Nash-Gleichgewicht für ein Zweispieler Nullsummenspiel als Strategienprofil $\sigma = (\sigma_1,\sigma_2)$, welches folgende Ungleichungen erfüllt.
+
+\begin{equation}
+u_1(\sigma) \ge \max_{\sigma_1' \in \Sigma_1} u_1(\sigma_1', \sigma_2),
+\qquad
+u_2(\sigma) \ge \max_{\sigma_2' \in \Sigma_2} u_2(\sigma_1, \sigma_2')
+\end{equation}
+(\cite[Eq.~1]{zinkevich2007regret}).
+Ein Approximation eines Nash Gleichgewicht, auch $\varepsilon$-Nash-Gleichgewicht genannt, wird definiert als:
+\begin{equation}
+u_1(\sigma) + \varepsilon \ge \max_{\sigma_1' \in \Sigma_1} u_1(\sigma_1', \sigma_2),
+\qquad
+u_2(\sigma) + \varepsilon \ge \max_{\sigma_2' \in \Sigma_2} u_2(\sigma_1, \sigma_2')
+\end{equation}
+(\cite[Eq.~2]{zinkevich2007regret}).
+
+
+Das Konzept des Regrets kommt aus dem Online-Lernen und hat eine Menge an Lernalgorithmen hervorgebracht.
+Regret misst den Unterschied zwischen dem maximal erreichbarem Nutzen, unter Verwendung einer optimalen Strategie und dem tatsächlich erzielten Nutzen.
+
+
+Um Regret Minimierung zu definieren, betrachten wir zunächst das wiederholte Spielen eines extensiven Spiels.
+Dabei definieren wir folgende Dinge:
+Sei $\sigma_i^t$ die von Spieler $i$ in Runde $t$ verwendete Strategie.
+Der durchschnittliche \emph{overall regret} von Spieler $i$ zum Zeitpunkt $T$ ist
+\begin{equation}
+R_i^T = \frac{1}{T}\max_{\sigma_i^\ast\in\Sigma_i}\sum_{t=1}^T \bigl(u_i(\sigma_i^\ast,\sigma_{-i}^t) - u_i(\sigma^t)\bigr).
+\end{equation}
+(\cite[Eq.~3]{zinkevich2007regret})
+
+
+
+Die Durchschnittsstrategie $\bar\sigma_i^T$ für Spieler $i$ von Zeit $1$ bis $T$ wird für jeden Informationszustand $I \in \mathcal{I}_i$ und jede Aktion $a \in A(I)$ definiert als
+\begin{equation}
+\bar\sigma_i^T(I)(a) = \frac{\sum_{t=1}^T \pi_i^{\sigma^t}(I)\,\sigma^t(I)(a)}{\sum_{t=1}^T \pi_i^{\sigma^t}(I)}.
+\end{equation}
+(\cite[Eq.~4]{zinkevich2007regret})
+Die Durchschnittsstrategie gewichtet Aktionen proportional zur Erreichbarkeitswahrscheinlichkeit $\pi_i^{\sigma^t}(I)$ des Informationszustands $I$ in Runde $t$.
+
+
+
+In einem Nullsummenspiel gilt: Ist der durchschnittliche overall regret beider Spieler zum Zeitpunkt $T$ kleiner als $\varepsilon$, dann ist $\bar\sigma^T$ ein $2\varepsilon$-Nashgleichgewicht (\cite[Thm.~2]{zinkevich2007regret}).
+Ein Algorithmus zum Finden von $\sigma_i^t$ ist Regret minimierend, wenn der durchschnittliche overall regret von Spieler $i$ sich der Null annähert, während $t$ gegen Unendlich läuft.
+Aufgrund dieses Zusammenhangs, kann können Regret minimierende Algorithmen im Selfplay verwendet werden um ein approximatives Nashgleichgewicht zu berechnen.

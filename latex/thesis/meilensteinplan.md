@@ -43,7 +43,7 @@
     Grenzen der Manuellen Berechnung
 
 # Zinkevich 2007 Regret Minimization in Games with Imperfect Information
-2.2 Counter Factual Regret Minimization
+2.2 Counter Factual Regret Minimization 
 2.2.1 Regret Minimization
     - Was ist Regret?
     - Verbindung zu Nash Equilibrium

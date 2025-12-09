@@ -1,0 +1,56 @@
+\chapter{Design und Architektur}
+
+In diesem Kapitel wird die Architektur des Softwareprojekts beschrieben. 
+Es werden die Designentscheidungen erläutert und die Struktur der einzelnen Komponenten anhand von UML Diagrammen dargestellt.
+
+Ein zentrales Designprinzip des Codes ist die Trennung der Game Engine vom CFR Algorithmus. 
+Die Game Engine wird als separate Entität implementiert, die die Spiellogik und Spielzustandsverwaltung übernimmt. 
+Der CFR Algorithmus nutzt die öffentlichen Methoden der Game Engine, ohne direkten Zugriff auf die interne Implementierung der Spiellogik zu haben.
+
+Diese Architektur ermöglicht es, das Projekt später ohne große Probleme um weitere Spielvarianten oder andere Algorithmen zu erweitern. 
+Neue Pokervarianten können implementiert werden, ohne den CFR Algorithmus zu ändern, und neue Algorithmen können hinzugefügt werden, ohne die Game Engine zu modifizieren. 
+Diese Trennung von Algorithmus und Spiellogik erhöht die Wartbarkeit und Erweiterbarkeit des Systems.
+
+\input{chapters/04_systemarchitektur/sections/01_game_environment/01_game_environment}
+\input{chapters/04_systemarchitektur/sections/02_cfr_solver/02_cfr_solver}
+
+\begin{comment}
+\chapter{Design und Architektur}
+
+\section{Architektur-Überblick}
+[Game Engine als separate Entität, Erweiterbarkeit, 
+Trennung von Algorithmus und Spiel-Logik]
+
+\section{Game Environment Architektur}
+[Klassendiagramm Game Environments erklären]
+[Komponenten: Dealer, Player, Judger, Game, Round - 
+was machen sie, wie arbeiten sie zusammen]
+
+\section{CFR Solver Architektur}
+[Klassendiagramm CFR Solver erklären]
+[Komponenten: CFRSolver, CFRPlusSolver, MCCFRSolver - 
+wie sind sie strukturiert]
+
+\section{CFR Algorithmus Abläufe}
+[Activity Diagrams erklären]
+\subsection{CFR Training}
+[Activity Diagram CFR Training]
+
+\subsection{Traverse Game Tree}
+[Activity Diagram Traverse Game Tree]
+
+\subsection{Average Strategy}
+[Activity Diagram Average Strategy]
+
+\subsection{External Sampling MCCFR}
+[Activity Diagram External Sampling]
+
+\section{Evaluationsmethoden Architektur}
+[Wie sind die Evaluationsmethoden strukturiert]
+\end{comment}
+
+
+
+
+
+

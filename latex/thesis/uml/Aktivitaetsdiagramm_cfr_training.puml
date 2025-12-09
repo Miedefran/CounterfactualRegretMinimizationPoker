@@ -1,0 +1,44 @@
+@startuml
+
+skinparam activity {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+    FontSize 10
+}
+
+start
+
+:Parse command line arguments;
+:Get game configuration;
+:Create game;
+:Create combination generator;
+:Create solver;
+
+partition "Training" {
+  repeat :For each iteration;
+  
+  repeat :For each combination;
+    
+    :setup_game_with_combination(game, combination);
+    :Traverse game tree;
+    note right
+      recursive, updates regrets
+      Called for player 0,
+      then for player 1
+    end note
+    
+  repeat while (More combinations?) is (yes)
+  -> no;
+  
+repeat while (More iterations?) is (yes)
+-> no;
+}
+
+:Calculate average strategy;
+:Determine model file path;
+:Save model to file;
+
+stop
+
+@enduml
+

@@ -1,0 +1,25 @@
+\subsection{External Sampling MCCFR}
+
+In External Sampling MCCFR werden nur die Aktionen des Gegners und des Zufalls gesampelt, also die Entscheidungen, die extern zum betrachteten Spieler sind.
+Für jede reine Strategie $\tau$ von Gegner und Zufall wird ein Block $Q_\tau \in Q$ definiert.
+Die Strategie $\tau$ ist eine deterministische Abbildung von Informationssets $I \in \mathcal{I}_c \cup \mathcal{I}_{N \setminus \{i\}}$ zu Aktionen $A(I)$.
+
+Die Blockwahrscheinlichkeiten werden basierend auf den Verteilungen $f_c$ und $\sigma_{-i}$ zugewiesen:
+\begin{equation}
+q_\tau = \prod_{I \in \mathcal{I}_c} f_c(\tau(I)|I) \prod_{I \in \mathcal{I}_{N \setminus \{i\}}} \sigma_{-i}(\tau(I)|I).
+\end{equation}
+Der Block $Q_\tau$ enthält alle terminal histories $z$, die mit $\tau$ konsistent sind, das heißt, wenn $ha$ ein Präfix von $z$ ist mit $h \in I$ für ein $I \in \mathcal{I}_{-i}$, dann gilt $\tau(I) = a$.
+In der Praxis wird $\tau$ nicht explizit gesampelt, sondern die einzelnen Aktionen werden nur bei Bedarf gesampelt.
+
+Diese Blockwahrscheinlichkeiten ergeben $q(z) = \pi_{-i}^\sigma(z)$.
+Der Algorithmus iteriert über jeden Spieler $i \in N$ und führt für jeden eine Post-Order Tiefensuche durch den Game Tree durch.
+Während der Traversierung werden Aktionen an jeder History $h$ gesampelt, für die $P(h) \neq i$ gilt.
+Diese gesampelten Entscheidungen werden gespeichert, sodass die gleichen Aktionen für alle Histories im selben Informationsset verwendet werden.
+Aufgrund von perfect recall kann während dieser Traversierung nie mehr als eine History aus dem selben Informationsset besucht werden.
+
+Für jedes besuchte Informationsset werden die sampled counterfactual regrets berechnet und zu den Gesamtregrets hinzugefügt:
+\begin{equation}
+\tilde{r}(I, a) = (1 - \sigma(a|I)) \sum_{z \in Q \cap Z_I} u_i(z) \pi_i^\sigma(z[I]a, z).
+\end{equation}
+(\cite[Eq.~11]{lanctot2009monte})
+Die Summation kann während der Traversierung effizient berechnet werden, indem für jede History eine gewichtete Summe der Utilities aller von dieser History erreichbaren terminal histories aufrechterhalten wird.

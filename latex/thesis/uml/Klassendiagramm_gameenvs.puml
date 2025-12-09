@@ -1,0 +1,183 @@
+@startuml
+
+left to right direction
+
+skinparam nodesep 40
+skinparam ranksep 60
+skinparam linetype ortho
+skinparam classFontSize 10
+skinparam packageStyle rectangle
+
+package "Kuhn Poker" {
+together {
+class KuhnPokerGame {
+  - ante: int
+  - bet_size: int
+  - pot: int
+  - player_bets: List[int]
+  - history: List[str]
+  - state_stack: List[Dict]
+  - current_player: int
+  - done: bool
+  + reset(starting_player: int)
+  + step(action: str)
+  + get_legal_actions(): List[str]
+  + get_state(player_id: int): Dict
+  + save_state(): Dict
+  + restore_state(saved_state: Dict)
+  + step_back()
+  + get_info_set_key(player_id: int): Tuple
+  + get_payoff(player_id: int): float
+}
+
+class KuhnPokerPlayer {
+  - player_id: int
+  - private_card: str
+  - public_card: str
+  + set_private_card(card: str)
+  + set_public_card(card: str)
+  + reset()
+}
+
+class KuhnPokerDealer {
+  - deck: List[str]
+  + reset()
+  + shuffle()
+  + deal_card(): str
+}
+
+class KuhnPokerJudger {
+  - hand_rank: Dict[str, int]
+  + judge(players, history, current_player, pot, player_bets): List[int]
+}
+}
+}
+
+package "Leduc Hold'em" {
+together {
+class LeducHoldemGame {
+  - betting_round: int
+  - public_card: str
+  - total_bets: List[int]
+  - starting_player: int
+  + reset(starting_player: int)
+  + step(action: str)
+  + get_legal_actions(): List[str]
+  + get_state(player_id: int): Dict
+  + save_state(): Dict
+  + restore_state(saved_state: Dict)
+  + get_info_set_key(player_id: int): Tuple
+  + get_payoff(player_id: int): float
+  + deal_public_card()
+}
+
+class LeducHoldemRound {
+  - bet_limit: int
+  - bet_sizes: List[int]
+  - current_bet_size: int
+  - bet_count: int
+  - passive_action_count: int
+  - round_bets: List[int]
+  + start_new_round(starting_player: int, betting_round: int)
+  + get_amount_to_call(game): int
+  + proceed_round(game, action: str)
+  + is_round_complete(): bool
+  + get_legal_actions(game): List[str]
+}
+
+class LeducHoldemPlayer {
+  ...
+}
+class LeducHoldemDealer {
+  + reset()
+}
+class LeducHoldemJudger {
+  + judge(players, history, current_player, pot, player_bets): List[int]
+  + evaluate_hand(player): Tuple
+}
+}
+}
+
+package "Rhode Island Hold'em" {
+together {
+class RhodeIslandGame {
+  - public_cards: List[str]
+  + reset(starting_player: int)
+  + step(action: str)
+  + get_state(player_id: int): Dict
+  + save_state(): Dict
+  + restore_state(saved_state: Dict)
+  + get_info_set_key(player_id: int): Tuple
+  + deal_public_card()
+}
+
+class RhodeIslandRound {
+  ...
+}
+class RhodeIslandPlayer {
+  ...
+}
+
+class RhodeIslandDealer {
+  + reset()
+}
+
+class RhodeIslandJudger {
+  + evaluate_hand(player): Tuple
+}
+}
+}
+
+package "Twelve Card Poker" {
+together {
+class TwelveCardPokerGame {
+  ...
+}
+class TwelveCardPokerRound {
+  ...
+}
+class TwelveCardPokerPlayer {
+  ...
+}
+class TwelveCardPokerDealer {
+  + reset()
+}
+class TwelveCardPokerJudger {
+  + evaluate_hand(player): Tuple
+}
+}
+}
+
+KuhnPokerGame <|-- LeducHoldemGame
+LeducHoldemGame <|-- RhodeIslandGame
+RhodeIslandGame <|-- TwelveCardPokerGame
+KuhnPokerPlayer <|-- LeducHoldemPlayer
+KuhnPokerPlayer <|-- RhodeIslandPlayer
+KuhnPokerPlayer <|-- TwelveCardPokerPlayer
+KuhnPokerDealer <|-- LeducHoldemDealer
+KuhnPokerDealer <|-- RhodeIslandDealer
+KuhnPokerDealer <|-- TwelveCardPokerDealer
+KuhnPokerJudger <|-- LeducHoldemJudger
+LeducHoldemJudger <|-- RhodeIslandJudger
+LeducHoldemJudger <|-- TwelveCardPokerJudger
+LeducHoldemRound <|-- RhodeIslandRound
+RhodeIslandRound <|-- TwelveCardPokerRound
+
+KuhnPokerGame *-- KuhnPokerDealer
+KuhnPokerGame *-- "2" KuhnPokerPlayer
+KuhnPokerGame *-- KuhnPokerJudger
+LeducHoldemGame *-- LeducHoldemDealer
+LeducHoldemGame *-- "2" LeducHoldemPlayer
+LeducHoldemGame *-- LeducHoldemJudger
+LeducHoldemGame *-- LeducHoldemRound
+RhodeIslandGame *-- RhodeIslandDealer
+RhodeIslandGame *-- "2" RhodeIslandPlayer
+RhodeIslandGame *-- RhodeIslandJudger
+RhodeIslandGame *-- RhodeIslandRound
+TwelveCardPokerGame *-- TwelveCardPokerDealer
+TwelveCardPokerGame *-- "2" TwelveCardPokerPlayer
+TwelveCardPokerGame *-- TwelveCardPokerJudger
+TwelveCardPokerGame *-- TwelveCardPokerRound
+
+@enduml
+

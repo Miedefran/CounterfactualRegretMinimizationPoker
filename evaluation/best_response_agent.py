@@ -26,7 +26,7 @@ def traverse(game_name, player_id, tree, avg_strategy, hist, r_opp):
         return terminal_vector(game_name, player_id, node, r_opp)
     
     if node_type == 'chance':
-        return average_over_children(game_name, player_id, tree, avg_strategy, hist, r_opp)
+        return chance_choice_vector(game_name, player_id, tree, avg_strategy, node, hist, r_opp)
     
     if node_type == 'choice':
         if node['player'] == (1 - player_id):
@@ -35,6 +35,35 @@ def traverse(game_name, player_id, tree, avg_strategy, hist, r_opp):
             return our_choice_vector(game_name, player_id, tree, avg_strategy, node, hist, r_opp)
     
     raise ValueError(f"Unknown node type: {node_type}")
+
+def chance_choice_vector(game_name, player_id, tree, avg_strategy, node, hist, r_opp):
+    opponent_id = 1 - player_id
+    legal_actions = list(node['children'].keys())
+    our_infosets = node[f'player{player_id}_info_sets']
+    num_outcomes = len(legal_actions)
+    
+    if num_outcomes == 0:
+        return [0.0] * len(our_infosets)
+    
+    result = None
+    for j, action in enumerate(legal_actions):
+        chance_prob = 1.0 / num_outcomes
+        r_child = [r_opp[k] * chance_prob for k in range(len(r_opp))]
+        r_sum = sum(r_child)
+        
+        if r_sum > 0:
+            r_child_normalized = [x / r_sum for x in r_child]
+            child_hist = node['children'][action]
+            v_j = traverse(game_name, player_id, tree, avg_strategy, child_hist, r_child_normalized)
+            
+            if result is None:
+                result = [r_sum * v for v in v_j]
+            else:
+                result = [result[i] + r_sum * v_j[i] for i in range(len(result))]
+    
+    if result is None:
+        return [0.0] * len(our_infosets)
+    return result
 
 
 def opponent_choice_vector(game_name, player_id, tree, avg_strategy, node, hist, r_opp):
@@ -68,6 +97,8 @@ def opponent_choice_vector(game_name, player_id, tree, avg_strategy, node, hist,
     return result
 
 
+
+
 def our_choice_vector(game_name, player_id, tree, avg_strategy, node, hist, r_opp):
     legal_actions = list(node['children'].keys())
     our_infosets = node[f'player{player_id}_info_sets']
@@ -89,64 +120,6 @@ def our_choice_vector(game_name, player_id, tree, avg_strategy, node, hist, r_op
     
     return result
 
-
-def average_over_children(game_name, player_id, tree, avg_strategy, hist, r_opp):
-    node = get_node(tree, hist)
-    our_infosets = node[f'player{player_id}_info_sets']
-    children_values = []
-    public_cards = []
-    
-    if 'leduc' in game_name.lower():
-        opp_infosets = node[f'player{1-player_id}_info_sets']
-        
-        for action, child_hist in node['children'].items():
-            public_card = action
-            public_cards.append(public_card)
-            
-            r_child = []
-            for j, opp_info in enumerate(opp_infosets):
-                opp_card = opp_info[0]
-                if opp_card == public_card:
-                    r_child.append(0.0)
-                else:
-                    r_child.append(r_opp[j])
-            
-            r_sum = sum(r_child)
-            if r_sum > 0:
-                r_child_normalized = [x / r_sum for x in r_child]
-            else:
-                r_child_normalized = [0.0] * len(r_child)
-            
-            v = traverse(game_name, player_id, tree, avg_strategy, child_hist, r_child_normalized)
-            children_values.append(v)
-    else:
-        for child_hist in node['children'].values():
-            v = traverse(game_name, player_id, tree, avg_strategy, child_hist, r_opp)
-            children_values.append(v)
-    
-    if not children_values:
-        return [0.0] * len(our_infosets)
-    
-    result = []
-    for i in range(len(our_infosets)):
-        our_card = our_infosets[i][0]
-        
-        if 'leduc' in game_name.lower() or 'rhode' in game_name.lower() or 'twelve' in game_name.lower():
-            valid_values = []
-            for j, public_card in enumerate(public_cards):
-                if our_card != public_card:
-                    valid_values.append(children_values[j][i])
-            
-            if len(valid_values) > 0:
-                avg = sum(valid_values) / len(valid_values)
-            else:
-                avg = 0.0
-        else:
-            avg = sum(v[i] for v in children_values) / len(children_values)
-        
-        result.append(avg)
-    
-    return result
 
 
 def policy_matrix(node, node_player, avg_strategy, legal_actions):
@@ -212,7 +185,6 @@ def terminal_vector(game_name, player_id, node, r_opp):
         result.append(value)
     
     return result
-
 
 def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id):
     player0_info = our_info if our_info[-1] == 0 else opp_info

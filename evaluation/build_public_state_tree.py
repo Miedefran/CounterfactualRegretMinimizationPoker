@@ -104,6 +104,7 @@ def get_info_sets_in_public_state(history, game_name='kuhn'):
         for item in history:
             if isinstance(item, str) and len(item) == 2 and item[1] in ['s', 'h'] and item[0] in ['J', 'Q', 'K', 'A']:
                 public_card = item
+                
             else:
                 history_without_cards.append(item)
         
@@ -254,4 +255,5 @@ if __name__ == "__main__":
     num_terminal = sum(1 for s in states.values() if s['type'] == 'terminal')
     print({'total_states': len(states), 'choice_states': num_choice, 'chance_states': num_chance, 'terminal_states': num_terminal})
     path = save_public_state_tree(save_name, tree)
+    print_public_state_tree(tree)
     print(f"saved: {path}")

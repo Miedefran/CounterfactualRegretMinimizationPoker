@@ -1,0 +1,58 @@
+@startuml
+
+left to right direction
+
+skinparam nodesep 40
+skinparam ranksep 60
+skinparam linetype ortho
+skinparam classFontSize 10
+skinparam packageStyle rectangle
+
+together {
+class CFRSolver {
+  - game
+  - combination_generator
+  - combinations
+  - regret_sum: Dict
+  - strategy_sum: Dict
+  - iteration_count: int
+  - training_time: float
+  - average_strategy: Dict
+  + __init__(game, combination_generator)
+  + ensure_init(info_set_key, legal_actions)
+  + train(iterations)
+  + cfr_iteration()
+  + traverse_game_tree(player_id, reach_probabilities): float
+  + update_regrets(info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight)
+  + update_strategy_sum(info_set_key, legal_actions, current_strategy, player_reach)
+  + get_current_strategy(info_set_key, legal_actions): Dict
+  + {static} average_from_strategy_sum(strategy_sum): Dict
+  + get_average_strategy(): Dict
+  + save_pickle(filepath)
+  + load_pickle(filepath)
+  + save_gzip(filepath)
+  + load_gzip(filepath)
+}
+
+class CFRPlusSolver {
+  - Q: Dict
+  + __init__(game, combination_generator)
+  + ensure_init(info_set_key, legal_actions)
+  + cfr_iteration()
+  + update_regrets(info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight)
+  + update_strategy_sum(info_set_key, legal_actions, current_strategy, player_reach)
+  + get_current_strategy(info_set_key, legal_actions): Dict
+  + save_gzip(filepath)
+  + load_gzip(filepath)
+}
+
+class MCCFRSolver {
+  + cfr_iteration()
+}
+}
+
+CFRSolver <|-- CFRPlusSolver
+CFRSolver <|-- MCCFRSolver
+
+@enduml
+

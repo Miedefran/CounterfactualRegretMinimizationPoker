@@ -36,6 +36,8 @@ models/
 
 # Development files
 PROMPT_CURSOR.md
+UML_CONTEXT_PROMPT.md
+cleanuplatex.md
 play_vs_agent.py
 test_data/TESTING_NOTES.md
 
@@ -48,6 +50,8 @@ test_data/TESTING_NOTES.md
 *.fdb_latexmk
 *.fls
 *.synctex.gz
+*.synctex(busy)
+*.txt
 *.cb
 *.cb2
 *.bbl

@@ -4,7 +4,7 @@
 %% Hauptdokument
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\documentclass[11pt, a4paper]{book}
+\documentclass[12pt, a4paper]{book}
 
 %% Übersetzen für die Abgabe
 \usepackage[abgabe]{bhtThesis}
@@ -24,6 +24,9 @@
 
 \usepackage{amsmath}
 \usepackage{amssymb}
+\usepackage{comment}
+\usepackage[hidelinks]{hyperref}
+\setlength{\parskip}{1.5ex plus 0.5ex minus 0.2ex}
 
 %%
 %% Pfad zu den Bildern
@@ -64,20 +67,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Die Kapitel der Arbeit
 
-\input{chapters/01_einleitung.tex}
-\input{chapters/02_theoretische_grundlagen.tex}
-\input{chapters/03_analyse.tex}
-\input{chapters/04_systemarchitektur.tex}
-\input{chapters/05_implementierung.tex}
-\input{chapters/06_evaluation.tex}
-\input{chapters/07_fazit.tex}
+\input{chapters/main}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% Literaturverzeichnis
 
 \clearpage\newpage
 \addcontentsline{toc}{chapter}{Literaturverzeichnis}
-\bibliographystyle{plain}
+\bibliographystyle{apalike}
 \bibliography{bibliography}
 
 \end{document}

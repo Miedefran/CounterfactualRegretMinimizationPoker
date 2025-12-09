@@ -1,7 +1,12 @@
+import sys
+import os
 import pickle as pkl
 import gzip
 import argparse
 import random
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from agents.strategy_agent import StrategyAgent

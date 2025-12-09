@@ -1,0 +1,7 @@
+\subsection{CFR Algorithmus}
+
+Das CFR-Verfahren verbindet die Komponenten aus den vorherigen Abschnitten zu einer wiederholten Selbstspielprozedur.
+Zwei Spieler spielen ein Spiel $T$-mal gegeneinander und bestimmen ihre Strategie in jeder Iteration nach Gleichung~8
+Für jedes Informationsset $I$ und jede Aktion $a$ speichern wir den kumulierten Regret $R_i^t(I,a)$ und aktualisieren ihn nach jeder Wiederholung.
+Parallel dazu wird die Durchschnittsstrategie gemäß Gleichung~4 aktualisiert.
+Nach $T$ Iterationen geben wir $(\bar\sigma_1^T, \bar\sigma_2^T)$ als approximatives Nash-Gleichgewicht zurück.

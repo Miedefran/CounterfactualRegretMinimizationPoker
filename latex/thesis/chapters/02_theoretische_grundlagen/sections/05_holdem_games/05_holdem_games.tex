@@ -1,0 +1,51 @@
+\section{Hold'em Games}
+In diesem Kapitel stelle ich vor, welche Pokervarianten im Rahmen dieser Arbeit mittels CFR gelöst werden sollen. 
+Hierbei erkläre ich zunächst grundlegend wodurch sich die Untergruppierung von Pokerspielen, Hold'em-Spiele, auszeichnen und stelle dann einige bekannte Varianten vor.
+Denn, wenn, man die Grundstruktur von Hold'em-Spielen definiert hat, ist es einfach diese Struktur zu erweitern und alle folgenden Poker Hold'em Varianten darzustellen.
+Anschließend beschreibe ich die Varianten welche in dieser Arbeit gelöst werden und warum ich diese Auswahl getroffen habe. 
+
+Ich beschäftige mich in dieser Arbeit ausschließlich mit Heads-Up Limit Versionen von Hold'em-Spielen.
+Heads-Up bedeutet, dass das Spiel nur zwei Teilnehmer beinhaltet. 
+Die Klassifikation Limit bezieht sich darauf, dass die Setzgrößen der Spieler auf vorher festgelegte Beträge beschränkt sind.
+Diese zwei Einschränkungen reduzieren die Komplexität enorm. 
+Die folgende Definition gilt für jegliche Heads-Up Limit Hold'em-Spiele.
+
+Eine Iteration eines Hold'em-Spiels nennt man eine Hand.
+Eine Hand widerum besteht aus mehreren Runden.
+In der ersten Runde wird eine bestimmte Anzahl an privaten Karten (Hole Cards) an die zwei Teilnehmer verteilt.
+In \emph{jeder} Runde wird eine bestimmte Anzahl (0 auch möglich), an öffentlichen Karten (Board Cards) aufgedeckt. 
+
+Nachdem Karten ausgeteilt oder aufgedeckt wurden, folgt immer eine Setz Runde, in welcher die Spieler abwechselnd Entscheidungen treffen.
+Ihnen stehen grundlegend 3 Auswahlmöglichkeiten zur Verfügung: \grqq fold, call und raise\glqq.
+Die Begrifflichkeiten können sich abhängig von der Quelle und dem Spiel etwas unterscheiden.
+\\
+Wählt ein Spieler die Aktion \emph{fold}, endet die Hand sofort und der andere Spieler gewinnt den Pot.
+Der Pot ist die Ansammlung aller Einsätze die im Verlauf der Hand gesetzt wurden.
+\\
+Bei einem \emph{call}, setzt er so viele Chips in den Pot, bis er genauso viele Chips in den Pot eingezahlt hat wie der andere Spieler.
+Die Anzahl an Chips kann auch 0 betragen. 
+In Pokervarianten welche zu Unterhaltungs und nicht zu Forschungszwecken gespielt werden, nennt man das dann \emph{check}. 
+\\
+Bei der Aktion \emph{raise}, setzt der Spieler zunächst genauso viel Chips in den Pot wie sein Gegner, analog zum \emph{call}.
+Anschließend setzt er dann zusätzlich noch einen durch die Spielregeln festgelegten Betrag an Chips. 
+
+Die Spieler treffen solange abwechselnd Entscheidungen bis entweder ein Spieler folded, in diesem Fall endet die Hand sofort, oder bis ein Spieler called (solange es nicht die erste Aktion der Runde ist).
+In dem Fall das ein Spieler called, endet nur die Runde und nicht die Hand.
+Um eine endlose Abfolge aus Raises zu vermeiden, gibt es eine Obergrenze für die Anzahl an Raises nacheinander ausgeführt werden dürfen.
+Wenn das Setzlimit erreicht ist, bleiben dem Spieler welcher am Zug ist, nur die Optionen Call und Fold.
+Wenn bis zum Ende der finalen Setzrunde kein Spieler gefolded hat, kommt es zu einem \emph{Showdown}.
+Bei einem Showdown offenbaren beide Spieler ihre Hole Cards und bilden aus allen zu Verfügung stehenden Karten (Hole + Board Cards) die bestmögliche Pokerhand.
+Der Spieler mit der stärkeren Hand gewinnt den Pot, welche möglichen Pokerhände es gibt, und welcher Rangordnung diese folgen, hängt von der Variante des Spiels ab.
+Eine Übersicht über die verschiedenen Pokerhände und deren Bedeutung findet sich unter \url{https://en.wikipedia.org/wiki/List_of_poker_hands}.
+\cite{southey2005bayes}
+
+Da wir jetzt eine grundlegende Definition eines Heads-Up Limit Holdem Spiels haben, können wir nun, durch anpassen einzelner Parameter jegliche Varianten definieren.
+Die relevantesten Aspekte sind: Die Anzahl der Hole und Board Cards, die Anzahl der Setzrunden, dem Setzlimit pro Runde, den im Deck enthaltenden Karten, die möglichen Pokerhände, die festgelegten Setzgrößen und noch einiges mehr.
+
+
+\input{chapters/02_theoretische_grundlagen/sections/05_holdem_games/subsections/01_kuhn_poker/01_kuhn_poker}
+\input{chapters/02_theoretische_grundlagen/sections/05_holdem_games/subsections/02_leduc_holdem/02_leduc_holdem}
+\input{chapters/02_theoretische_grundlagen/sections/05_holdem_games/subsections/03_zwolf_karten_variante/03_zwolf_karten_variante}
+\input{chapters/02_theoretische_grundlagen/sections/05_holdem_games/subsections/04_rhode_island_holdem/04_rhode_island_holdem}
+\input{chapters/02_theoretische_grundlagen/sections/05_holdem_games/subsections/05_limit_holdem/05_limit_holdem}
+

@@ -1,0 +1,61 @@
+\section{CFR Solver}
+
+Abbildung~\ref{fig:cfr_solver_class} zeigt das Klassendiagramm der CFR Solver Architektur. 
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Klassendiagramm_cfr_solver.pdf}
+\caption{Klassendiagramm der CFR Solver Architektur}
+\label{fig:cfr_solver_class}
+\end{figure}
+
+Das Diagramm zeigt die drei implementierten Solver Varianten CFRSolver, CFRPlusSolver und MCCFRSolver, wobei CFRPlusSolver und MCCFRSolver von CFRSolver erben.
+\newpage
+\subsection{CFR Training Ablauf}
+
+Abbildung~\ref{fig:cfr_training_activity} zeigt den Ablauf des CFR Trainings als Aktivitätsdiagramm.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.55\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_cfr_training.pdf}
+\caption{Aktivitätsdiagramm des CFR Trainings}
+\label{fig:cfr_training_activity}
+\end{figure} 
+Der Prozess beginnt mit dem Einlesen der Kommandozeilenargumente. Anschließend wird die Spielkonfiguration geladen. 
+Danach werden das Spiel, der Combination Generator und der Solver erstellt. 
+Der Combination Generator erzeugt alle möglichen Kombinationen von verdeckten Karten für das Training. 
+Das Training besteht aus zwei verschachtelten Schleifen: einer äußeren Schleife über die Iterationen und einer inneren Schleife über alle Kombinationen. 
+Für jede Kombination wird das Spiel initialisiert, der Spielbaum durchlaufen und die Regrets aktualisiert.
+Nach Abschluss aller Iterationen wird die durchschnittliche Strategie berechnet und das trainierte Modell gespeichert.
+\newpage
+
+\subsection{Traverse Game Tree}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.75\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_traverse_game_tree.pdf}
+    \caption{Aktivitätsdiagramm der Traversierung des Spielbaums}
+    \label{fig:traverse_game_tree_activity}
+\end{figure}
+    
+
+Abbildung~\ref{fig:traverse_game_tree_activity} zeigt den Ablauf der rekursiven Traversierung des Spielbaums. 
+Der Algorithmus beginnt mit einer Prüfung, ob es sich um einen Terminalknoten handelt. 
+Falls ja, wird der Payoff berechnet und zurückgegeben.
+Handelt es sich um einen Spielerknoten, wird die aktuelle Strategie mittels Regret Matching bestimmt. 
+Für jede legale Aktion wird die Aktion ausgeführt, die Reach-Wahrscheinlichkeiten aktualisiert und rekursiv der Spielbaum durchlaufen. 
+Nach dem rekursiven Aufruf wird der gewichtete Zustandswert akkumuliert und die Aktion rückgängig gemacht. 
+Handelt es sich um einen Gegnerknoten, wird die Gegnerstrategie verwendet, um die Aktionswahrscheinlichkeiten zu bestimmen und den Spielbaum entsprechend zu traversieren.
+
+\subsection{Strategy Agent und Logger}
+
+Nach dem Training des CFR Solvers wird die errechnete durchschnittliche Strategie von einem Strategy Agent ausgeführt. 
+Der Strategy Agent bestimmt das entsprechende Informationsset für den aktuellen Spielzustand und ermittelt die zugehörigen Aktionswahrscheinlichkeiten aus der Strategie.
+Anschließend wählt er basierend auf dieser Wahrscheinlichkeitsverteilung zufällig eine Aktion aus und führt sie aus.
+    
+\begin{comment}
+Um die Qualität der trainierten Modelle zu evaluieren und zu dokumentieren, wurde ein Logger implementiert. 
+Dieser speichert alle Testdaten und Evaluationsergebnisse über ein Modell in einer CSV-Datei. 
+Der Logger erfasst sowohl Nash-Equilibrium-Metriken als auch Performance-Metriken wie den Erwartungswert im Selfplay. 
+Dadurch können verschiedene Modelle miteinander verglichen und die Konvergenz des Trainingsprozesses nachvollzogen werden.
+\end{comment}

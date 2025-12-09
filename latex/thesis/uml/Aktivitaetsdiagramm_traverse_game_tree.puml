@@ -1,0 +1,103 @@
+@startuml
+
+skinparam activity {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+    FontSize 10
+}
+
+partition "Traverse Game Tree" {
+  start
+
+if (is terminal node?) then (yes)
+  :Calculate payoff;
+  -> (payoff);
+  note right
+    Base Case - ends recursion
+    Returns payoff value
+  end note
+  stop
+else (no)
+  if (is player's node?) then (yes - Player's node)
+    partition "get_current_strategy" {
+      :Get regrets for all actions;
+      :Calculate positive regrets;
+      :Sum positive regrets;
+      if (sum > 0?) then (yes)
+        :Normalize positive regrets to strategy;
+      else (no)
+        :Use uniform strategy;
+      endif
+    }
+    
+    
+    repeat :For each action in legal_actions;
+      :Get action probability from strategy;
+      :Process action with game logic;
+      :Multiply reach probability with action probability;
+      :traverse_game_tree(player_id, new_reach_probs);
+      note right
+        Recursive call goes back
+        to start of diagram
+        Returns here with value
+      end note
+      :Accumulate weighted state value;
+      :Undo action;
+    repeat while (More actions?) is (yes)
+    -> no;
+    
+    :Return state value;
+    stop
+  else (no - Opponent's node)
+    partition "get_current_strategy" {
+      :Get regrets for all actions;
+      :Calculate positive regrets;
+      :Sum positive regrets;
+      if (sum > 0?) then (yes)
+        :Normalize positive regrets to strategy;
+      else (no)
+        :Use uniform strategy;
+      endif
+    }
+    
+    repeat :For each action in legal_actions;
+      :Process action with game logic;
+      :Multiply reach probability with action probability;
+      :traverse_game_tree(player_id, new_reach_probs);
+      note right
+        Recursive call goes back
+        to start of diagram
+        Returns here with value
+      end note
+      :Store utility for action;
+      :Undo action;
+    repeat while (More actions?) is (yes)
+    -> no;
+    
+    :Calculate expected utility: sum of action utilities weighted with strategy;
+    :Get counterfactual weight;
+    :Get player reach probability;
+    
+    partition "update_regrets" {
+      repeat :For each action in legal_actions;
+        :instantaneous_regret = counterfactual_weight * (action_utilities[action] - current_utility);
+        :regret_sum[info_set_key][action] += instantaneous_regret;
+      repeat while (More actions?) is (yes)
+      -> no;
+    }
+    
+    partition "update_strategy_sum" {
+      repeat :For each action in legal_actions;
+        :strategy_sum[info_set_key][action] += player_reach * current_strategy[action];
+      repeat while (More actions?) is (yes)
+      -> no;
+    }
+    
+    :return current_utility;
+    stop
+  endif
+endif
+}
+
+@enduml
+

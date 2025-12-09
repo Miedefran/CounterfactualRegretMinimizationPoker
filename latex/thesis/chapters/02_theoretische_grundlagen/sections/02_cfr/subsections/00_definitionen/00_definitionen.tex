@@ -1,0 +1,14 @@
+\subsection{Definitionen}
+
+Für ein Strategieprofil $\sigma$ definieren wir folgende Wahrscheinlichkeiten und Werte:
+
+\begin{itemize}
+\item $\pi^\sigma(h)$ bezeichnet die Wahrscheinlichkeit, dass History $h$ auftritt, wenn alle Spieler gemäß $\sigma$ handeln.
+\item $\pi^\sigma(h)$ kann in ein Produkt zerlegt werden: $\pi^\sigma = \prod_{i \in N \cup \{c\}} \pi_i^\sigma(h)$, welches sich zusammensetzt aus den Wahrscheinlichkeiten der einzelnen Spieler und des Zufalls
+\item $\pi_i^\sigma(h)$ ist die Wahrscheinlichkeit, dass Spieler $i$ in all seinen Entscheidungsknoten auf dem Pfad zu $h$ gemäß $\sigma$ die Aktionen gewählt hat, die zu $h$ führen.
+\item $\pi_{-i}^\sigma(h)$ ist das Produkt der Wahrscheinlichkeiten aller anderen Spieler (inklusive Chance), die auf dem Pfad zu $h$ auftreten.
+\item Für ein Informationsset $I$ ist $\pi^\sigma(I) = \sum_{h \in I} \pi^\sigma(h)$ die Wahrscheinlichkeit, $I$ zu erreichen.
+%\item $\pi_i^\sigma(I)$ und $\pi_{-i}^\sigma(I)$ sind analog definiert.
+\item Der Overall Value $u_i(\sigma)$ gibt den erwarteten Payoff für Spieler $i$ unter Strategieprofil $\sigma$ an.
+Er berechnet sich als Summe über alle terminalen Histories $h$, wobei für jedes Spielende der Payoff $u_i(h)$ mit der Wahrscheinlichkeit $\pi^\sigma(h)$, dass dieses Spielende erreicht wird, multipliziert wird: $u_i(\sigma) = \sum_{h \in Z} u_i(h) \pi^\sigma(h)$.
+\end{itemize}

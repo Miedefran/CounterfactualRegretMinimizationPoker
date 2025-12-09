@@ -1,0 +1,16 @@
+\subsection{Unterschiede zu Vanilla CFR}
+
+CFR+ ist eine Variante von CFR, die deutlich schneller konvergiert als Standard CFR.
+Cepheus, das erste Programm welches Heads up no Limit Holdem erfolgreich gelöst hat.
+
+Erste Änderung: CFR+ verwendet eine linear gewichtete Durchschnittsstrategie statt der uniformen Durchschnittsstrategie von CFR.
+Die gewichtete Durchschnittsstrategie ist definiert als $\bar{\sigma}_p^T = 2/(T^2 + T) \sum_{t=1}^T t\sigma_p^t$, wobei spätere Iterationen stärker gewichtet werden.
+
+CFR+ verwendet wie Vanilla CFR kein Sampling.
+Viele andere CFR Implementierungen nutzen Sampling Techniken zur Beschleunigung, während CFR+ und Vanilla CFR den gesamten Spielbaum in jeder Iteration traversieren.
+
+Zweite Änderung: CFR+ führt alternierende Updates durch.
+Im Gegensatz zum ursprünglichen CFR, das die Regrets beider Spieler simultan aktualisiert, aktualisiert CFR+ die Spieler abwechselnd.
+
+Dritte und wichtigste Änderung: CFR+ verwendet Regret Matching+ anstelle von Regret Matching.
+Regret Matching+ setzt negative Regrets auf null zurück, statt sie zu ignorieren, was zu besseren Tracking Regret Eigenschaften führt.

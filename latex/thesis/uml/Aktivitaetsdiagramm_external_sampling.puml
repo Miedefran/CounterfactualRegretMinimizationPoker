@@ -1,0 +1,38 @@
+@startuml
+
+skinparam activity {
+    BackgroundColor #E8F4F8
+    BorderColor #0066CC
+    FontSize 10
+}
+
+start
+
+:Parse command line arguments;
+:Get game config from GAME_CONFIGS;
+:Create LeducHoldemGame;
+:Create LeducHoldemCombinations;
+:Create MCCFRSolver(game, combo_gen);
+
+:solver.train(iterations);
+
+:cfr_iteration();
+
+:combination = random.choice(combinations);
+
+:setup_game_with_combination(game, combination);
+:Traverse game tree;
+note right
+  recursive, updates regrets
+  Called for player 0,
+  then for player 1
+end note
+
+:get_average_strategy();
+:get_model_path(game, iterations, algorithm);
+:solver.save_gzip(filepath);
+
+stop
+
+@enduml
+

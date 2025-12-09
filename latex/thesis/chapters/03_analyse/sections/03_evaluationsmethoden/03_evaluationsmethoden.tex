@@ -1,0 +1,17 @@
+\section{Evaluationsmethoden}
+
+Zur Evaluation der berechneten Strategien werden zwei Hauptmethoden verwendet. 
+Exploitability Tests mit einem Best Response Agent und die Berechnung des Erwartungswerts im Selfplay.
+
+Der Exploitability Test mit einem Best Response Agent misst, wie stark eine Strategie ausgenutzt werden kann. 
+Ein Best Response Agent spielt optimal gegen die zu evaluierende Strategie. 
+Die Exploitability ist definiert als der erwartete Gewinn des Best Response Agents minus dem erwarteten Gewinn bei einem Nash-Gleichgewicht. 
+Eine niedrige Exploitability deutet darauf hin, dass die Strategie nahe an einem Nash-Gleichgewicht liegt.
+
+Die Berechnung des Erwartungswerts im Selfplay ermöglicht es, die Performance der Strategie zu bewerten, wenn beide Spieler die gleiche Strategie verwenden. 
+Dies gibt Aufschluss über die Qualität der Strategie in einem symmetrischen Setting. 
+
+Zusätzlich werden Konvergenzplots erstellt, um die Entwicklung der Strategiequalität über die Iterationen hinweg zu visualisieren. 
+Diese werden erstellt, indem in regelmäßigen Abständen, die Exploitability mittels des Best Response Agents ermittelt wird.
+
+

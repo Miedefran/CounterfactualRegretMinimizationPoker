@@ -1,0 +1,20 @@
+\section{Game Environment}
+In diesem Kapitel wird der Aufbau der Spielumgebung mithilfe von Klassendiagrammen beschrieben.
+Die Spielumgebung ist für die Logik des Pokerspiels zuständig, sowie dazu den Spielzustand zu verwalten.
+
+Eine Spielumgebung ist unterteilt in die Klassen Player(2 Teilnehmer des Spiels), Dealer(Verwaltet Deck), Judger(bestimmt den Gewinner) und Game(Verwendet andere Komponenten).
+Dies wird bei allen Varianten ausser Kuhn Poker zusätzlich noch durch eine Round Klasse erweitert, welche den Übergang zwischen Setzrunden steuert.
+Diese Architektur wurde von RLCard übernommen.
+
+
+Abbildung~\ref{fig:gameenv_class} zeigt das Klassendiagramm der Game Environment für verschiedene Pokervarianten. 
+Im Diagramm ist zu erkennen, dass die Game Environments voneinander erben, wodurch einige Bestandteile wiederverwendet werden können.
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{chapters/04_systemarchitektur/sections/01_game_environment/Klassendiagramm_gameenvs.pdf}
+\caption{Klassendiagramm der Game Environment für verschiedene Pokervarianten}
+\label{fig:gameenv_class}
+\end{figure}
+

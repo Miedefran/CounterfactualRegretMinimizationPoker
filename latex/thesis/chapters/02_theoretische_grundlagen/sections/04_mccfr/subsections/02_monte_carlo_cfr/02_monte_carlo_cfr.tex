@@ -1,0 +1,25 @@
+\subsection{Monte Carlo CFR}
+
+Der Ansatz reduziert die Kosten pro Iteration, indem er den Game Tree nicht vollständig traversiert und dennoch unverzerrte immediate counterfactual regrets erhält.
+Dazu werden die in jeder Iteration betrachteten terminal histories eingeschränkt.
+
+Sei $Q = \{Q_1, \ldots, Q_r\}$ eine Menge von Teilmengen von $Z$, deren Vereinigung die Menge $Z$ umfasst.
+Jede dieser Teilmengen $Q_j$ wird als Block bezeichnet.
+In jeder Iteration wird einer dieser Blöcke gesampelt und nur die terminal histories in diesem Block werden betrachtet.
+Sei $q_j > 0$ die Wahrscheinlichkeit, Block $Q_j$ in der aktuellen Iteration zu betrachten, wobei $\sum_{j=1}^r q_j = 1$ gilt.
+Die Wahrscheinlichkeit, eine terminal history $z$ in der aktuellen Iteration zu betrachten, ist $q(z) = \sum_{j:z \in Q_j} q_j$.
+
+Der sampled counterfactual value beim Aktualisieren von Block $j$ ist:
+\begin{equation}
+\tilde{v}_i(\sigma, I|j) = \sum_{z \in Q_j \cap Z_I} \frac{1}{q(z)} u_i(z) \pi_{-i}^\sigma(z[I]) \pi^\sigma(z[I], z).
+\end{equation}
+(\cite[Eq.~6]{lanctot2009monte})
+Dieser Wert ist im Erwartungswert gleich dem counterfactual value:
+\begin{equation}
+\mathbb{E}_{j \sim q_j}[\tilde{v}_i(\sigma, I|j)] = v_i(\sigma, I).
+\end{equation}
+(\cite[Lemma~1]{lanctot2009monte})
+Damit ist $\tilde{v}_i$ ein unverzerrter Schätzer von $v_i$.
+
+Die Wahl einer Menge $Q$ zusammen mit den Sampling-Wahrscheinlichkeiten definiert einen vollständigen sample-basierten CFR-Algorithmus.
+Anstatt vollständige Game Tree Traversierungen durchzuführen, sampelt der Algorithmus einen dieser Blöcke und untersucht nur die terminal histories in diesem Block.
