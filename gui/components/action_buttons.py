@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton, QSpinBox, QLabel
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QPushButton
 from PyQt6.QtCore import Qt, pyqtSignal
 
 class ActionButtons(QWidget):
@@ -15,15 +15,6 @@ class ActionButtons(QWidget):
         self.call_btn = QPushButton("Call")
         self.fold_btn = QPushButton("Fold")
         
-        self.bet_size_input = QSpinBox()
-        self.bet_size_input.setMinimum(1)
-        self.bet_size_input.setMaximum(10000)
-        self.bet_size_input.setValue(10)
-        self.bet_size_input.setEnabled(False)
-        
-        self.bet_size_label = QLabel("Bet Size:")
-        self.bet_size_label.setVisible(False)
-        
         self.setup_buttons()
         self.setup_connections()
         self.setup_style()
@@ -35,12 +26,10 @@ class ActionButtons(QWidget):
             self.layout.addWidget(btn)
         
         self.layout.addStretch()
-        self.layout.addWidget(self.bet_size_label)
-        self.layout.addWidget(self.bet_size_input)
     
     def setup_connections(self):
         self.check_btn.clicked.connect(lambda: self.emit_action('check', 0))
-        self.bet_btn.clicked.connect(lambda: self.emit_action('bet', self.bet_size_input.value()))
+        self.bet_btn.clicked.connect(lambda: self.emit_action('bet', 0))
         self.call_btn.clicked.connect(lambda: self.emit_action('call', 0))
         self.fold_btn.clicked.connect(lambda: self.emit_action('fold', 0))
     
@@ -63,18 +52,6 @@ class ActionButtons(QWidget):
             }
             QPushButton:pressed {
                 background-color: #0a3a70;
-            }
-            QSpinBox {
-                background-color: white;
-                border: 2px solid #333;
-                border-radius: 5px;
-                padding: 5px;
-                font-size: 14px;
-                min-width: 80px;
-            }
-            QLabel {
-                color: white;
-                font-size: 14px;
             }
         """)
         
@@ -107,17 +84,6 @@ class ActionButtons(QWidget):
         self.bet_btn.setEnabled('bet' in legal_actions)
         self.call_btn.setEnabled('call' in legal_actions)
         self.fold_btn.setEnabled('fold' in legal_actions)
-        
-        if 'bet' in legal_actions and bet_size_range:
-            min_bet, max_bet = bet_size_range
-            self.bet_size_input.setMinimum(min_bet)
-            self.bet_size_input.setMaximum(max_bet)
-            self.bet_size_input.setValue(min_bet)
-            self.bet_size_input.setEnabled(True)
-            self.bet_size_label.setVisible(True)
-        else:
-            self.bet_size_input.setEnabled(False)
-            self.bet_size_label.setVisible(False)
     
     def set_amount_to_call(self, amount):
         if amount > 0:

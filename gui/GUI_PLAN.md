@@ -10,6 +10,8 @@ Entwicklung eines GUI/Visualizers für CFR-Poker mit drei Hauptmodi:
 ## 2. Ordnerstruktur
 
 ```
+
+
 gui/
 ├── __init__.py
 ├── GUI_PLAN.md              # Dieser Plan

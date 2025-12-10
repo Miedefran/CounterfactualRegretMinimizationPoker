@@ -26,7 +26,7 @@ class PlayerWidget(QWidget):
         self.name_label = QLabel(self.player_name)
         self.name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.name_label.setFont(QFont("Arial", 14, QFont.Weight.Bold))
-        self.name_label.setVisible(False)
+        self.name_label.setVisible(True)
         layout.addWidget(self.name_label)
         
         self.cards_layout = QHBoxLayout()
