@@ -1,23 +1,23 @@
 \subsection{Theoretische Eigenschaften}
 
-\subsubsection{Der M-Wert}
+\subsubsection{Der M Wert}
 
-Um die Regret Bounds für MCCFR Varianten zu formulieren, wird ein strukturelles Maß der Spielkomplexität eingeführt: der M-Wert.
+Um die Regret Bounds für MCCFR Varianten zu formulieren, wird ein strukturelles Maß der Spielkomplexität eingeführt: der M Wert.
 Dieser Wert hängt von der spezifischen Struktur des extensiven Spiels ab und ermöglicht eine präzisere Abschätzung der Konvergenzrate als die einfache Anzahl der Information Sets.
 
 Sei $\vec{a}_i$ eine Teilsequenz einer Historie, die nur die Aktionen von Spieler $i$ in dieser Historie enthält.
 Sei $\vec{A}_i$ die Menge aller solcher Aktionssequenzen von Spieler $i$.
 Für eine Aktionssequenz $\vec{a}_i$ sei $\mathcal{I}_i(\vec{a}_i)$ die Menge aller Information Sets, bei denen die Aktionssequenz von Spieler $i$ bis zu diesem Information Set genau $\vec{a}_i$ ist.
-Der M-Wert für Spieler $i$ ist dann definiert als
+Der M Wert für Spieler $i$ ist dann definiert als
 \begin{equation}
 M_i = \sum_{\vec{a}_i \in \vec{A}_i} \sqrt{|\mathcal{I}_i(\vec{a}_i)|}.
 \end{equation}
 (\cite{lanctot2009monte})
 
-Der M-Wert summiert also über alle möglichen Aktionssequenzen von Spieler $i$ die Wurzel der Anzahl der Information Sets, die zu dieser Sequenz gehören.
+Der M Wert summiert also über alle möglichen Aktionssequenzen von Spieler $i$ die Wurzel der Anzahl der Information Sets, die zu dieser Sequenz gehören.
 Dies erfasst, wie sich die Information Sets über die verschiedenen Aktionssequenzen verteilen.
 
-Für den M-Wert gilt die folgende Ungleichung:
+Für den M Wert gilt die folgende Ungleichung:
 \begin{equation}
 \sqrt{|\mathcal{I}_i|} \le M_i \le |\mathcal{I}_i|,
 \end{equation}
@@ -43,10 +43,10 @@ $\sqrt{6} \approx 2.45 \le M_0 = 3.46 \le 6$ und $\sqrt{6} \approx 2.45 \le M_1 
 Für Spieler 1 wird die untere Schranke erreicht, da alle sechs Information Sets zur selben Aktionssequenz gehören.
 Für Spieler 0 liegt $M_0$ zwischen den Schranken, da die Information Sets auf zwei verschiedene Aktionssequenzen verteilt sind.
 
-Der M-Wert wird sowohl in den folgenden Regret Bounds für Vanilla CFR als auch für MCCFR verwendet.
+Der M Wert wird sowohl in den folgenden Regret Bounds für Vanilla CFR als auch für MCCFR verwendet.
 \subsubsection{Regret Bounds}
 
-Mit Hilfe des M-Werts können präzisere Regret Bounds für Vanilla CFR formuliert werden.
+Mit Hilfe des M Werts können präzisere Regret Bounds für Vanilla CFR formuliert werden.
 \begin{equation}
 R_i^T \le \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T},
 \end{equation}
@@ -58,7 +58,7 @@ Da $M_i \le |\mathcal{I}_i|$ gilt, ist die neue Schranke mindestens so gut wie d
 Die Konvergenzrate bleibt bei $O(1/\sqrt{T})$, wobei der konstante Faktor durch die strukturabhängige Komplexität $M_i$ statt der einfachen Anzahl der Information Sets bestimmt wird.
 
 Für die MCCFR Varianten können probabilistische Regret Bounds angegeben werden.
-External-Sampling MCCFR benötigt nur einen konstanten Faktor mehr Iterationen als Vanilla CFR.
+External Sampling MCCFR benötigt nur einen konstanten Faktor mehr Iterationen als Vanilla CFR.
 Für jeden Parameter $p \in (0, 1]$ gilt mit Wahrscheinlichkeit mindestens $1-p$:
 \begin{equation}
 R_i^T \le \left(1 + \sqrt{\frac{2}{p}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T}.

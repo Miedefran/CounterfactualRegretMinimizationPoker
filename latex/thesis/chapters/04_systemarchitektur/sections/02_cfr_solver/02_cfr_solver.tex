@@ -23,7 +23,7 @@ Abbildung~\ref{fig:cfr_training_activity} zeigt den Ablauf des CFR Trainings als
 \end{figure} 
 Der Prozess beginnt mit dem Einlesen der Kommandozeilenargumente. Anschließend wird die Spielkonfiguration geladen. 
 Danach werden das Spiel, der Combination Generator und der Solver erstellt. 
-Der Combination Generator erzeugt alle möglichen Kombinationen von verdeckten Karten für das Training. 
+Der Combination Generator erzeugt alle möglichen Kartenkombinationen.
 Das Training besteht aus zwei verschachtelten Schleifen: einer äußeren Schleife über die Iterationen und einer inneren Schleife über alle Kombinationen. 
 Für jede Kombination wird das Spiel initialisiert, der Spielbaum durchlaufen und die Regrets aktualisiert.
 Nach Abschluss aller Iterationen wird die durchschnittliche Strategie berechnet und das trainierte Modell gespeichert.
@@ -43,7 +43,7 @@ Abbildung~\ref{fig:traverse_game_tree_activity} zeigt den Ablauf der rekursiven 
 Der Algorithmus beginnt mit einer Prüfung, ob es sich um einen Terminalknoten handelt. 
 Falls ja, wird der Payoff berechnet und zurückgegeben.
 Handelt es sich um einen Spielerknoten, wird die aktuelle Strategie mittels Regret Matching bestimmt. 
-Für jede legale Aktion wird die Aktion ausgeführt, die Reach-Wahrscheinlichkeiten aktualisiert und rekursiv der Spielbaum durchlaufen. 
+Für jede legale Aktion wird die Aktion ausgeführt, die Reach Wahrscheinlichkeiten aktualisiert und rekursiv der Spielbaum durchlaufen. 
 Nach dem rekursiven Aufruf wird der gewichtete Zustandswert akkumuliert und die Aktion rückgängig gemacht. 
 Handelt es sich um einen Gegnerknoten, wird die Gegnerstrategie verwendet, um die Aktionswahrscheinlichkeiten zu bestimmen und den Spielbaum entsprechend zu traversieren.
 
@@ -55,7 +55,7 @@ Anschließend wählt er basierend auf dieser Wahrscheinlichkeitsverteilung zufä
     
 \begin{comment}
 Um die Qualität der trainierten Modelle zu evaluieren und zu dokumentieren, wurde ein Logger implementiert. 
-Dieser speichert alle Testdaten und Evaluationsergebnisse über ein Modell in einer CSV-Datei. 
-Der Logger erfasst sowohl Nash-Equilibrium-Metriken als auch Performance-Metriken wie den Erwartungswert im Selfplay. 
+Dieser speichert alle Testdaten und Evaluationsergebnisse über ein Modell in einer CSV Datei. 
+Der Logger erfasst sowohl Nash Equilibrium Metriken als auch Performance Metriken wie den Erwartungswert im Selfplay. 
 Dadurch können verschiedene Modelle miteinander verglichen und die Konvergenz des Trainingsprozesses nachvollzogen werden.
 \end{comment}

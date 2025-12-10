@@ -19,10 +19,15 @@ gui/
 ├── human_vs_human.py        # Human vs Human (WebSocket-Server/Client)
 ├── components/              # Wiederverwendbare UI-Komponenten
 │   ├── __init__.py
-│   ├── card_display.py      # Karten-Darstellung
-│   ├── pot_display.py       # Pot, Bets, Chips-Anzeige
+│   ├── poker_table.py       # Grüner Poker-Tisch (QPainter)
+│   ├── visual_card.py       # Visuelle Karten (HTML/CSS)
+│   ├── hidden_card.py        # Verdeckte Karte (blau)
+│   ├── chip.py              # Poker-Chips mit Animation
+│   ├── pot_display.py       # Pot-Anzeige
+│   ├── player_widget.py     # Spieler-Widget (Karten, Chips, Status)
 │   ├── action_buttons.py    # Action-Buttons (Check, Bet, Call, Fold)
-│   └── history_view.py      # History/Log-Anzeige
+│   ├── history_view.py      # History/Log-Anzeige
+│   └── card_display.py      # (Legacy, wird durch visual_card.py ersetzt)
 └── server/                  # WebSocket-Server für Human vs Human
     ├── __init__.py
     ├── game_server.py       # Flask-Server mit Game-Logik
@@ -37,9 +42,11 @@ gui/
   - `QMainWindow`: Hauptfenster
   - `QWidget`: Container für UI-Elemente
   - `QPushButton`: Buttons für Actions/Controls
-  - `QLabel`: Text/Karten-Anzeige
-  - `QTimer`: Auto-Play für Agent vs Agent
+  - `QLabel`: Text/Karten-Anzeige (mit HTML/CSS für Karten)
+  - `QPainter`: Custom Drawing (Tisch, Chips)
+  - `QTimer`: Auto-Play für Agent vs Agent, Positionierung
   - `QVBoxLayout`, `QHBoxLayout`: Layout-Management
+  - `QPropertyAnimation`: Chip-Animationen
 
 ### Flask + SocketIO (für Human vs Human)
 - **Flask**: HTTP-Server
@@ -65,14 +72,20 @@ python-socketio>=5.0.0
 
 **Display-Funktionen:**
 - State-Display (Karten, Pot, History, Legal Actions)
-- Card-Rendering (visuelle Darstellung)
-- Pot/Bets-Anzeige
+- Card-Rendering (visuelle Darstellung mit HTML/CSS)
+- Pot/Bets-Anzeige mit visuellen Chips
 - History-Log
+- Layout-Management (Positionierung auf Tisch)
+
+**State-Mapping:**
+- `get_private_cards()`: Unterstützt single card (Kuhn) und list (Hold'em)
+- `get_public_cards()`: Unterstützt `public_card` (Leduc) und `public_cards` (Hold'em)
+- `get_player_bets()`: Unterstützt `player_bets` (Kuhn) und `total_bets` (Hold'em)
 
 **Navigation:**
 - Step Forward (nutzt `game.step()`)
 - Step Backward (nutzt `game.state_stack`)
-- Reset Game
+- Reset Game (mit automatischer Karten-Austeilung)
 
 **Interface:**
 ```python
@@ -123,11 +136,15 @@ class BasePokerGUI(QMainWindow):
 **UI-Layout:**
 ```
 ┌─────────────────────────────────────────┐
-│  Player 0: [Karten]  |  Player 1: [Karten] │
+│  [Player 0 Cards] - Außerhalb, oben     │
 ├─────────────────────────────────────────┤
-│         [Board/Public Cards]            │
+│      ┌─────────────────────┐            │
+│      │  Poker Table        │            │
+│      │  [Pot] [Chips]      │            │
+│      │  [Community Cards]  │            │
+│      └─────────────────────┘            │
 ├─────────────────────────────────────────┤
-│  Pot: XX  |  Bets: [XX, XX]            │
+│  [Player 1 Cards] - Außerhalb, unten    │
 ├─────────────────────────────────────────┤
 │  [Play] [Pause] [Step] [Back] [Speed] │
 ├─────────────────────────────────────────┤
@@ -170,14 +187,16 @@ class BasePokerGUI(QMainWindow):
 **UI-Layout:**
 ```
 ┌─────────────────────────────────────────┐
-│  Opponent: [??] [??]                    │
+│  [Opponent Cards] - Außerhalb, oben     │
 ├─────────────────────────────────────────┤
-│         [Board/Public Cards]            │
+│      ┌─────────────────────┐            │
+│      │  Poker Table        │            │
+│      │  [Pot] [Chips]      │            │
+│      │  [Community Cards]  │            │
+│      └─────────────────────┘            │
 ├─────────────────────────────────────────┤
-│  You: [Karte] [Karte]                   │
+│  [Your Cards] - Außerhalb, unten        │
 │  [Check] [Bet] [Call] [Fold]           │
-├─────────────────────────────────────────┤
-│  Pot: XX  |  Your Bet: XX              │
 ├─────────────────────────────────────────┤
 │  Strategy Tips:                         │
 │  Bet: 60% | Call: 30% | Fold: 10%     │
@@ -266,12 +285,14 @@ def handle_disconnect():
    - Strategy-Agent-Integration
    - Test mit Kuhn Poker
 
-3. **Card-Rendering** (`components/card_display.py`)
-   - Einfache Text-Darstellung (später erweitern)
-   - Card-Format: "As", "Kh", etc.
+3. **Card-Rendering** (`components/visual_card.py`)
+   - Visuelle Karten mit HTML/CSS
+   - Unterstützt single-character (Kuhn Poker: J, Q, K) und full cards (As, Kh, etc.)
+   - Rank + Suit-Symbole mit Farben
 
 4. **Pot-Display** (`components/pot_display.py`)
-   - Pot, Bets, Player-Bets
+   - Pot-Anzeige mit visuellen Chips
+   - Chips zufällig angeordnet (ohne Überlappung)
 
 **Zeitaufwand**: ~2-3 Tage
 
@@ -320,12 +341,38 @@ def handle_disconnect():
 
 **Zeitaufwand**: ~3-4 Tage
 
-## 9. Offene Fragen & Entscheidungen
+## 9. Implementierte Komponenten & Design-Entscheidungen
 
 ### Card-Rendering
-- **MVP**: Text-basiert ("As", "Kh")
-- **Später**: Visuelle Karten (Bilder/SVG)
-- **Entscheidung**: Start mit Text, später erweitern
+- **Implementiert**: Visuelle Karten mit HTML/CSS (`visual_card.py`)
+- **Features**: Rank + Suit-Symbole, Farben (Rot für Herz/Karo, Schwarz für Pik/Kreuz)
+- **Unterstützung**: Single-character (Kuhn Poker) und full cards (Hold'em)
+
+### Chip-Design
+- **Implementiert**: Poker-Chips nach Las Vegas Muster (`chip.py`)
+- **Farben**: Gedämpfte Farben (nicht knallig)
+- **Design**: Äußerer Ring + weißer innerer Kreis + Wert-Text
+- **Anordnung**: Zufällig beim Pot, ohne Überlappung
+
+### Layout-Struktur
+- **Player Widgets**: Außerhalb des Tisches (oben/unten)
+- **Poker Table**: Grüner Tisch in der Mitte
+- **Community Cards**: In der Mitte des Tisches (grüner Hintergrund)
+- **Pot Display**: Links vom Tisch
+- **Chips**: Rechts neben Pot, zufällig angeordnet
+- **Action Buttons**: Unten außerhalb des Tisches
+
+### State-Mapping
+- **Abstraktion**: Helper-Methoden für verschiedene Game-Typen
+- `get_private_cards()`: Unterstützt single card (Kuhn) und list (Hold'em)
+- `get_public_cards()`: Unterstützt `public_card` (Leduc) und `public_cards` (Hold'em)
+- `get_player_bets()`: Unterstützt `player_bets` (Kuhn) und `total_bets` (Hold'em)
+- **Automatische Karten-Austeilung**: `reset_game()` teilt Karten aus, wenn nicht automatisch geschehen
+
+### Chip-Anordnung
+- **Zufällige Positionierung**: Chips werden zufällig in einem definierten Bereich platziert
+- **Overlap-Prävention**: Mindestabstand (chip_size + 5px) verhindert Überlappung
+- **Fallback**: Wenn keine Position gefunden wird, werden Chips in Reihe platziert
 
 ### Strategie-Tipps
 - **Anzeige**: Immer oder optional?
@@ -361,11 +408,13 @@ def handle_disconnect():
 ## 11. Nächste Schritte
 
 1. ✅ Ordnerstruktur erstellt
-2. ⏳ Phase 1 starten: `base_gui.py` implementieren
-3. ⏳ Agent vs Agent MVP
-4. ⏳ Testing mit Kuhn Poker
-5. ⏳ Phase 2: Agent vs Human
-6. ⏳ Phase 3: Human vs Human
+2. ✅ Komponenten erstellt (Poker Table, Cards, Chips, Pot, Player Widget, Action Buttons, History)
+3. ✅ Base GUI mit Layout implementiert
+4. ✅ State-Mapping für verschiedene Game-Typen
+5. ⏳ Agent vs Agent MVP (mit Funktionalität)
+6. ⏳ Testing mit verschiedenen Game-Varianten
+7. ⏳ Phase 2: Agent vs Human
+8. ⏳ Phase 3: Human vs Human
 
 ## 12. Notizen
 
@@ -373,4 +422,28 @@ def handle_disconnect():
 - **Vererbung**: Basis-GUI → Spezifische Modi
 - **Modularität**: Components wiederverwendbar
 - **Erweiterbarkeit**: Einfach neue Game-Varianten hinzufügen
+
+## 13. Implementierungs-Status
+
+### ✅ Abgeschlossen:
+- **Komponenten**: Alle visuellen Komponenten erstellt
+  - `poker_table.py`: Grüner Tisch
+  - `visual_card.py`: Visuelle Karten
+  - `hidden_card.py`: Verdeckte Karte
+  - `chip.py`: Poker-Chips mit Design
+  - `pot_display.py`: Pot-Anzeige
+  - `player_widget.py`: Spieler-Widget
+  - `action_buttons.py`: Action-Buttons
+  - `history_view.py`: History-Anzeige
+
+- **Base GUI**: Layout und State-Mapping implementiert
+  - Player Widgets außerhalb des Tisches
+  - Community Cards in der Mitte
+  - Pot Display + Chips links
+  - Action Buttons unten
+
+### ⏳ In Arbeit:
+- **Funktionalität**: Game-Integration und Action-Handling
+- **Agent vs Agent**: Auto-Play und Strategy-Integration
+- **Agent vs Human**: Action-Input und Strategy-Tipps
 
