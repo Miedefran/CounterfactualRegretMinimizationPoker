@@ -27,9 +27,40 @@ class BasePokerLayout(QMainWindow):
         self.community_cards = []
         self.pot_chips = []
         
+        self.setup_restart_button()
         self.setup_ui()
         self.add_test_cards()
         QTimer.singleShot(100, self.position_components)
+    
+    def setup_restart_button(self):
+        self.restart_button = QPushButton("🔄 New Hand")
+        self.restart_button.setFixedSize(120, 40)
+        self.restart_button.setStyleSheet("""
+            QPushButton {
+                background-color: #1a5490;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                font-size: 14px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #2a6ab0;
+            }
+            QPushButton:pressed {
+                background-color: #0a3a70;
+            }
+        """)
+        self.restart_button.setParent(self)
+        self.restart_button.raise_()
+    
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'restart_button'):
+            button_x = self.width() - self.restart_button.width() - 20
+            button_y = 20
+            self.restart_button.move(button_x, button_y)
+        QTimer.singleShot(50, self.position_components)
     
     def setup_ui(self):
         self.player_top_widget = PlayerWidget(0, "Strategy Agent", self)
@@ -215,4 +246,8 @@ class BasePokerLayout(QMainWindow):
     
     def resizeEvent(self, event):
         super().resizeEvent(event)
+        if hasattr(self, 'restart_button'):
+            button_x = self.width() - self.restart_button.width() - 20
+            button_y = 20
+            self.restart_button.move(button_x, button_y)
         QTimer.singleShot(50, self.position_components)

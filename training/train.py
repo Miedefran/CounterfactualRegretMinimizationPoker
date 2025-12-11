@@ -5,19 +5,25 @@ from training.mccfr_solver import MCCFRSolver
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
+from envs.twelve_card_poker.game import TwelveCardPokerGame
+from envs.royal_holdem.game import RoyalHoldemGame
+from envs.limit_holdem.game import LimitHoldemGame
 
 from utils.poker_utils import (
     GAME_CONFIGS,
     KuhnPokerCombinations,
     LeducHoldemCombinations,
     RhodeIslandCombinations,
+    TwelveCardPokerCombinations,
+    RoyalHoldemCombinations,
+    LimitHoldemCombinations,
     get_model_path
 )
 
 def main():
     parser = argparse.ArgumentParser(description='Train CFR for Poker')
     parser.add_argument('game', type=str,
-                       choices=['kuhn_case1', 'kuhn_case2', 'kuhn_case3', 'kuhn_case4', 'leduc', 'rhode_island'],
+                       choices=['kuhn_case1', 'kuhn_case2', 'kuhn_case3', 'kuhn_case4', 'leduc', 'rhode_island', 'twelve_card_poker', 'royal_holdem', 'limit_holdem'],
                        help='Poker variant to train on')
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
@@ -40,6 +46,15 @@ def main():
     elif args.game.startswith('rhode'):
         game = RhodeIslandGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = RhodeIslandCombinations()
+    elif args.game == 'twelve_card_poker':
+        game = TwelveCardPokerGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
+        combo_gen = TwelveCardPokerCombinations()
+    elif args.game == 'royal_holdem':
+        game = RoyalHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
+        combo_gen = RoyalHoldemCombinations()
+    elif args.game == 'limit_holdem':
+        game = LimitHoldemGame(small_blind=config['small_blind'], big_blind=config['big_blind'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
+        combo_gen = LimitHoldemCombinations()
     
     if args.algorithm == 'cfr':
         solver = CFRSolver(game, combo_gen)

@@ -26,6 +26,22 @@ GAME_CONFIGS = {
         'ante': 5,
         'bet_sizes': [10, 20, 20],
         'bet_limit': 3
+    },
+    'twelve_card_poker': {
+        'ante': 1,
+        'bet_sizes': [2, 4, 8],
+        'bet_limit': 2
+    },
+    'royal_holdem': {
+        'ante': 1,
+        'bet_sizes': [2, 4, 8, 8],
+        'bet_limit': 3
+    },
+    'limit_holdem': {
+        'small_blind': 5,
+        'big_blind': 10,
+        'bet_sizes': [10, 10, 20, 20],
+        'bet_limit': 4
     }
 }
 
@@ -40,6 +56,12 @@ def get_model_path(game, iterations, algorithm='cfr'):
         path = os.path.join(base_dir, 'leduc', algorithm, filename)
     elif game == 'rhode_island':
         path = os.path.join(base_dir, 'rhode_island', algorithm, filename)
+    elif game == 'twelve_card_poker':
+        path = os.path.join(base_dir, 'twelve_card_poker', algorithm, filename)
+    elif game == 'royal_holdem':
+        path = os.path.join(base_dir, 'royal_holdem', algorithm, filename)
+    elif game == 'limit_holdem':
+        path = os.path.join(base_dir, 'limit_holdem', algorithm, filename)
     else:
         path = os.path.join(base_dir, algorithm, filename)
     
@@ -118,3 +140,101 @@ class RhodeIslandCombinations(PokerCombinationGenerator):
         game.players[0].private_card = combination[0]
         game.players[1].private_card = combination[1]
         game.dealer.deck = [combination[2], combination[3]]
+
+
+class TwelveCardPokerCombinations(PokerCombinationGenerator):
+    
+    def get_all_combinations(self):
+        ranks = ['J', 'Q', 'K', 'A']
+        suits = ['s', 'h', 'd']
+        deck = [rank + suit for rank in ranks for suit in suits]
+        combinations = []
+        
+        for i, p0_card in enumerate(deck):
+            for j, p1_card in enumerate(deck):
+                if i != j:
+                    for k, public1 in enumerate(deck):
+                        if k != i and k != j:
+                            for l, public2 in enumerate(deck):
+                                if l != i and l != j and l != k:
+                                    combinations.append((p0_card, p1_card, public1, public2))
+        
+        return combinations
+    
+    def setup_game_with_combination(self, game, combination):
+        game.reset(0)
+        game.players[0].private_card = combination[0]
+        game.players[1].private_card = combination[1]
+        game.dealer.deck = [combination[2], combination[3]]
+
+
+class RoyalHoldemCombinations(PokerCombinationGenerator):
+    
+    def get_all_combinations(self):
+        ranks = ['T', 'J', 'Q', 'K', 'A']
+        suits = ['s', 'h', 'd', 'c']
+        deck = [rank + suit for rank in ranks for suit in suits]
+        combinations = []
+        
+        for i, p0c1 in enumerate(deck):
+            for j, p0c2 in enumerate(deck):
+                if i != j:
+                    for k, p1c1 in enumerate(deck):
+                        if k != i and k != j:
+                            for l, p1c2 in enumerate(deck):
+                                if l != i and l != j and l != k:
+                                    for m, public1 in enumerate(deck):
+                                        if m != i and m != j and m != k and m != l:
+                                            for n, public2 in enumerate(deck):
+                                                if n != i and n != j and n != k and n != l and n != m:
+                                                    for o, public3 in enumerate(deck):
+                                                        if o != i and o != j and o != k and o != l and o != m and o != n:
+                                                            for p, public4 in enumerate(deck):
+                                                                if p != i and p != j and p != k and p != l and p != m and p != n and p != o:
+                                                                    for q, public5 in enumerate(deck):
+                                                                        if q != i and q != j and q != k and q != l and q != m and q != n and q != o and q != p:
+                                                                            combinations.append((p0c1, p0c2, p1c1, p1c2, public1, public2, public3, public4, public5))
+        
+        return combinations
+    
+    def setup_game_with_combination(self, game, combination):
+        game.reset(0)
+        game.players[0].set_private_cards(combination[0], combination[1])
+        game.players[1].set_private_cards(combination[2], combination[3])
+        game.dealer.deck = [combination[4], combination[5], combination[6], combination[7], combination[8]]
+
+
+class LimitHoldemCombinations(PokerCombinationGenerator):
+    
+    def get_all_combinations(self):
+        ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+        suits = ['s', 'h', 'd', 'c']
+        deck = [rank + suit for rank in ranks for suit in suits]
+        combinations = []
+        
+        for i, p0c1 in enumerate(deck):
+            for j, p0c2 in enumerate(deck):
+                if i != j:
+                    for k, p1c1 in enumerate(deck):
+                        if k != i and k != j:
+                            for l, p1c2 in enumerate(deck):
+                                if l != i and l != j and l != k:
+                                    for m, public1 in enumerate(deck):
+                                        if m != i and m != j and m != k and m != l:
+                                            for n, public2 in enumerate(deck):
+                                                if n != i and n != j and n != k and n != l and n != m:
+                                                    for o, public3 in enumerate(deck):
+                                                        if o != i and o != j and o != k and o != l and o != m and o != n:
+                                                            for p, public4 in enumerate(deck):
+                                                                if p != i and p != j and p != k and p != l and p != m and p != n and p != o:
+                                                                    for q, public5 in enumerate(deck):
+                                                                        if q != i and q != j and q != k and q != l and q != m and q != n and q != o and q != p:
+                                                                            combinations.append((p0c1, p0c2, p1c1, p1c2, public1, public2, public3, public4, public5))
+        
+        return combinations
+    
+    def setup_game_with_combination(self, game, combination):
+        game.reset(0)
+        game.players[0].set_private_cards(combination[0], combination[1])
+        game.players[1].set_private_cards(combination[2], combination[3])
+        game.dealer.deck = [combination[4], combination[5], combination[6], combination[7], combination[8]]

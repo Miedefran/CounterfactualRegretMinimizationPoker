@@ -2,16 +2,19 @@ import random
 
 class StrategyAgent:
     
-    def __init__(self, strategy, player_id):
+    def __init__(self, strategy, player_id, game=None):
         self.strategy = strategy
         self.player_id = player_id
+        self.game = game
     
     def get_action(self, state):
-        card = state['hand']
-        history = tuple(state['history'])
-        current_player = state['current_player']
-        
-        info_set_key = (card, history, current_player)
+        if self.game:
+            info_set_key = self.game.get_info_set_key(self.player_id)
+        else:
+            card = state['hand']
+            history = tuple(state['history'])
+            current_player = state['current_player']
+            info_set_key = (card, history, current_player)
         
         if info_set_key not in self.strategy:
             legal_actions = state['legal_actions']

@@ -88,7 +88,7 @@ class PlayerWidget(QWidget):
             cards = [cards]
         
         for card in cards:
-            if reveal or self.is_current_player:
+            if reveal:
                 card_widget = VisualCard(card)
             else:
                 card_widget = VisualCard(None)
@@ -106,6 +106,13 @@ class PlayerWidget(QWidget):
             self.bet_label.setVisible(True)
         else:
             self.bet_label.setVisible(False)
+    
+    def set_player_name(self, name):
+        self.player_name = name
+        if self.is_current_player:
+            self.name_label.setText(f"{self.player_name} (Your Turn)")
+        else:
+            self.name_label.setText(self.player_name)
     
     def set_current_player(self, is_current):
         self.is_current_player = is_current
