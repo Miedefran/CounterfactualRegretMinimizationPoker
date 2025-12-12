@@ -156,6 +156,7 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
     def update_pot(self, state):
         pot = state.get('pot', getattr(self.game, 'pot', 0))
         self.pot_display.set_pot(pot)
+        self.update_pot_chips(pot)
     
     def update_players(self, state):
         current_player = state.get('current_player', self.game.current_player)

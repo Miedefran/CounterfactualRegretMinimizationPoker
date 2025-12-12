@@ -73,8 +73,9 @@ class BasePokerLayout(QMainWindow):
         
         table_container = QWidget()
         table_container.setStyleSheet("background-color: #0a1929;")
+        table_container.setMinimumHeight(550)
         table_layout = QVBoxLayout(table_container)
-        table_layout.setContentsMargins(10, 10, 10, 10)
+        table_layout.setContentsMargins(10, 10, 10, 40)
         table_layout.setSpacing(0)
         
         self.poker_table = PokerTable()
@@ -93,10 +94,7 @@ class BasePokerLayout(QMainWindow):
         
         self.pot_display = PotDisplay(self.poker_table)
         
-        self.pot_chip1 = Chip(5, parent=self.poker_table)
-        self.pot_chip2 = Chip(25, parent=self.poker_table)
-        self.pot_chip3 = Chip(100, parent=self.poker_table)
-        self.pot_chips = [self.pot_chip1, self.pot_chip2, self.pot_chip3]
+        self.pot_chips = []
         
         self.player_bottom_widget = PlayerWidget(1, "Friedemann", self)
         player_bottom_container = QWidget()
@@ -161,8 +159,6 @@ class BasePokerLayout(QMainWindow):
         self.poker_table.show()
         self.community_cards_widget.show()
         self.pot_display.show()
-        for chip in self.pot_chips:
-            chip.show()
     
     def position_components(self):
         table_rect = self.poker_table.rect()
@@ -186,6 +182,63 @@ class BasePokerLayout(QMainWindow):
         pot_y = cards_y + (cards_height - pot_height) // 2
         
         self.pot_display.move(pot_x, pot_y)
+        
+        self.position_pot_chips()
+    
+    def toggle_history(self):
+        self.history_view.setVisible(not self.history_view.isVisible())
+        if self.history_view.isVisible():
+            self.history_toggle_btn.setText("History ▲")
+        else:
+            self.history_toggle_btn.setText("History ▼")
+    
+    def calculate_chip_breakdown(self, pot_value):
+        chip_denominations = [10000, 5000, 1000, 500, 100, 50, 25, 20, 10, 5, 1]
+        breakdown = []
+        remaining = pot_value
+        
+        for denom in chip_denominations:
+            count = remaining // denom
+            if count > 0:
+                breakdown.extend([denom] * count)
+                remaining -= count * denom
+        
+        return breakdown
+    
+    def update_pot_chips(self, pot_value):
+        for chip in self.pot_chips:
+            chip.hide()
+            chip.deleteLater()
+        self.pot_chips = []
+        
+        if pot_value == 0:
+            return
+        
+        chip_values = self.calculate_chip_breakdown(pot_value)
+        
+        for value in chip_values:
+            chip = Chip(value, parent=self.poker_table)
+            self.pot_chips.append(chip)
+            chip.show()
+        
+        QTimer.singleShot(50, self.position_pot_chips)
+    
+    def position_pot_chips(self):
+        if not self.pot_chips:
+            return
+        
+        table_rect = self.poker_table.rect()
+        if table_rect.width() == 0 or table_rect.height() == 0:
+            QTimer.singleShot(100, self.position_pot_chips)
+            return
+        
+        pot_width = self.pot_display.width()
+        pot_height = self.pot_display.height()
+        pot_x = 30
+        cards_count = len(self.community_cards)
+        cards_height = 140
+        cards_y = table_rect.height() // 2 - cards_height // 2
+        pot_y = cards_y + (cards_height - pot_height) // 2
         
         import random
         random.seed(42)
@@ -222,17 +275,11 @@ class BasePokerLayout(QMainWindow):
                     break
             
             if not placed:
-                chip_x = int(chip_area_x + (i * (chip_size + 10)))
-                chip_y = int(chip_area_y + (i % 2) * (chip_size + 10))
+                chips_per_row = chip_area_width // (chip_size + 10)
+                chip_x = int(chip_area_x + (i % chips_per_row) * (chip_size + 10))
+                chip_y = int(chip_area_y + (i // chips_per_row) * (chip_size + 10))
                 chip.move(chip_x, chip_y)
                 placed_chips.append((chip_x, chip_y))
-    
-    def toggle_history(self):
-        self.history_view.setVisible(not self.history_view.isVisible())
-        if self.history_view.isVisible():
-            self.history_toggle_btn.setText("History ▲")
-        else:
-            self.history_toggle_btn.setText("History ▼")
     
     def add_test_cards(self):
         self.player_top_widget.set_cards(['As', 'Kh'], reveal=True)
