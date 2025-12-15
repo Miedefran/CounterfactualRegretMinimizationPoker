@@ -49,7 +49,7 @@ def main():
         strategy_file=strategy_file,
         human_name="Friedemann"
     )
-    window.show()
+    window.showMaximized()
     
     sys.exit(app.exec())
 

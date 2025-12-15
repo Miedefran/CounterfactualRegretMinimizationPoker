@@ -166,10 +166,8 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         is_agent_turn = (current_player == self.agent_player_id)
         
         self.player_bottom_widget.set_current_player(is_human_turn)
-        self.player_bottom_widget.set_current_bet(player_bets[self.human_player_id] if len(player_bets) > self.human_player_id else 0)
         
         self.player_top_widget.set_current_player(is_agent_turn)
-        self.player_top_widget.set_current_bet(player_bets[self.agent_player_id] if len(player_bets) > self.agent_player_id else 0)
     
     def update_actions(self, state):
         if self.game.done:

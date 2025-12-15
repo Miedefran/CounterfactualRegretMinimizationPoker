@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton
 from PyQt6.QtCore import Qt, QTimer
 from gui.components.poker_table import PokerTable
-from gui.components.player_widget import PlayerWidget
+from gui.components.player_widget import TopPlayerWidget, BottomPlayerWidget
 from gui.components.pot_display import PotDisplay
 from gui.components.visual_card import VisualCard
 from gui.components.chip import Chip
@@ -31,6 +31,7 @@ class BasePokerLayout(QMainWindow):
         self.setup_ui()
         self.add_test_cards()
         QTimer.singleShot(100, self.position_components)
+        QTimer.singleShot(150, self.showMaximized)
     
     def setup_restart_button(self):
         self.restart_button = QPushButton("🔄 New Hand")
@@ -52,7 +53,16 @@ class BasePokerLayout(QMainWindow):
             }
         """)
         self.restart_button.setParent(self)
+        self.restart_button.show()
         self.restart_button.raise_()
+        QTimer.singleShot(200, lambda: self._position_restart_button())
+    
+    def _position_restart_button(self):
+        if hasattr(self, 'restart_button'):
+            button_x = self.width() - self.restart_button.width() - 20
+            button_y = 20
+            self.restart_button.move(button_x, button_y)
+            self.restart_button.raise_()
     
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -63,7 +73,7 @@ class BasePokerLayout(QMainWindow):
         QTimer.singleShot(50, self.position_components)
     
     def setup_ui(self):
-        self.player_top_widget = PlayerWidget(0, "Strategy Agent", self)
+        self.player_top_widget = TopPlayerWidget(0, "Strategy Agent", self)
         player_top_container = QWidget()
         player_top_layout = QHBoxLayout(player_top_container)
         player_top_layout.setContentsMargins(0, 0, 0, 0)
@@ -75,7 +85,7 @@ class BasePokerLayout(QMainWindow):
         table_container.setStyleSheet("background-color: #0a1929;")
         table_container.setMinimumHeight(550)
         table_layout = QVBoxLayout(table_container)
-        table_layout.setContentsMargins(10, 10, 10, 40)
+        table_layout.setContentsMargins(10, 10, 10, 10)
         table_layout.setSpacing(0)
         
         self.poker_table = PokerTable()
@@ -96,7 +106,7 @@ class BasePokerLayout(QMainWindow):
         
         self.pot_chips = []
         
-        self.player_bottom_widget = PlayerWidget(1, "Friedemann", self)
+        self.player_bottom_widget = BottomPlayerWidget(1, "Friedemann", self)
         player_bottom_container = QWidget()
         player_bottom_layout = QHBoxLayout(player_bottom_container)
         player_bottom_layout.setContentsMargins(0, 0, 0, 0)
@@ -105,7 +115,7 @@ class BasePokerLayout(QMainWindow):
         player_bottom_layout.addStretch()
         
         self.control_area = QWidget()
-        self.control_area.setMinimumHeight(80)
+        self.control_area.setMinimumHeight(60)
         
         history_toggle_btn = QPushButton("History ▼")
         history_toggle_btn.setMaximumWidth(100)
@@ -146,6 +156,7 @@ class BasePokerLayout(QMainWindow):
         left_area = QWidget()
         left_area_layout = QVBoxLayout(left_area)
         left_area_layout.setContentsMargins(0, 0, 0, 0)
+        left_area_layout.setSpacing(5)
         left_area_layout.addWidget(player_top_container)
         left_area_layout.addWidget(table_container, 3)
         left_area_layout.addWidget(player_bottom_container)
@@ -184,6 +195,12 @@ class BasePokerLayout(QMainWindow):
         self.pot_display.move(pot_x, pot_y)
         
         self.position_pot_chips()
+        
+        if hasattr(self, 'restart_button'):
+            button_x = self.width() - self.restart_button.width() - 20
+            button_y = 20
+            self.restart_button.move(button_x, button_y)
+            self.restart_button.raise_()
     
     def toggle_history(self):
         self.history_view.setVisible(not self.history_view.isVisible())
@@ -249,6 +266,18 @@ class BasePokerLayout(QMainWindow):
         chip_area_x = pot_x + pot_width + 15
         chip_area_y = pot_y + (pot_height - chip_area_height) // 2
         
+        table_right = table_rect.width()
+        table_bottom = table_rect.height()
+        
+        if chip_area_x + chip_area_width > table_right:
+            chip_area_width = max(50, table_right - chip_area_x - 10)
+        if chip_area_y + chip_area_height > table_bottom:
+            chip_area_height = max(50, table_bottom - chip_area_y - 10)
+        if chip_area_x < 0:
+            chip_area_x = 10
+        if chip_area_y < 0:
+            chip_area_y = 10
+        
         placed_chips = []
         min_distance = chip_size + 5
         
@@ -256,10 +285,19 @@ class BasePokerLayout(QMainWindow):
             max_attempts = 200
             placed = False
             for attempt in range(max_attempts):
-                offset_x = random.randint(0, chip_area_width - chip_size)
-                offset_y = random.randint(0, chip_area_height - chip_size)
+                offset_x = random.randint(0, max(0, chip_area_width - chip_size))
+                offset_y = random.randint(0, max(0, chip_area_height - chip_size))
                 chip_x = int(chip_area_x + offset_x)
                 chip_y = int(chip_area_y + offset_y)
+                
+                if chip_x + chip_size > table_right:
+                    chip_x = table_right - chip_size - 5
+                if chip_y + chip_size > table_bottom:
+                    chip_y = table_bottom - chip_size - 5
+                if chip_x < 0:
+                    chip_x = 5
+                if chip_y < 0:
+                    chip_y = 5
                 
                 overlaps = False
                 for placed_x, placed_y in placed_chips:
@@ -275,9 +313,19 @@ class BasePokerLayout(QMainWindow):
                     break
             
             if not placed:
-                chips_per_row = chip_area_width // (chip_size + 10)
+                chips_per_row = max(1, chip_area_width // (chip_size + 10))
                 chip_x = int(chip_area_x + (i % chips_per_row) * (chip_size + 10))
                 chip_y = int(chip_area_y + (i // chips_per_row) * (chip_size + 10))
+                
+                if chip_x + chip_size > table_right:
+                    chip_x = table_right - chip_size - 5
+                if chip_y + chip_size > table_bottom:
+                    chip_y = table_bottom - chip_size - 5
+                if chip_x < 0:
+                    chip_x = 5
+                if chip_y < 0:
+                    chip_y = 5
+                
                 chip.move(chip_x, chip_y)
                 placed_chips.append((chip_x, chip_y))
     

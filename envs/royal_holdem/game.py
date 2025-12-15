@@ -60,6 +60,7 @@ class RoyalHoldemGame(RhodeIslandGame):
             'betting_round': self.betting_round,
             'legal_actions': self.get_legal_actions(),
             'pot': self.pot,
+            'done': self.done,
             'player_bets': list(self.total_bets),
             'bet_count': self.round.bet_count,
             'passive_action_count': self.round.passive_action_count,
