@@ -27,7 +27,6 @@ class BasePokerLayout(QMainWindow):
         self.community_cards = []
         self.pot_chips = []
         
-        self.setup_restart_button()
         self.setup_ui()
         self.add_test_cards()
         QTimer.singleShot(100, self.position_components)

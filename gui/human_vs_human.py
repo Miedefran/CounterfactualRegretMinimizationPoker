@@ -25,7 +25,8 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         self.community_cards = []
         
         self.player_bottom_widget.set_cards([], reveal=False)
-        self.player_top_widget.set_cards([], reveal=False)
+        hidden_cards = [None, None]
+        self.player_top_widget.set_cards(hidden_cards, reveal=False)
         
         self.player_bottom_widget.set_player_name(human_name)
         self.player_top_widget.set_player_name("Opponent")
@@ -119,7 +120,9 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         if reveal_all and opponent_cards:
             self.player_top_widget.set_cards(opponent_cards, reveal=True)
         else:
-            self.player_top_widget.set_cards([], reveal=False)
+            num_cards = len(private_cards) if private_cards else 2
+            hidden_cards = [None] * num_cards
+            self.player_top_widget.set_cards(hidden_cards, reveal=False)
         
         for card_widget in self.community_cards:
             self.community_cards_layout.removeWidget(card_widget)

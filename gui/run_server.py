@@ -1,9 +1,20 @@
 import sys
 import argparse
+import socket
 from pathlib import Path
 
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
+
+def get_local_ip():
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "localhost"
 
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
@@ -19,9 +30,9 @@ def main():
                        help='Server IP (0.0.0.0 = alle Interfaces, default: 0.0.0.0)')
     parser.add_argument('--port', type=int, default=8888,
                        help='Server port (default: 8888)')
-    parser.add_argument('--game', default='kuhn', 
-                       choices=['kuhn', 'leduc', 'twelve_card', 'rhode_island', 'royal_holdem', 'limit_holdem'],
-                       help='Game type (default: kuhn)')
+    parser.add_argument('--game', default='limit_holdem', 
+                              choices=['kuhn', 'leduc', 'twelve_card', 'rhode_island', 'royal_holdem', 'limit_holdem'],
+                              help='Game type (default: limit_holdem)')
     
     args = parser.parse_args()
     
@@ -44,12 +55,15 @@ def main():
         game = LimitHoldemGame(small_blind=5, big_blind=10, bet_sizes=[10, 10, 20, 20], bet_limit=4)
         print(f"Initialized Limit Hold'em game")
     
+    local_ip = get_local_ip()
+    
     server = PokerHTTPServer(game, host=args.host, port=args.port)
-    print(f"\nServer starting on http://{args.host}:{args.port}")
-    print(f"Game: {args.game}")
-    print(f"\nClients can connect to:")
-    print(f"  - http://localhost:{args.port} (same PC)")
-    print(f"  - http://<your-ip>:{args.port} (other PCs on same network)")
+    print(f"\n🎮 Server gestartet!")
+    print(f"📍 Lokale IP: {local_ip}")
+    print(f"🔌 Port: {args.port}")
+    print(f"🎲 Game: {args.game}")
+    print(f"\n💻 Andere Spieler verbinden mit:")
+    print(f"   python gui/run_client.py --ip {local_ip}")
     print(f"\nPress Ctrl+C to stop the server\n")
     
     server.start()

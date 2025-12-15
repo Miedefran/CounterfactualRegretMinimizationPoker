@@ -5,7 +5,7 @@
 Entwicklung eines GUI/Visualizers für CFR-Poker mit drei Hauptmodi:
 - **Agent vs Agent**: Visualisierung von zwei Agenten, die gegeneinander spielen (Replayer)
 - **Agent vs Human**: Lokales Gameplay gegen einen trainierten Agenten
-- **Human vs Human**: Online-Multiplayer über WebSockets (⏳ IN PLANUNG)
+- **Human vs Human**: Online-Multiplayer über HTTP REST + Polling (✅ IMPLEMENTIERT)
 
 ## 2. Architektur-Übersicht
 
@@ -248,7 +248,7 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
   - Optional: Widget für Strategy-Tipps hinzufügen
   - Zeigt Wahrscheinlichkeiten aus Strategy für aktuelle Info-Set
 
-## 5. Human vs Human Modus - ⏳ IN PLANUNG
+## 5. Human vs Human Modus - ✅ IMPLEMENTIERT
 
 ### 5.1 Architektur-Übersicht
 
@@ -679,40 +679,45 @@ python gui/run_client.py --server https://abc123.ngrok.io --name "Player2"
 ### 5.10 Implementierungs-Reihenfolge
 
 **Phase 1: HTTP-Server-Grundgerüst**
-1. ⏳ `http_server.py` - Flask-Server mit REST API
-2. ⏳ GET `/state` Endpoint implementieren
-3. ⏳ POST `/action` Endpoint implementieren
-4. ⏳ GET `/player_id` Endpoint implementieren
-5. ⏳ POST `/reset` Endpoint implementieren
-6. ⏳ Basis-Kommunikation testen (mit Browser/curl)
+1. ✅ `http_server.py` - Flask-Server mit REST API
+2. ✅ GET `/state` Endpoint implementieren
+3. ✅ POST `/action` Endpoint implementieren
+4. ✅ GET `/player_id` Endpoint implementieren
+5. ✅ POST `/reset` Endpoint implementieren
+6. ✅ Basis-Kommunikation testen (mit Browser/curl)
 
 **Phase 2: Game-Integration im Server**
-1. ⏳ Game-Objekt in Server integrieren
-2. ⏳ `reset_game()` implementieren
-3. ⏳ `get_state_update()` mit privaten Karten
-4. ⏳ State-Format für verschiedene Game-Typen
+1. ✅ Game-Objekt in Server integrieren
+2. ✅ `reset_game()` implementieren
+3. ✅ `get_state_update()` mit privaten Karten
+4. ✅ State-Format für verschiedene Game-Typen
 
 **Phase 3: Action-Handling im Server**
-1. ⏳ `handle_action()` implementieren
-2. ⏳ Actions validieren (current_player, legal_actions)
-3. ⏳ Game-State aktualisieren
-4. ⏳ Thread-Safety prüfen (Flask ist thread-safe)
+1. ✅ `handle_action()` implementieren
+2. ✅ Actions validieren (current_player, legal_actions)
+3. ✅ Game-State aktualisieren
+4. ✅ Thread-Safety prüfen (Flask ist thread-safe)
 
 **Phase 4: HTTP-Client**
-1. ⏳ `http_client.py` - HTTP Client mit `requests`
-2. ⏳ QTimer für Polling (alle 100ms)
-3. ⏳ Qt-Signals für State-Updates
-4. ⏳ Action-Sending (POST)
-5. ⏳ Error-Handling (Connection-Errors)
+1. ✅ `http_client.py` - HTTP Client mit `requests`
+2. ✅ QTimer für Polling (alle 100ms)
+3. ✅ Qt-Signals für State-Updates
+4. ✅ Action-Sending (POST)
+5. ✅ Error-Handling (Connection-Errors)
 
 **Phase 5: GUI-Integration**
-1. ⏳ `human_vs_human.py` - GUI erstellen
-2. ⏳ Client-Signals verbinden
-3. ⏳ UI-Updates basierend auf Server-State
-4. ⏳ Action-Buttons mit Server verbinden
-5. ⏳ Restart-Button implementieren
+1. ✅ `human_vs_human.py` - GUI erstellen
+2. ✅ Client-Signals verbinden
+3. ✅ UI-Updates basierend auf Server-State
+4. ✅ Action-Buttons mit Server verbinden
+5. ✅ Restart-Button implementieren
 
-**Phase 6: Netzwerk-Testing**
+**Phase 6: Run-Scripts**
+1. ✅ `run_server.py` - Server starten
+2. ✅ `run_client.py` - Client starten
+3. ✅ Unterstützung für alle Game-Varianten (Kuhn, Leduc, Twelve Card, Rhode Island, Royal Hold'em, Limit Hold'em)
+
+**Phase 7: Testing**
 1. ⏳ Lokale Tests (Server + 2 Clients auf gleichem PC)
 2. ⏳ Netzwerk-Tests (2 verschiedene PCs im gleichen WLAN)
 3. ⏳ ngrok-Tests (verschiedene Netzwerke)
@@ -731,10 +736,10 @@ python gui/run_client.py --server https://abc123.ngrok.io --name "Player2"
 
 ### 5.12 Offene Fragen
 
-1. **Port-Konfiguration**: Standard 8888 oder konfigurierbar? → ✅ Standard 8888, konfigurierbar
+1. **Port-Konfiguration**: Standard 8888 oder konfigurierbar? → ✅ Standard 8888, konfigurierbar (implementiert)
 2. **Reconnect**: Automatisch bei Verbindungsabbruch? → ⏳ Später implementieren
 3. **Firewall**: Hinweise für Port-Öffnung? → ⏳ Dokumentation hinzufügen
-4. **Verschlüsselung**: Später WSS (WebSocket Secure)? → ⏳ Später
+4. **Verschlüsselung**: HTTPS/WSS Support? → ⏳ Später (aktuell HTTP)
 
 ## 6. Nächste Schritte: Agent vs Agent Modus
 
@@ -771,11 +776,13 @@ class AgentVsAgentGUI(AgentVsAgentLayout):
 2. ⏳ `agent_vs_agent.py` implementieren
 3. ⏳ Playback-Funktionalität testen
 
-### Phase 3: Human vs Human - ⏳ IN PLANUNG
-1. ⏳ WebSocket-Server (`websocket_server.py`)
-2. ⏳ WebSocket-Client (`websocket_client.py`)
-3. ⏳ GUI-Integration (`human_vs_human.py`)
-4. ⏳ Netzwerk-Testing (2 verschiedene PCs)
+### Phase 3: Human vs Human - ✅ IMPLEMENTIERT
+1. ✅ HTTP-Server (`http_server.py`)
+2. ✅ HTTP-Client (`http_client.py`)
+3. ✅ GUI-Integration (`human_vs_human.py`)
+4. ✅ Run-Scripts (`run_server.py`, `run_client.py`)
+5. ✅ Unterstützung für alle Game-Varianten
+6. ⏳ Netzwerk-Testing (2 verschiedene PCs) - Phase 7
 
 ## 8. Notizen
 
@@ -808,6 +815,6 @@ class AgentVsAgentGUI(AgentVsAgentLayout):
 
 ## 10. Bekannte Probleme / To-Do
 
-- ⏳ Restart-Button wird manchmal nicht angezeigt (Positionierung)
+- ✅ Restart-Button Positionierung (implementiert)
 - ⏳ Strategy-Tipps Widget (optional)
-- ⏳ Agent vs Agent Modus refactoren (nutzt noch altes Layout)
+- ⏳ Agent vs Agent Modus implementieren (`agent_vs_agent.py` fehlt noch)
