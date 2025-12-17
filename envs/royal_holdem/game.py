@@ -34,17 +34,17 @@ class RoyalHoldemGame(RhodeIslandGame):
                 for _ in range(3):
                     self.deal_public_card()
                 self.betting_round = 1
-                self.round.start_new_round(self.starting_player, self.betting_round)
+                self.round.start_new_round(self, self.starting_player, self.betting_round)
             elif self.betting_round == 1:
                 self.history.append('|')
                 self.deal_public_card()
                 self.betting_round = 2
-                self.round.start_new_round(self.starting_player, self.betting_round)
+                self.round.start_new_round(self, self.starting_player, self.betting_round)
             elif self.betting_round == 2:
                 self.history.append('|')
                 self.deal_public_card()
                 self.betting_round = 3
-                self.round.start_new_round(self.starting_player, self.betting_round)
+                self.round.start_new_round(self, self.starting_player, self.betting_round)
             else:
                 self.done = True
                 return self.judger.judge(self.players, self.history, self.current_player, self.pot, self.total_bets)

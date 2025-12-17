@@ -57,7 +57,7 @@ def main():
     
     local_ip = get_local_ip()
     
-    server = PokerHTTPServer(game, host=args.host, port=args.port)
+    server = PokerHTTPServer(game, host=args.host, port=args.port, game_id=args.game)
     print(f"\n🎮 Server gestartet!")
     print(f"📍 Lokale IP: {local_ip}")
     print(f"🔌 Port: {args.port}")

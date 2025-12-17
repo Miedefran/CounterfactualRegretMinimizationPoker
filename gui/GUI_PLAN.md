@@ -317,14 +317,32 @@ gui/
 
 **Flask-basierter HTTP Server:**
 - Einfache REST API mit GET/POST Endpoints
-- Threading für Game-Logik (Flask ist thread-safe)
+- Threading für Game-Logik (Flask threaded=True) + `threading.Lock()` als Game-Mutex
 - Keine persistenten Verbindungen nötig
+- Server ist **Game Authority** (Source of Truth)
+- Server kapselt heterogene Env-States auf ein einheitliches JSON-Format für die GUI
+
+**Wichtige Design-Entscheidungen (neu):**
+- **Player-Slots sind fix (0/1)**: `/player_id` vergibt nur `0` oder `1` und reused IDs nach Disconnect/Timeout
+- **Disconnect/Reuse**: `/disconnect` entfernt einen Slot sofort; zusätzlich werden stale Clients (kein `/state` Poll) nach kurzer Zeit entfernt
+- **Explizites Game im State**: `state["game"] = <args.game>` damit Clients keine Heuristiken brauchen (z.B. Handstärke)
+- **Konsistenter `done`-Contract**: Server setzt `state["done"] = self.game.done`, auch wenn das Env es nicht liefert
+- **Multiplayer-UX**:
+  - `state["player_names"]` enthält Anzeigenamen für beide Slots
+  - `state["reset_id"]` wird bei jeder neuen Hand inkrementiert (Clients können UI synchron resetten)
+  - `state["history_events"]` ist eine serverseitige History **mit Player-Attribution** (kein Raten im Client)
 
 **Kern-Methoden:**
 ```python
 from flask import Flask, jsonify, request
 
 app = Flask(__name__)
+
+@app.route('/player_id', methods=['GET'])
+def get_player_id():
+    """Vergibt Player-Slot 0/1 (optional mit name)"""
+    # GET /player_id?name=Player1
+    ...
 
 @app.route('/state', methods=['GET'])
 def get_state():
@@ -349,20 +367,47 @@ def reset_game():
     starting_player = request.json.get('starting_player', 0)
     server.reset_game(starting_player)
     return jsonify({'status': 'ok'})
+
+@app.route('/disconnect', methods=['POST'])
+def disconnect():
+    """Gibt Player-Slot frei (Client schließt Fenster)"""
+    # POST /disconnect {"player_id": 0}
+    ...
 ```
 
 **Server-Klasse:**
 ```python
 class PokerHTTPServer:
-    def __init__(self, game, host='0.0.0.0', port=8888):
+    def __init__(self, game, host='0.0.0.0', port=8888, game_id=None):
         self.game = game
         self.host = host
         self.port = port
-        self.clients = {}  # Track connected clients
+        self.game_id = game_id
+        self.lock = threading.Lock()
+
+        # Player-Slot Management
+        self.max_players = 2
+        self.clients = {}        # player_id -> last_seen timestamp
+        self.client_names = {}   # player_id -> display name
+        self.client_stale_seconds = 5.0
+
+        # Hand/History Sync
+        self.reset_id = 0
+        self.history_events = []  # [{type, player_id, action} | {type:"separator"}]
     
     def get_state_update(self, player_id):
         """Gibt State mit privaten Karten für Player zurück"""
-        state = self.game.get_state(self.game.current_player)
+        with self.lock:
+            # ... prune stale clients + last_seen update ...
+            state = self.game.get_state(self.game.current_player)
+
+            # Konsistente Felder für die GUI:
+            state["game"] = self.game_id
+            state["done"] = bool(self.game.done)
+            state["player_names"] = [name0, name1]
+            state["reset_id"] = self.reset_id
+            state["history_events"] = self.history_events
+
         state['private_cards'] = self._get_private_cards(player_id)
         return state
     
@@ -372,10 +417,15 @@ class PokerHTTPServer:
             return
         if self.game.done:
             return
+        history_before = list(self.game.history)
         self.game.step(action)
+        history_after = list(self.game.history)
+        # appended entries (inkl. "|") -> history_events mit player attribution
     
     def reset_game(self, starting_player=0):
         """Startet neue Hand"""
+        self.reset_id += 1
+        self.history_events = []
         self.game.reset(starting_player)
         # Karten austeilen...
 ```
@@ -387,9 +437,17 @@ class PokerHTTPServer:
 {
     "current_player": 0,
     "done": false,
+    "game": "leduc | rhode_island | royal_holdem | limit_holdem | ...",
     "pot": 2,
     "player_bets": [1, 1],
-    "history": [],
+    "reset_id": 12,
+    "player_names": ["Player1", "Player2"],
+    "history_events": [
+        {"type": "action", "player_id": 0, "action": "check"},
+        {"type": "action", "player_id": 1, "action": "bet"},
+        {"type": "action", "player_id": 0, "action": "call"},
+        {"type": "separator"}
+    ],
     "public_cards": [],
     "legal_actions": ["check", "bet"],
     "private_cards": ["Q"]  // Nur für diesen Player!
@@ -432,12 +490,16 @@ class PokerHTTPServer:
 }
 ```
 
+**Hinweis:** Wenn bereits 2 aktive Clients verbunden sind, antwortet der Server mit HTTP `409` (Server full).
+
 ### 5.5 Client-Design (`http_client.py`)
 
 **HTTP Client mit Polling:**
 - `requests` Library für HTTP-Requests
 - QTimer für Polling (alle 100ms)
 - Einfache GET/POST Requests
+- `Timeout` beim Polling wird als transient behandelt (keine harte Disconnect-Logik)
+- Best-Effort `/disconnect` beim Schließen, damit Slots sofort wieder frei sind
 
 **Kern-Struktur:**
 ```python
@@ -450,10 +512,11 @@ class HTTPClient(QObject):
     state_update_received = pyqtSignal(dict)  # Qt Signal
     connection_error = pyqtSignal(str)
     
-    def __init__(self, server_url, player_id=None, parent=None):
+    def __init__(self, server_url, player_id=None, player_name=None, parent=None):
         super().__init__(parent)
         self.server_url = server_url  # z.B. "http://192.168.1.100:8888"
         self.player_id = player_id
+        self.player_name = player_name
         self.poll_timer = QTimer()
         self.poll_timer.timeout.connect(self._poll_state)
         self.poll_timer.setInterval(100)  # 100ms Polling
@@ -463,7 +526,12 @@ class HTTPClient(QObject):
         if self.player_id is None:
             # Hole player_id vom Server
             try:
-                response = requests.get(f"{self.server_url}/player_id", timeout=2)
+                # Optional: Name registrieren (für History/Headers)
+                response = requests.get(
+                    f"{self.server_url}/player_id",
+                    params={"name": self.player_name} if self.player_name else {},
+                    timeout=2
+                )
                 self.player_id = response.json()['player_id']
             except Exception as e:
                 self.connection_error.emit(str(e))
@@ -482,6 +550,8 @@ class HTTPClient(QObject):
             )
             state = response.json()
             self.state_update_received.emit(state)
+        except requests.exceptions.Timeout:
+            return
         except Exception as e:
             self.connection_error.emit(str(e))
             self.poll_timer.stop()
@@ -515,6 +585,14 @@ class HTTPClient(QObject):
         except Exception as e:
             self.connection_error.emit(str(e))
             return False
+
+    def disconnect(self):
+        """Best-Effort Disconnect, damit Server den Slot wieder freigibt"""
+        try:
+            requests.post(f"{self.server_url}/disconnect", json={"player_id": self.player_id}, timeout=1)
+        except Exception:
+            pass
+        self.poll_timer.stop()
 ```
 
 ### 5.6 GUI-Design (`human_vs_human.py`)
@@ -524,13 +602,16 @@ class HTTPClient(QObject):
 - Verbindet HTTP-Client mit GUI
 - UI-Updates basierend auf Server-State (via Polling)
 - Action-Buttons senden Actions an Server
+- UI kann sich über `reset_id` synchron zurücksetzen (History/Pot/Flags)
+- History nutzt **serverseitige `history_events`** (korrekte Player-Attribution)
+- Handstärke wird game-explizit berechnet (via `state["game"]`) und **Preflop nicht angezeigt**
 
 **Kern-Methoden:**
 ```python
 class HumanVsHumanGUI(AgentVsHumanLayout):
     def __init__(self, server_url, human_name="Player", parent=None):
         super().__init__(parent)
-        self.client = HTTPClient(server_url, parent=self)
+        self.client = HTTPClient(server_url, parent=self, player_name=human_name)
         
         # Verbinde Client-Signals
         self.client.state_update_received.connect(self._on_state_update)
@@ -546,6 +627,8 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
     
     def _on_state_update(self, state):
         """Callback: State-Update vom Server (via Polling)"""
+        # reset_id-Wechsel => History für beide Clients leeren
+        # player_names => Opponent-Header updaten
         self._update_from_server_state(state)
     
     def handle_action(self, action, bet_size):
@@ -558,6 +641,10 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         starting_player = random.randint(0, 1)
         self.client.send_reset_request(starting_player)
 ```
+
+**Wichtig (History/Winner-Reihenfolge):**
+- Wenn `state["done"] == True`, wird zuerst die letzte Aktion (z.B. `fold`) in die History geschrieben,
+  und erst danach der Winner/Payoff angezeigt.
 
 **Wichtige Unterschiede zu AgentVsHumanGUI:**
 - ❌ Kein lokales Game-Objekt
@@ -603,7 +690,8 @@ def main():
     parser.add_argument('--host', default='0.0.0.0', 
                        help='Server IP (0.0.0.0 = alle Interfaces)')
     parser.add_argument('--port', type=int, default=8888)
-    parser.add_argument('--game', default='kuhn', choices=['kuhn', 'leduc'])
+    parser.add_argument('--game', default='limit_holdem',
+                        choices=['kuhn', 'leduc', 'twelve_card', 'rhode_island', 'royal_holdem', 'limit_holdem'])
     
     args = parser.parse_args()
     
@@ -612,9 +700,10 @@ def main():
         game = KuhnPokerGame(ante=1, bet_size=1)
     elif args.game == 'leduc':
         game = LeducHoldemGame(ante=1, bet_sizes=[2, 4], bet_limit=2)
+    # ... weitere Games ...
     
     # Starte Server
-    server = PokerHTTPServer(game, host=args.host, port=args.port)
+    server = PokerHTTPServer(game, host=args.host, port=args.port, game_id=args.game)
     server.start()  # Flask app.run()
 ```
 
@@ -627,14 +716,15 @@ from gui.human_vs_human import HumanVsHumanGUI
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--server', required=True,
-                       help='Server URL (z.B. http://192.168.1.100:8888)')
+    parser.add_argument('--ip', default='localhost', help='Server Host/IP (default: localhost)')
+    parser.add_argument('--port', type=int, default=8888, help='Server Port (default: 8888)')
     parser.add_argument('--name', default='Player')
     
     args = parser.parse_args()
     
+    server_url = f"http://{args.ip}:{args.port}"
     app = QApplication(sys.argv)
-    window = HumanVsHumanGUI(args.server, human_name=args.name)
+    window = HumanVsHumanGUI(server_url, human_name=args.name)
     window.showMaximized()
     sys.exit(app.exec())
 ```
@@ -654,13 +744,13 @@ python gui/run_server.py --host 0.0.0.0 --port 8888 --game kuhn
 **PC 1 (Client 1):**
 ```bash
 # Client auf gleichem PC
-python gui/run_client.py --server http://localhost:8888 --name "Player1"
+python gui/run_client.py --ip localhost --port 8888 --name "Player1"
 ```
 
 **PC 2 (Client 2):**
 ```bash
 # Client auf anderem PC (mit Server-IP)
-python gui/run_client.py --server http://192.168.1.100:8888 --name "Player2"
+python gui/run_client.py --ip 192.168.1.100 --port 8888 --name "Player2"
 ```
 
 **Über verschiedene Netzwerke (mit ngrok):**
@@ -670,10 +760,11 @@ python gui/run_server.py --host 0.0.0.0 --port 8888
 
 # PC 1: ngrok Tunnel (in neuem Terminal)
 ngrok http 8888
-# Gibt: https://abc123.ngrok.io
+# Gibt typischerweise sowohl https://... als auch http://...
 
 # PC 2 (irgendwo): Client verbindet zu ngrok-URL
-python gui/run_client.py --server https://abc123.ngrok.io --name "Player2"
+# Nutze die http-Forwarding-Variante und setze Port=80 (Client baut selbst http://host:port)
+python gui/run_client.py --ip abc123.ngrok-free.dev --port 80 --name "Player2"
 ```
 
 ### 5.10 Implementierungs-Reihenfolge
@@ -684,6 +775,9 @@ python gui/run_client.py --server https://abc123.ngrok.io --name "Player2"
 3. ✅ POST `/action` Endpoint implementieren
 4. ✅ GET `/player_id` Endpoint implementieren
 5. ✅ POST `/reset` Endpoint implementieren
+6. ✅ POST `/disconnect` Endpoint (Slot-Freigabe bei Client-Close)
+7. ✅ Player-Slot Reuse (0/1) + stale client pruning
+8. ✅ Zusätzliche State-Felder: `game`, `done`, `player_names`, `reset_id`, `history_events`
 6. ✅ Basis-Kommunikation testen (mit Browser/curl)
 
 **Phase 2: Game-Integration im Server**

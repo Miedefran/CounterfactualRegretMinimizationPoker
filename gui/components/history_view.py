@@ -128,8 +128,10 @@ class HistoryView(QWidget):
             self.content_layout.addWidget(round_label)
             self.history_items.append(round_label)
     
-    def add_game_result(self, winner_id, pot_amount):
-        result_label = QLabel(f"Player {winner_id} wins {pot_amount}!")
+    def add_game_result(self, winner_id, pot_amount, winner_name=None):
+        if winner_name is None:
+            winner_name = f"Player {winner_id}"
+        result_label = QLabel(f"{winner_name} wins {pot_amount}!")
         result_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         result_label.setStyleSheet("""
             QLabel {

@@ -1,26 +1,56 @@
 from flask import Flask, jsonify, request
 from typing import Optional
 import threading
+import time
 
 class PokerHTTPServer:
-    def __init__(self, game, host='0.0.0.0', port=8888):
+    def __init__(self, game, host='0.0.0.0', port=8888, game_id: Optional[str] = None):
         self.game = game
         self.host = host
         self.port = port
+        self.game_id = game_id
         self.app = Flask(__name__)
-        self.next_player_id = 0
-        self.clients = {}
+        self.max_players = 2
+        # player_id -> last_seen timestamp (time.time())
+        self.clients: dict[int, float] = {}
+        # player_id -> display name
+        self.client_names: dict[int, str] = {}
+        # If a client hasn't polled state for this long, we consider it gone.
+        self.client_stale_seconds = 5.0
+        # Increments every time /reset is called so clients can detect a new hand.
+        self.reset_id = 0
+        # Server-side action log with explicit player attribution.
+        # Items are dicts like {"type": "action", "player_id": 0, "action": "check"}
+        # or {"type": "separator"} for round separators ("|") added by the env.
+        self.history_events: list[dict] = []
         self.lock = threading.Lock()
         
         self._setup_routes()
+
+    def _prune_stale_clients(self) -> None:
+        now = time.time()
+        stale_before = now - self.client_stale_seconds
+        stale_ids = [pid for pid, last_seen in self.clients.items() if last_seen < stale_before]
+        for pid in stale_ids:
+            self.clients.pop(pid, None)
+            self.client_names.pop(pid, None)
     
     def _setup_routes(self):
         @self.app.route('/player_id', methods=['GET'])
         def get_player_id():
-            player_id = self.next_player_id
-            self.next_player_id += 1
-            self.clients[player_id] = True
-            return jsonify({'player_id': player_id})
+            with self.lock:
+                self._prune_stale_clients()
+                name = request.args.get('name')
+
+                for pid in range(self.max_players):
+                    if pid not in self.clients:
+                        self.clients[pid] = time.time()
+                        if isinstance(name, str) and name.strip():
+                            self.client_names[pid] = name.strip()
+                        return jsonify({'player_id': pid})
+
+                # Server full (two active clients). Tell the client to retry later.
+                return jsonify({'status': 'error', 'message': 'Server full (2 players already connected).'}), 409
         
         @self.app.route('/state', methods=['GET'])
         def get_state():
@@ -40,21 +70,61 @@ class PokerHTTPServer:
                 return jsonify({'status': 'ok'})
             else:
                 return jsonify({'status': 'error', 'message': 'Invalid action'}), 400
+
+        @self.app.route('/disconnect', methods=['POST'])
+        def disconnect_player():
+            data = request.json or {}
+            player_id = data.get('player_id')
+            try:
+                player_id = int(player_id)
+            except Exception:
+                return jsonify({'status': 'error', 'message': 'Invalid player_id'}), 400
+
+            with self.lock:
+                self.clients.pop(player_id, None)
+                self.client_names.pop(player_id, None)
+            return jsonify({'status': 'ok'})
         
         @self.app.route('/reset', methods=['POST'])
         def reset_game():
             data = request.json or {}
             starting_player = data.get('starting_player', 0)
-            
-            if len(self.clients) < 2:
-                return jsonify({'status': 'error', 'message': 'Not all clients connected'}), 400
-            
+
             self._reset_game(starting_player)
             return jsonify({'status': 'ok'})
     
     def _get_state_update(self, player_id):
         with self.lock:
+            self._prune_stale_clients()
+            # Mark client as active if it's a valid player id (0/1)
+            try:
+                pid_int = int(player_id)
+            except Exception:
+                pid_int = None
+            if pid_int in (0, 1):
+                self.clients[pid_int] = time.time()
+
             state = self.game.get_state(self.game.current_player)
+
+            # Expose the explicit game identifier so clients can interpret the
+            # state correctly (e.g. hand strength display) without heuristics.
+            if self.game_id is not None:
+                state['game'] = self.game_id
+
+            # Ensure a consistent contract for all games:
+            # some envs don't include 'done' in get_state(), but the GUI relies on it.
+            state['done'] = bool(getattr(self.game, 'done', False))
+
+            # Expose player display names for UI (history, headers, etc.)
+            state['player_names'] = [
+                self.client_names.get(0, ''),
+                self.client_names.get(1, ''),
+            ]
+
+            # Hand / reset marker so both clients can clear UI state together.
+            state['reset_id'] = int(self.reset_id)
+            # Prefer this over raw env history on the client (has player attribution).
+            state['history_events'] = list(self.history_events)
             
             state['private_cards'] = self._get_private_cards(player_id)
             state['public_cards'] = self._get_public_cards()
@@ -119,12 +189,28 @@ class PokerHTTPServer:
             
             if action not in legal_actions:
                 return False
-            
+
+            history_before = list(getattr(self.game, "history", []))
             self.game.step(action)
+            history_after = list(getattr(self.game, "history", []))
+
+            # Capture exactly what the env appended (e.g. "|" + new cards).
+            appended = history_after[len(history_before) :]
+            for entry in appended:
+                if entry == '|':
+                    self.history_events.append({"type": "separator"})
+                else:
+                    try:
+                        pid_int = int(player_id)
+                    except Exception:
+                        pid_int = player_id
+                    self.history_events.append({"type": "action", "player_id": pid_int, "action": entry})
             return True
     
     def _reset_game(self, starting_player):
         with self.lock:
+            self.reset_id += 1
+            self.history_events = []
             self.game.reset(starting_player)
             
             if hasattr(self.game, 'dealer'):

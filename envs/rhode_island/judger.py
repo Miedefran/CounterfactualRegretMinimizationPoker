@@ -19,6 +19,22 @@ class RhodeIslandJudger(LeducHoldemJudger):
         rank_counts = {}
         for r in ranks:
             rank_counts[r] = rank_counts.get(r, 0) + 1
+
+        # During gameplay the evaluator may be called with fewer than 3 cards
+        # (e.g. preflop or after the first public card). The original logic
+        # assumes exactly 3 cards and would crash on rank_vals[2].
+        #
+        # For <3 cards we only distinguish Pair vs High Card and pad kickers.
+        if len(rank_vals) < 3:
+            if 2 in rank_counts.values():
+                pair_rank = [self.hand_rank[r] for r, c in rank_counts.items() if c == 2][0]
+                kicker = [self.hand_rank[r] for r, c in rank_counts.items() if c == 1]
+                kicker_val = kicker[0] if kicker else 0
+                return (1, pair_rank, kicker_val)
+
+            hi = rank_vals[0] if len(rank_vals) >= 1 else 0
+            lo = rank_vals[1] if len(rank_vals) >= 2 else 0
+            return (0, hi, lo, 0)
         
         is_flush = len(set(suits)) == 1
         is_straight = (rank_vals[0] - rank_vals[2] == 2 and len(set(rank_vals)) == 3)

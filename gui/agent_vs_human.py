@@ -7,6 +7,7 @@ from agents.strategy_agent import StrategyAgent
 from training.cfr_solver import CFRSolver
 from gui.components.visual_card import VisualCard
 from gui.audio.sound_manager import SoundManager
+from gui.utils.hand_strength import hand_strength_text
 
 class AgentVsHumanGUI(AgentVsHumanLayout):
     
@@ -136,9 +137,16 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         if reveal_all:
             self.player_bottom_widget.set_cards(human_cards, reveal=True)
             self.player_top_widget.set_cards(agent_cards, reveal=True)
+            if hasattr(self.player_top_widget, "set_hand_text"):
+                self.player_top_widget.set_hand_text(hand_strength_text(agent_cards, self.get_public_cards()))
         else:
             self.player_bottom_widget.set_cards(human_cards, reveal=True)
             self.player_top_widget.set_cards(agent_cards, reveal=False)
+            if hasattr(self.player_top_widget, "set_hand_text"):
+                self.player_top_widget.set_hand_text("")
+
+        if hasattr(self.player_bottom_widget, "set_hand_text"):
+            self.player_bottom_widget.set_hand_text(hand_strength_text(human_cards, self.get_public_cards()))
         
         public_cards = self.get_public_cards()
         
@@ -257,7 +265,9 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         else:
             winner_name = self.player_top_widget.player_name
         
-        self.history_view.add_game_result(winner_id, pot_amount)
+        # Prefer a readable name over numeric id in history
+        winner_name = "You" if winner_id == self.human_player_id else "Opponent"
+        self.history_view.add_game_result(winner_id, pot_amount, winner_name=winner_name)
         
         self.update_cards(reveal_all=True)
     

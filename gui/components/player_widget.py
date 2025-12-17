@@ -42,6 +42,14 @@ class TopPlayerWidget(QWidget):
         self.info_layout = QVBoxLayout()
         self.info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.info_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Hand label (text-only)
+        self.hand_label = QLabel("")
+        self.hand_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hand_label.setFont(QFont("Arial", 11))
+        self.hand_label.setStyleSheet("color: #ffd700;")
+        self.hand_label.setVisible(False)
+        self.info_layout.addWidget(self.hand_label)
         
         self.chips_label = QLabel("Chips: 0")
         self.chips_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -56,6 +64,15 @@ class TopPlayerWidget(QWidget):
         self.info_layout.addWidget(self.status_label)
         
         layout.addLayout(self.info_layout)
+
+    def set_hand_text(self, text):
+        text = (text or "").strip()
+        if not text:
+            self.hand_label.setText("")
+            self.hand_label.setVisible(False)
+            return
+        self.hand_label.setText(text)
+        self.hand_label.setVisible(True)
     
     def setup_style(self):
         self.setStyleSheet("""
@@ -184,6 +201,14 @@ class BottomPlayerWidget(QWidget):
         self.info_layout = QVBoxLayout()
         self.info_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.info_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Hand label (text-only)
+        self.hand_label = QLabel("")
+        self.hand_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.hand_label.setFont(QFont("Arial", 11))
+        self.hand_label.setStyleSheet("color: #ffd700;")
+        self.hand_label.setVisible(False)
+        self.info_layout.addWidget(self.hand_label)
         
         self.chips_label = QLabel("Chips: 0")
         self.chips_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -198,6 +223,15 @@ class BottomPlayerWidget(QWidget):
         self.info_layout.addWidget(self.status_label)
         
         layout.addLayout(self.info_layout)
+
+    def set_hand_text(self, text):
+        text = (text or "").strip()
+        if not text:
+            self.hand_label.setText("")
+            self.hand_label.setVisible(False)
+            return
+        self.hand_label.setText(text)
+        self.hand_label.setVisible(True)
     
     def setup_style(self):
         self.setStyleSheet("""

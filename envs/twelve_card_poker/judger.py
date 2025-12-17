@@ -10,6 +10,14 @@ class TwelveCardPokerJudger(LeducHoldemJudger):
         private = player.private_card
         public_cards = player.public_cards
         all_cards = [private] + public_cards
+
+        # During gameplay the evaluator may be called with fewer than 3 cards
+        # (e.g. preflop or after only 1 public card). The original logic assumes
+        # there are at least 2 cards for the high-card case (cards[1]).
+        if len(all_cards) < 2:
+            # Not enough cards to distinguish much: treat as high card.
+            hi = self.hand_rank[all_cards[0][0]] if all_cards else 0
+            return (0, hi, 0)
         
         ranks = [card[0] for card in all_cards]
         rank_counts = {}
@@ -26,4 +34,6 @@ class TwelveCardPokerJudger(LeducHoldemJudger):
             return (1, pair_rank, kicker)
         
         cards = sorted([self.hand_rank[card[0]] for card in all_cards], reverse=True)
-        return (0, cards[0], cards[1])
+        # Pad if we only have 2 cards (or any unexpected short list).
+        second = cards[1] if len(cards) > 1 else 0
+        return (0, cards[0], second)

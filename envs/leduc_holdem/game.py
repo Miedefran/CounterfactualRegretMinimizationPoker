@@ -31,7 +31,7 @@ class LeducHoldemGame(KuhnPokerGame):
         self.starting_player = starting_player
         self.total_bets = [self.ante, self.ante]
         
-        self.round.start_new_round(starting_player, self.betting_round) 
+        self.round.start_new_round(self, starting_player, self.betting_round) 
         
     def step(self, action):
         
@@ -49,7 +49,7 @@ class LeducHoldemGame(KuhnPokerGame):
                 self.history.append('|')
                 self.deal_public_card()
                 self.betting_round = 1
-                self.round.start_new_round(self.starting_player, self.betting_round)
+                self.round.start_new_round(self, self.starting_player, self.betting_round)
                 
             else:
                 self.done = True

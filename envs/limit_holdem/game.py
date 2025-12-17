@@ -24,7 +24,7 @@ class LimitHoldemGame(RoyalHoldemGame):
         self.round.round_bets = [self.small_blind, self.big_blind]
         self.current_player = starting_player
         self.starting_player = starting_player
-        self.round.start_new_round(starting_player, self.betting_round)
+        self.round.start_new_round(self, starting_player, self.betting_round)
     
     def get_info_set_key(self, player_id):
         return (

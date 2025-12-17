@@ -8,11 +8,15 @@ class LeducHoldemRound:
         self.passive_action_count = 0
         self.round_bets = [0, 0]
         
-    def start_new_round(self, starting_player, betting_round=0):
+    def start_new_round(self, game, starting_player, betting_round=0):
         self.bet_count = 0
         self.passive_action_count = 0
         self.round_bets = [0, 0] 
         self.current_bet_size = self.bet_sizes[betting_round]
+        # New betting rounds always start with the starting player.
+        # Otherwise, first-to-act depends on how the previous round ended
+        # (because proceed_round() flips current_player after every action).
+        game.current_player = starting_player
     
     def get_amount_to_call(self, game):
         return max(self.round_bets) - self.round_bets[game.current_player]
