@@ -19,11 +19,19 @@ class LimitHoldemGame(RoyalHoldemGame):
     def reset(self, starting_player):
         super().reset(starting_player)
         self.public_cards = []
-        self.total_bets = [self.small_blind, self.big_blind]
-        self.pot = self.small_blind + self.big_blind
-        self.round.round_bets = [self.small_blind, self.big_blind]
-        self.current_player = starting_player
+        # In heads-up Hold'em, the button is the small blind and acts first preflop.
+        # We interpret starting_player as the small blind (button).
         self.starting_player = starting_player
+
+        sb = starting_player
+        bb = 1 - starting_player
+
+        self.total_bets = [0, 0]
+        self.total_bets[sb] = self.small_blind
+        self.total_bets[bb] = self.big_blind
+        self.pot = self.small_blind + self.big_blind
+
+        # Let the round logic initialize round_bets/current_player correctly.
         self.round.start_new_round(self, starting_player, self.betting_round)
     
     def get_info_set_key(self, player_id):

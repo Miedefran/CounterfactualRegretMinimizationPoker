@@ -19,10 +19,10 @@ class SoundManager:
         self.enabled = True
         
         self.sound_files = {
-            'check': 'untitled.wav',
-            'bet': 'Raise.wav',
-            'call': 'Call.wav',
-            'fold': 'Fold.wav',
+            'check': 'SamanthaCheck.wav',
+            'bet': 'SamanthaRaise.wav',
+            'call': 'SamanthaCall.wav',
+            'fold': 'SamanthaFold.wav',
             'card_deal': 'card_deal.wav',
             'game_start': 'game_start.wav',
             'game_end': 'game_end.wav',
