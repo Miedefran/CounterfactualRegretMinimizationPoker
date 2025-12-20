@@ -28,11 +28,15 @@ class BasePokerLayout(QMainWindow):
         self.pot_chips = []
         
         self.setup_ui()
-        self.add_test_cards()
+        # Create the restart button once (all modes can connect behavior later).
+        self.setup_restart_button()
         QTimer.singleShot(100, self.position_components)
         QTimer.singleShot(150, self.showMaximized)
     
     def setup_restart_button(self):
+        # Erstelle den Button nur, wenn er noch nicht existiert
+        if hasattr(self, 'restart_button') and self.restart_button is not None:
+            return
         self.restart_button = QPushButton("🔄 New Hand")
         self.restart_button.setFixedSize(120, 40)
         self.restart_button.setStyleSheet("""
@@ -62,14 +66,6 @@ class BasePokerLayout(QMainWindow):
             button_y = 20
             self.restart_button.move(button_x, button_y)
             self.restart_button.raise_()
-    
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        if hasattr(self, 'restart_button'):
-            button_x = self.width() - self.restart_button.width() - 20
-            button_y = 20
-            self.restart_button.move(button_x, button_y)
-        QTimer.singleShot(50, self.position_components)
     
     def setup_ui(self):
         self.player_top_widget = TopPlayerWidget(0, "Strategy Agent", self)
@@ -257,6 +253,9 @@ class BasePokerLayout(QMainWindow):
         pot_y = cards_y + (cards_height - pot_height) // 2
         
         import random
+        # Seed nur für Chip-Positionierung verwenden, dann zurücksetzen
+        # damit das Shuffle des Decks nicht beeinflusst wird
+        original_state = random.getstate()
         random.seed(42)
         
         chip_size = 50
@@ -327,16 +326,9 @@ class BasePokerLayout(QMainWindow):
                 
                 chip.move(chip_x, chip_y)
                 placed_chips.append((chip_x, chip_y))
-    
-    def add_test_cards(self):
-        self.player_top_widget.set_cards(['As', 'Kh'], reveal=True)
-        self.player_bottom_widget.set_cards(['Qd', 'Jc'], reveal=True)
         
-        test_board_cards = ['Ac', 'Kd', 'Qh', 'Js', 'Ts']
-        for card in test_board_cards:
-            card_widget = VisualCard(card)
-            self.community_cards_layout.addWidget(card_widget)
-            self.community_cards.append(card_widget)
+        # Random State zurücksetzen, damit das Shuffle des Decks nicht beeinflusst wird
+        random.setstate(original_state)
     
     def resizeEvent(self, event):
         super().resizeEvent(event)

@@ -19,7 +19,7 @@ class StrategyAgent:
         if info_set_key not in self.strategy:
             legal_actions = state['legal_actions']
             return random.choice(legal_actions)
-            
+        
         action_probs = self.strategy[info_set_key]
         actions = list(action_probs.keys())
         probs = list(action_probs.values())

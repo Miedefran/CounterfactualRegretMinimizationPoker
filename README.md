@@ -28,12 +28,55 @@ Unterstützte Poker-Varianten:
 ```bash
 python training/train.py <game> <iterations>
 ```
+
+### Algorithmen
+Standard ist **Vanilla CFR**. Optional kann **CFR+** oder **MCCFR** als drittes Argument angegeben werden:
+
+```bash
+# Vanilla CFR (default)
+python training/train.py leduc 10000 cfr
+
+# CFR+
+python training/train.py leduc 10000 cfr_plus
+
+# MCCFR
+python training/train.py leduc 10000 mccfr
+```
+
 ## Testing
-Nash Equilibrium verification:
+Nash Equilibrium verification (only for Kuhn)
 ```bash
 python tests/test_nash_equilibrium.py <strategy_file>
 ```
 Self-play evaluation:
 ```bash
-python self_play.py <strategy_file> --games <num_games>
+python evaluation/self_play.py <game> <strategy_file> --games <num_games>
+```
+
+## Best Response / Exploitability
+
+### 1) Public State Tree bauen
+Für Leduc wird ein Tree mit **expliziten Chance-Knoten** zwischen den Runden verwendet:
+
+```bash
+python evaluation/build_public_state_tree.py leduc
+```
+
+Erzeugt u.a.:
+- `evaluation/public_state_trees/leduc_public_tree_explicit_chance.pkl.gz`
+- `evaluation/public_state_trees/leduc_public_tree_explicit_chance.txt`
+
+### 2) Best Response ausführen
+```bash
+python evaluation/best_response_agent.py \
+  --game leduc \
+  --player 0 \
+  --public-tree evaluation/public_state_trees/leduc_public_tree_explicit_chance.pkl.gz \
+  --strategy <strategy_file>
+
+python evaluation/best_response_agent.py \
+  --game leduc \
+  --player 1 \
+  --public-tree evaluation/public_state_trees/leduc_public_tree_explicit_chance.pkl.gz \
+  --strategy <strategy_file>
 ```

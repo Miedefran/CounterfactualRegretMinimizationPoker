@@ -18,6 +18,7 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         self.human_player_id = None
         self.agent_player_id = None
         self.agent = None
+        self.strategy = None
         
         for card_widget in self.community_cards:
             self.community_cards_layout.removeWidget(card_widget)
@@ -33,8 +34,13 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         self.sound_manager = SoundManager()
         
         if strategy_file:
-            strategy = self.load_strategy(strategy_file)
-            QTimer.singleShot(200, lambda: self.initialize_agent(strategy))
+            try:
+                self.strategy = self.load_strategy(strategy_file)
+                print(f"Strategy loaded successfully from {strategy_file}")
+            except Exception as e:
+                print(f"Error loading strategy from {strategy_file}: {e}")
+                self.strategy = None
+                self.strategy_file = None
         
         QTimer.singleShot(300, lambda: self.setup_connections())
         QTimer.singleShot(400, lambda: self.reset_game(0))
@@ -52,6 +58,7 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
             return CFRSolver.average_from_strategy_sum(strategy_sum)
     
     def initialize_agent(self, strategy):
+        """Initialisiert den Agent mit der gegebenen Strategy."""
         if self.human_player_id is not None:
             self.agent_player_id = 1 - self.human_player_id
             self.agent = StrategyAgent(strategy, self.agent_player_id, self.game)
@@ -61,20 +68,30 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
             self.action_buttons.action_selected.connect(self.handle_action)
     
     def setup_restart_button(self):
+        # Rufe die Basis-Methode auf, um den Button zu erstellen
+        super().setup_restart_button()
+        # Verbinde dann den Click-Handler
         if hasattr(self, 'restart_button'):
             self.restart_button.clicked.connect(self.restart_hand)
     
     def reset_game(self, starting_player=0):
-        self.game.reset(starting_player)
+        # Zufällig entscheiden, wer Player 0 ist (Agent oder Human)
+        # Aber das Spiel beginnt IMMER mit Player 0
+        agent_is_player_0 = random.choice([True, False])
         
-        if hasattr(self.game, 'dealer'):
-            self.game.dealer.reset()
-            self.game.dealer.shuffle()
+        if agent_is_player_0:
+            self.agent_player_id = 0
+            self.human_player_id = 1
+        else:
+            self.agent_player_id = 1
+            self.human_player_id = 0
         
-        self.human_player_id = starting_player
-        self.agent_player_id = 1 - self.human_player_id
+        # Spiel beginnt immer mit Player 0
+        # game.reset(0) setzt bereits den Dealer zurück, mischt, und setzt die Player zurück
+        self.game.reset(0)
         
-        for player in self.game.players:
+        # Karten verteilen (game.reset() hat bereits dealer.reset(), dealer.shuffle() und player.reset() aufgerufen)
+        for i, player in enumerate(self.game.players):
             if hasattr(player, 'set_private_cards'):
                 if hasattr(self.game.dealer, 'deal_card') and len(self.game.dealer.deck) >= 2:
                     card1 = self.game.dealer.deal_card()
@@ -85,19 +102,40 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
                     card = self.game.dealer.deal_card()
                     player.set_private_card(card)
         
-        if self.agent is None and self.strategy_file:
-            strategy = self.load_strategy(self.strategy_file)
-            self.agent = StrategyAgent(strategy, self.agent_player_id, self.game)
-        elif self.agent:
-            self.agent.player_id = self.agent_player_id
-            self.agent.game = self.game
+        # Agent initialisieren oder aktualisieren
+        if self.strategy:
+            if self.agent is None:
+                self.agent = StrategyAgent(self.strategy, self.agent_player_id, self.game)
+            else:
+                self.agent.player_id = self.agent_player_id
+                self.agent.game = self.game
+        elif self.strategy_file:
+            # Fallback: Strategy neu laden falls nicht bereits geladen
+            try:
+                self.strategy = self.load_strategy(self.strategy_file)
+                if self.agent is None:
+                    self.agent = StrategyAgent(self.strategy, self.agent_player_id, self.game)
+                else:
+                    self.agent.player_id = self.agent_player_id
+                    self.agent.game = self.game
+            except Exception as e:
+                print(f"Error loading strategy in reset_game: {e}")
+                self.strategy = None
         
         self.update_display()
+        
+        # Wenn der Agent zuerst dran ist, automatisch seinen Zug ausführen
+        if not self.game.done and self.game.current_player == self.agent_player_id and self.agent:
+            delay = random.randint(1000, 2000)
+            QTimer.singleShot(delay, self.agent_step)
     
     def update_display(self):
         if self.game.done:
             self.update_cards(reveal_all=True)
             self.update_actions_final()
+            # Stelle sicher, dass die letzte Aktion (z.B. fold) sichtbar ist, bevor der Winner angezeigt wird
+            state = self.game.get_state(self.game.current_player)
+            self.update_history(state)
         else:
             state = self.game.get_state(self.game.current_player)
             self.update_cards()
@@ -272,7 +310,9 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         self.update_cards(reveal_all=True)
     
     def restart_hand(self):
-        import random
-        starting_player = random.randint(0, 1)
-        self.reset_game(starting_player)
+        # History zurücksetzen
+        if hasattr(self, 'history_view'):
+            self.history_view.clear()
+        # Spiel beginnt immer mit Player 0 (wer Player 0 ist wird zufällig bestimmt)
+        self.reset_game(0)
 

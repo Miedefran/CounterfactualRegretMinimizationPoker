@@ -48,6 +48,9 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
             self.action_buttons.action_selected.connect(self.handle_action)
     
     def setup_restart_button(self):
+        # Rufe die Basis-Methode auf, um den Button zu erstellen
+        super().setup_restart_button()
+        # Verbinde dann den Click-Handler
         if hasattr(self, 'restart_button'):
             self.restart_button.clicked.connect(self.restart_hand)
     
