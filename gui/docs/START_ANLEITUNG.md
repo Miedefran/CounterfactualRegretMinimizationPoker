@@ -44,5 +44,3 @@ Optional: eigenes Strategy-File angeben:
 ```bash
 python3 gui/runner/run_agent_vs_human.py --game leduc --strategy "models/leduc/cfr/leduc_1000.pkl.gz"
 ```
-
-
