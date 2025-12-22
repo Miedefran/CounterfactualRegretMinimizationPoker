@@ -2,6 +2,7 @@ import os
 import pickle
 import gzip
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -14,7 +15,7 @@ from envs.twelve_card_poker.game import TwelveCardPokerGame
 from utils.poker_utils import GAME_CONFIGS
 from utils.data_models import KeyGenerator
 
-def build_public_state_tree(game_class, game_config, progress_interval=1000):
+def build_public_state_tree(game_class, game_config, progress_interval=1000, use_cache=True):
     """
     Baut den Public State Tree.
     
@@ -22,10 +23,15 @@ def build_public_state_tree(game_class, game_config, progress_interval=1000):
         game_class: Die Game-Klasse
         game_config: Die Game-Konfiguration
         progress_interval: Alle N States wird der Fortschritt ausgegeben (default: 1000)
+        use_cache: Wenn True, werden Game States gecacht für bessere Performance (default: True)
     """
     public_states = {}
     states_visited = 0
     stats = {'chance': 0, 'choice': 0, 'terminal': 0}
+    
+    # Cache für Game States: public_hist -> saved_state
+    # Nutzt die native save_state/restore_state Funktion der Game-Klassen
+    game_state_cache = {} if use_cache else None
     
     def get_all_cards_for_game(game):
         dealer_class = game.dealer.__class__
@@ -74,6 +80,19 @@ def build_public_state_tree(game_class, game_config, progress_interval=1000):
     
     "Construct Game state from public history"
     def replay_public_history(game, public_hist):
+        public_hist_key = tuple(public_hist)
+        
+        # Prüfe Cache: Wenn wir diesen State schon mal hatten, restore ihn
+        if use_cache and game_state_cache is not None and public_hist_key in game_state_cache:
+            if hasattr(game, 'restore_state'):
+                game.restore_state(game_state_cache[public_hist_key])
+                # Stelle sicher, dass Dummy-Cards gesetzt sind (für Info-Set-Generierung)
+                set_dummy_cards(game)
+                return
+            # Fallback falls restore_state nicht verfügbar
+            # (sollte nicht passieren, aber sicherheitshalber)
+        
+        # State nicht im Cache: Replay die History
         valid_actions = {'bet', 'check', 'call', 'fold'}
         game_name = game.__class__.__name__
         
@@ -103,6 +122,11 @@ def build_public_state_tree(game_class, game_config, progress_interval=1000):
                                 game.public_cards.append(item)
                                 game.players[0].public_cards.append(item)
                                 game.players[1].public_cards.append(item)
+        
+        # Speichere den State im Cache für zukünftige Verwendung
+        # WICHTIG: Speichere NACH set_dummy_cards, damit die Dummy-Cards im Cache sind
+        if use_cache and game_state_cache is not None and hasattr(game, 'save_state'):
+            game_state_cache[public_hist_key] = game.save_state()
 
     def traverse(game, public_hist):
         nonlocal states_visited, stats
@@ -339,17 +363,26 @@ def build_public_state_tree(game_class, game_config, progress_interval=1000):
         }
         stats['choice'] += 1
     
-    print(f"Building public state tree for {game_class.__name__}...")
+    cache_status = "enabled" if use_cache else "disabled"
+    print(f"Building public state tree for {game_class.__name__}... (Cache: {cache_status})")
+    start_time = time.time()
+    
     game = game_class(**game_config)
     game.reset(0)
     set_dummy_cards(game)
     traverse(game, [])
+    
+    end_time = time.time()
+    elapsed_time = end_time - start_time
     
     print(f"\nTree building complete!")
     print(f"  Total states: {len(public_states)}")
     print(f"  Chance nodes: {stats['chance']}")
     print(f"  Choice nodes: {stats['choice']}")
     print(f"  Terminal nodes: {stats['terminal']}")
+    print(f"  Time elapsed: {elapsed_time:.2f} seconds ({elapsed_time/60:.2f} minutes)")
+    if use_cache and game_state_cache is not None:
+        print(f"  Cache hits: {len(game_state_cache)} unique states cached")
     
     return {'public_states': public_states}
 
@@ -409,7 +442,18 @@ def save_public_state_tree(game_name, tree, output_dir=None):
 
 
 if __name__ == "__main__":
-    game_name = sys.argv[1] if len(sys.argv) > 1 else 'kuhn_case2'
+    # Parse command line arguments
+    use_cache = True
+    game_name = None
+    
+    for arg in sys.argv[1:]:
+        if arg == '--no-cache':
+            use_cache = False
+        elif not arg.startswith('--'):
+            game_name = arg
+    
+    if game_name is None:
+        game_name = 'kuhn_case2'
     
     if game_name.startswith('kuhn'):
         game_class = KuhnPokerGame
@@ -440,7 +484,7 @@ if __name__ == "__main__":
         print(f"Unknown game: {game_name}")
         sys.exit(1)
     
-    tree = build_public_state_tree(game_class, game_config)
+    tree = build_public_state_tree(game_class, game_config, use_cache=use_cache)
     states = tree['public_states']
 
     num_choice = sum(1 for s in states.values() if s['type'] == 'choice')
