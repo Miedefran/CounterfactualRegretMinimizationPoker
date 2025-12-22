@@ -1,18 +1,6 @@
-## Installation
+## Introduction
 
-### Core-Projekt (ohne GUI)
-```bash
-pip install -e .
-```
-
-Installiert nur die Core-Dependencies (`pandas`).
-
-### Mit GUI-Unterstützung
-```bash
-pip install -e .[gui]
-```
-
-Installiert zusätzlich: `PyQt6`, `Flask`, `requests` für die GUI-Funktionalität.
+Project to solve poker games using a CFR algorithm.
 
 ## Games
 
@@ -25,8 +13,10 @@ Unterstützte Poker-Varianten:
 - `limit_holdem` (Limit Hold'em)
 
 ## Training
+
+Create public state tree:
 ```bash
-python training/train.py <game> <iterations>
+uv run src/evaluation/build_public_state_tree.py leduc
 ```
 
 ### Algorithmen
@@ -44,10 +34,6 @@ python training/train.py leduc 10000 mccfr
 ```
 
 ## Testing
-Nash Equilibrium verification (only for Kuhn)
-```bash
-python tests/test_nash_equilibrium.py <strategy_file>
-```
 Self-play evaluation:
 ```bash
 python evaluation/self_play.py <game> <strategy_file> --games <num_games>
