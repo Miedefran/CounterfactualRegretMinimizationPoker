@@ -34,6 +34,9 @@ class TwelveCardPokerJudger(LeducHoldemJudger):
             return (1, pair_rank, kicker)
         
         cards = sorted([self.hand_rank[card[0]] for card in all_cards], reverse=True)
-        # Pad if we only have 2 cards (or any unexpected short list).
-        second = cards[1] if len(cards) > 1 else 0
-        return (0, cards[0], second)
+        c0 = cards[0]
+        c1 = cards[1] if len(cards) > 1 else 0
+        c2 = cards[2] if len(cards) > 2 else 0
+        return (0, c0, c1, c2)
+    
+ 

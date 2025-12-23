@@ -9,6 +9,7 @@ from training.cfr_plus_solver import CFRPlusSolver
 from training.fold_solver import AlwaysFoldSolver
 from training.mccfr_solver import MCCFRSolver
 from training.tensor_cfr_solver import TensorCFRSolver
+from training.cfr_solver_with_tree import CFRSolverWithTree
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
@@ -35,7 +36,7 @@ def main():
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
     parser.add_argument('algorithm', type=str,
-                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr'],
+                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree'],
                        nargs='?',
                        default='cfr',
                        help='Algorithm to use (default: cfr)')
@@ -72,7 +73,11 @@ def main():
     elif args.algorithm == 'fold':
         solver = AlwaysFoldSolver(game, combo_gen)
     elif args.algorithm == 'tensor_cfr':
-        solver = TensorCFRSolver(game, combo_gen)
+        # Übergebe game_name für automatisches Laden des Trees
+        solver = TensorCFRSolver(game, combo_gen, game_name=args.game)
+    elif args.algorithm == 'cfr_with_tree':
+        # Übergebe game_name für automatisches Laden des Trees
+        solver = CFRSolverWithTree(game, combo_gen, game_name=args.game)
     
     solver.train(args.iterations)
     
