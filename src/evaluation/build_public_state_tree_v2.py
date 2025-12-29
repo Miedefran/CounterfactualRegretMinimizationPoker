@@ -15,7 +15,7 @@ from envs.twelve_card_poker.game import TwelveCardPokerGame
 from utils.poker_utils import GAME_CONFIGS
 from utils.data_models import KeyGenerator
 
-def build_public_state_tree(game_class, game_config, progress_interval=1000, use_cache=True):
+def build_public_state_tree(game_class, game_config, progress_interval=1000, use_cache=False):
     """
     Baut den Public State Tree.
     

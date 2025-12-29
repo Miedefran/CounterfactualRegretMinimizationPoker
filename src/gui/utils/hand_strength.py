@@ -61,7 +61,7 @@ def hand_strength_text(
             judger = RhodeIslandJudger()
             dummy = SimpleNamespace(private_card=priv[0], public_cards=pub)
             value = judger.evaluate_hand(dummy)
-            return {4: "Three of a Kind", 3: "Straight", 2: "Flush", 1: "Pair", 0: "High Card"}.get(
+            return {5: "Straight Flush", 4: "Three of a Kind", 3: "Straight", 2: "Flush", 1: "Pair", 0: "High Card"}.get(
                 _first(value), "High Card"
             )
 

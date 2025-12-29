@@ -6,7 +6,6 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Removed custom "fix" logic. The keys should now match exactly.
 
 def load_public_tree(path):
     with gzip.open(path, 'rb') as f:
@@ -80,23 +79,32 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
             
         judger = LeducHoldemJudger()
         
-        # Leduc specific: if no public card, but we need to judge showdown?
-        # Typically judge is called at terminal.
-        # If terminal is fold, public card doesn't matter.
-        # If terminal is showdown, public card must exist unless it's a pre-flop fold (already handled).
-        # Existing code had logic to inject 'Js' if fold happened pre-flop?
         if (p0.public_card is None) and ('fold' in history):
              # Dummy public card to prevent crash if judger checks it (though it shouldn't for fold)
              p0.public_card = 'Js'
              p1.public_card = 'Js'
-    
-    elif 'rhode' in game_name.lower() or 'twelve' in game_name.lower():
+            
+    elif 'twelve' in game_name.lower():
+        from envs.twelve_card_poker.judger import TwelveCardPokerJudger
+        p0.private_card = p0_card
+        p1.private_card = p1_card
+        p0.public_cards = list(p0_public)
+        p1.public_cards = list(p1_public)
+        judger = TwelveCardPokerJudger()
+    elif 'rhode' in game_name.lower():
         from envs.rhode_island.judger import RhodeIslandJudger
         p0.private_card = p0_card
         p1.private_card = p1_card
         p0.public_cards = list(p0_public)
         p1.public_cards = list(p1_public)
         judger = RhodeIslandJudger()
+    elif 'royal' in game_name.lower():
+        from envs.royal_holdem.judger import RoyalHoldemJudger
+        p0.private_card = p0_card
+        p1.private_card = p1_card
+        p0.public_cards = list(p0_public)
+        p1.public_cards = list(p1_public)
+        judger = RoyalHoldemJudger()    
     else:
         return 0.0
     
@@ -105,13 +113,10 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
     # Use reliable actor from tree node if available
     if 'last_actor' in node:
         current_player = node['last_actor']
-    else:
-        # Fallback for old trees
-        betting_actions = [a for a in history if a in ['check', 'bet', 'call', 'fold']]
-        if betting_actions and betting_actions[-1] == 'fold':
-            current_player = (len(betting_actions) - 1) % 2
-        else:
-            current_player = len(betting_actions) % 2
+    else: 
+        print("last actor not found")
+        current_player = None
+    
     
     payoffs = judger.judge(players, history, current_player, pot, player_bets)
     return payoffs[player_id]
@@ -183,7 +188,7 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
     children = node['children']
 
     result = [0.0] * len(our_infosets)
-    chance_prob = 1.0 / 4.0
+    chance_prob = 1.0 / len(children)
 
     parent_card_to_r_opp = {info[0]: r for info, r in zip(opp_infosets, r_opp)}
 
@@ -210,6 +215,9 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
 
         if not has_mass:
             continue
+        
+    
+
 
         v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
 

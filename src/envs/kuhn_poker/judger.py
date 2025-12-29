@@ -7,8 +7,8 @@ class KuhnPokerJudger:
 
     def judge(self, players, history, current_player, pot, player_bets):
         if history[-1] == 'fold':
-            fold_player = current_player
-            winner = 1 - fold_player
+            winner = current_player
+            fold_player = 1 - winner
         else:
             if self.hand_rank[players[0].private_card] > self.hand_rank[players[1].private_card]:
                 winner = 0

@@ -1,0 +1,59 @@
+{
+  "fixed": {
+    "type": "fixed",
+    "interval": 100
+  },
+  "logarithmic_default": {
+    "type": "logarithmic",
+    "base_interval": 10,
+    "target_iteration": 100,
+    "target_interval": 100
+  },
+  "logarithmic_fast": {
+    "type": "logarithmic",
+    "base_interval": 5,
+    "target_iteration": 100,
+    "target_interval": 50
+  },
+  "logarithmic_aggressive": {
+    "type": "logarithmic",
+    "base_interval": 1,
+    "target_iteration": 1000,
+    "target_interval": 100
+  },
+  "custom_dense_early": {
+    "type": "custom",
+    "schedule": [
+      [1, 1],
+      [10, 5],
+      [50, 10],
+      [100, 25],
+      [500, 50],
+      [1000, 100]
+    ]
+  },
+  "custom_very_dense": {
+    "type": "custom",
+    "schedule": [
+      [1, 1],
+      [5, 2],
+      [10, 5],
+      [20, 10],
+      [50, 20],
+      [100, 50],
+      [500, 100]
+    ]
+  },"custom_yurr": {
+    "type": "custom",
+    "schedule": [
+      [1, 1],
+      [11, 2],
+      [42, 5],
+      [205, 10],
+      [1010, 20],
+      [5020, 50],
+      [25050, 100]
+    ]
+  }
+}
+

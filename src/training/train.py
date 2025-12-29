@@ -27,6 +27,7 @@ from utils.poker_utils import (
     LimitHoldemCombinations,
     get_model_path
 )
+from training.best_response_evaluator import BestResponseTracker
 
 def main():
     parser = argparse.ArgumentParser(description='Train CFR for Poker')
@@ -40,6 +41,8 @@ def main():
                        nargs='?',
                        default='cfr',
                        help='Algorithm to use (default: cfr)')
+    parser.add_argument('--br-eval-schedule', type=str, default=None,
+                       help='Best Response Evaluierungs-Schedule: Integer (fester Intervall), JSON-Pfad, oder Schedule-Name aus config/br_eval_schedules.json (None = deaktiviert)')
     args = parser.parse_args()
     config = GAME_CONFIGS[args.game]
     
@@ -79,10 +82,42 @@ def main():
         # Übergebe game_name für automatisches Laden des Trees
         solver = CFRSolverWithTree(game, combo_gen, game_name=args.game)
     
-    solver.train(args.iterations)
+    # Best Response Tracker initialisieren falls gewünscht
+    br_tracker = None
+    if args.br_eval_schedule is not None:
+        try:
+            if args.br_eval_schedule.isdigit():
+                schedule_config = int(args.br_eval_schedule)
+                br_tracker = BestResponseTracker(args.game, schedule_config=schedule_config)
+                print(f"Best Response Evaluation aktiviert (fester Intervall: {schedule_config})")
+            else:
+                br_tracker = BestResponseTracker(args.game, schedule_config=args.br_eval_schedule)
+                schedule_type = br_tracker.schedule_type
+                if schedule_type == "fixed":
+                    print(f"Best Response Evaluation aktiviert (fester Intervall: {br_tracker.interval})")
+                elif schedule_type == "logarithmic":
+                    print(f"Best Response Evaluation aktiviert (logarithmisch: {br_tracker.base_interval} -> {br_tracker.target_interval} bei Iteration {br_tracker.target_iteration})")
+                elif schedule_type == "custom":
+                    print(f"Best Response Evaluation aktiviert (custom schedule mit {len(br_tracker.custom_schedule)} Stufen)")
+        except Exception as e:
+            print(f"WARNING: Fehler beim Laden des BR-Eval-Schedules: {e}")
+            print("Best Response Evaluation wird deaktiviert")
+            br_tracker = None
+    
+    solver.train(args.iterations, br_tracker=br_tracker)
     
     filepath = get_model_path(args.game, args.iterations, args.algorithm)
     solver.save_gzip(filepath)
+    
+    # Best Response Plotting und Speichern
+    if br_tracker is not None and br_tracker.values:
+        # Plot speichern
+        plot_path = filepath.replace('.pkl.gz', '_best_response.png')
+        br_tracker.plot(output_path=plot_path)
+        
+        # Werte speichern
+        br_data_path = filepath.replace('.pkl.gz', '_best_response.pkl.gz')
+        br_tracker.save(br_data_path)
     
     avg_strategy = solver.average_strategy
     print(f"{len(avg_strategy)} information sets")

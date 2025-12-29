@@ -43,6 +43,10 @@ class RhodeIslandJudger(LeducHoldemJudger):
             is_straight = True
             rank_vals = [3, 2, 1]
         
+        # Straight Flush (höher als Three of a Kind)
+        if is_flush and is_straight:
+            return (5, rank_vals[0], rank_vals[1], rank_vals[2])
+        
         if 3 in rank_counts.values():
             trip_rank = [self.hand_rank[r] for r, c in rank_counts.items() if c == 3][0]
             return (4, trip_rank, 0)

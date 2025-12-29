@@ -21,7 +21,14 @@ class CFRSolver:
         if info_set_key not in self.strategy_sum:
             self.strategy_sum[info_set_key] = {a: 0.0 for a in legal_actions}
     
-    def train(self, iterations):
+    def train(self, iterations, br_tracker=None):
+        """
+        Trainiert den CFR Solver.
+        
+        Args:
+            iterations: Anzahl der Training-Iterationen
+            br_tracker: Optionaler BestResponseTracker für Best Response Evaluation
+        """
         start_time = time.time()
         
         for i in range(iterations):
@@ -30,17 +37,34 @@ class CFRSolver:
             
             if i % 100 == 0:
                 print(f"Iteration {i}")
+            
+            # Best Response Evaluation
+            if br_tracker is not None and br_tracker.should_evaluate(i + 1):
+                current_avg_strategy = self.get_average_strategy()
+                br_tracker.evaluate_and_add(current_avg_strategy, i + 1)
+                br_tracker.last_eval_iteration = i + 1
         
-        self.training_time = time.time() - start_time
+        # Finale Best Response Evaluation
+        if br_tracker is not None:
+            current_avg_strategy = self.get_average_strategy()
+            br_tracker.evaluate_and_add(current_avg_strategy, iterations)
         
-        end_time = time.time()
-        training_time = end_time - start_time
+        total_time = time.time() - start_time
         
-        if training_time >= 60:
-            minutes = training_time / 60
-            print(f"Training completed in {minutes:.2f} minutes")
+        # Ziehe Best Response Zeit von der Trainingszeit ab
+        if br_tracker is not None:
+            br_time = br_tracker.get_total_br_time()
+            self.training_time = total_time - br_time
+            if br_time > 0:
+                print(f"Best Response Evaluation Zeit: {br_time:.2f}s")
         else:
-            print(f"Training completed in {training_time:.2f} seconds")
+            self.training_time = total_time
+        
+        if self.training_time >= 60:
+            minutes = self.training_time / 60
+            print(f"Training completed in {minutes:.2f} minutes (ohne Best Response Evaluation)")
+        else:
+            print(f"Training completed in {self.training_time:.2f} seconds (ohne Best Response Evaluation)")
         
         self.average_strategy = self.get_average_strategy()
     

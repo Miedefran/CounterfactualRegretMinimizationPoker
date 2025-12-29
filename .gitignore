@@ -56,6 +56,7 @@ test_data/TESTING_NOTES.md
 *.cb2
 *.bbl
 *.blg
+*.npz
 
 # LaTeX output (keep main.pdf)
 # *.pdf

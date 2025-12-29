@@ -44,7 +44,10 @@ class KuhnPokerGame:
         
         if action == 'fold' or self.history[-2:] == ['bet', 'call'] or self.history[-2:] == ['check','check']:
             self.done = True
-            return self.judger.judge(self.players, self.history, self.current_player, self.pot, self.player_bets) 
+            if action == 'fold':
+                return self.judger.judge(self.players, self.history, 1 - self.current_player, self.pot, self.player_bets)
+            else:
+                return self.judger.judge(self.players, self.history, self.current_player, self.pot, self.player_bets) 
         else:
             self.current_player = 1 - self.current_player
             return None
