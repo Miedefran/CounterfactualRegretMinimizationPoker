@@ -3,8 +3,19 @@ import pickle
 import argparse
 import sys
 import os
+import time
+from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+TIME_STATS = {
+    'compute_payoff': 0.0,
+    'terminal': 0.0,
+    'chance': 0.0,
+    'our_choice': 0.0,
+    'opponent_choice': 0.0,
+    'traverse_routing': 0.0,
+}
 
 
 def load_public_tree(path):
@@ -34,7 +45,40 @@ def get_action_probability(info_set_key, action, avg_strategy, legal_actions):
     return strategy.get(action, 0.0)
 
 
+# Global cache for judgers
+JUDGER_CACHE = {}
+
+class PlayerDummy:
+    pass
+
+def get_judger(game_name):
+    if game_name in JUDGER_CACHE:
+        return JUDGER_CACHE[game_name]
+    
+    judger = None
+    if 'kuhn' in game_name.lower():
+        from envs.kuhn_poker.judger import KuhnPokerJudger
+        judger = KuhnPokerJudger()
+    elif 'leduc' in game_name.lower():
+        from envs.leduc_holdem.judger import LeducHoldemJudger
+        judger = LeducHoldemJudger()
+    elif 'twelve' in game_name.lower():
+        from envs.twelve_card_poker.judger import TwelveCardPokerJudger
+        judger = TwelveCardPokerJudger()
+    elif 'rhode' in game_name.lower():
+        from envs.rhode_island.judger import RhodeIslandJudger
+        judger = RhodeIslandJudger()
+    elif 'royal' in game_name.lower():
+        from envs.royal_holdem.judger import RoyalHoldemJudger
+        judger = RoyalHoldemJudger()
+    
+    if judger:
+        JUDGER_CACHE[game_name] = judger
+    return judger
+
 def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, node):
+    t_start = time.time()
+    
     # New Key Format: (private_card, public_cards_tuple, history_tuple, pid)
     
     # Extract info based on who is who
@@ -50,22 +94,19 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
     # History should be identical for both players in terms of actions
     history = list(p0_hist)
     
-    class PlayerDummy:
-        pass
-    
     p0 = PlayerDummy()
     p1 = PlayerDummy()
     
-    judger = None
-    
+    judger = get_judger(game_name)
+    if not judger:
+        return 0.0
+
+    # Setup dummy players based on game type (using checking logic from original code)
     if 'kuhn' in game_name.lower():
-        from envs.kuhn_poker.judger import KuhnPokerJudger
         p0.private_card = p0_card
         p1.private_card = p1_card
-        judger = KuhnPokerJudger()
     
     elif 'leduc' in game_name.lower():
-        from envs.leduc_holdem.judger import LeducHoldemJudger
         p0.private_card = p0_card
         p1.private_card = p1_card
         
@@ -77,34 +118,26 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
             p0.public_card = None
             p1.public_card = None
             
-        judger = LeducHoldemJudger()
-        
         if (p0.public_card is None) and ('fold' in history):
              # Dummy public card to prevent crash if judger checks it (though it shouldn't for fold)
              p0.public_card = 'Js'
              p1.public_card = 'Js'
-            
+
     elif 'twelve' in game_name.lower():
-        from envs.twelve_card_poker.judger import TwelveCardPokerJudger
         p0.private_card = p0_card
         p1.private_card = p1_card
         p0.public_cards = list(p0_public)
         p1.public_cards = list(p1_public)
-        judger = TwelveCardPokerJudger()
     elif 'rhode' in game_name.lower():
-        from envs.rhode_island.judger import RhodeIslandJudger
         p0.private_card = p0_card
         p1.private_card = p1_card
         p0.public_cards = list(p0_public)
         p1.public_cards = list(p1_public)
-        judger = RhodeIslandJudger()
     elif 'royal' in game_name.lower():
-        from envs.royal_holdem.judger import RoyalHoldemJudger
         p0.private_card = p0_card
         p1.private_card = p1_card
         p0.public_cards = list(p0_public)
         p1.public_cards = list(p1_public)
-        judger = RoyalHoldemJudger()    
     else:
         return 0.0
     
@@ -113,16 +146,19 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
     # Use reliable actor from tree node if available
     if 'last_actor' in node:
         current_player = node['last_actor']
-    else: 
-        print("last actor not found")
+    else:
+        # print("last actor not found") # Silence print for performance
         current_player = None
-    
-    
+
     payoffs = judger.judge(players, history, current_player, pot, player_bets)
-    return payoffs[player_id]
+    result = payoffs[player_id]
+    TIME_STATS['compute_payoff'] += time.time() - t_start
+    return result
 
 
 def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, r_opp):
+    t_start = time.time()
+    
     node = tree['public_states'].get(public_hist)
     if not node:
         raise ValueError(f"Public state not found: {public_hist}")
@@ -133,6 +169,9 @@ def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, 
     
     if len(r_opp) != len(opp_infosets):
         raise ValueError(f"Reach probability mismatch: {len(r_opp)} vs {len(opp_infosets)}")
+    
+    routing_time = time.time() - t_start
+    TIME_STATS['traverse_routing'] += routing_time
     
     if node_type == 'terminal':
         return terminal_value(game_name, player_id, node, r_opp)
@@ -150,6 +189,8 @@ def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, 
 
 
 def terminal_value(game_name, player_id, node, r_opp):
+    t_start = time.time()
+    
     our_infosets = node[f'player{player_id}_info_sets']
     opp_infosets = node[f'player{1-player_id}_info_sets']
     pot = node['pot']
@@ -160,35 +201,45 @@ def terminal_value(game_name, player_id, node, r_opp):
     for our_info in our_infosets:
         our_card = our_info[0]
         value = 0.0
-        total_valid_r = 0.0
+        
+        # Optimized loop: Merge validity check and computation
+        # Skip if opponent probability is 0 to avoid expensive compute_payoff
         
         for j, opp_info in enumerate(opp_infosets):
+            if r_opp[j] == 0:
+                continue
+                
             opp_card = opp_info[0]
             if our_card == opp_card:
                 continue
-            total_valid_r += r_opp[j]
-        
-        if total_valid_r > 0:
-            for j, opp_info in enumerate(opp_infosets):
-                opp_card = opp_info[0]
-                if our_card == opp_card:
-                    continue
-                # Pass 'node' to compute_payoff
-                util = compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, node)
-                value += r_opp[j] * util
+            
+            # Pass 'node' to compute_payoff
+            util = compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, node)
+            value += r_opp[j] * util
         
         result.append(value)
     
+    TIME_STATS['terminal'] += time.time() - t_start
     return result
 
 
 def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp):
+    t_start = time.time()
+    
     our_infosets = node[f'player{player_id}_info_sets']
     opp_infosets = node[f'player{1-player_id}_info_sets']
     children = node['children']
 
     result = [0.0] * len(our_infosets)
-    chance_prob = 1.0 / len(children)
+    # Calculate chance probability dynamically based on remaining cards.
+    # The public tree 'children' include all cards not yet public.
+    # We must subtract 2 for the private cards held by the players.
+    num_unknown_cards = len(children)
+    if num_unknown_cards > 2:
+        chance_prob = 1.0 / (num_unknown_cards - 2)
+    else:
+        # Should not happen in standard play unless deck is exhausted
+        chance_prob = 0.0
 
     parent_card_to_r_opp = {info[0]: r for info, r in zip(opp_infosets, r_opp)}
 
@@ -215,11 +266,12 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
 
         if not has_mass:
             continue
-        
-    
 
-
+        t_before_recursion = time.time()
         v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
+        t_after_recursion = time.time()
+        TIME_STATS['chance'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
+        t_start = time.time()
 
         card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
 
@@ -231,10 +283,13 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
             if our_card in card_to_child_value:
                 result[i] += card_to_child_value[our_card]
 
+    TIME_STATS['chance'] += time.time() - t_start
     return result
 
 
 def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp):
+    t_start = time.time()
+    
     our_infosets = node[f'player{player_id}_info_sets']
     children = node['children']
     
@@ -247,7 +302,11 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
         child_node = tree['public_states'].get(child_hist)
         if child_node:
             child_our_infosets = child_node[f'player{player_id}_info_sets']
+            t_before_recursion = time.time()
             v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_opp)
+            t_after_recursion = time.time()
+            TIME_STATS['our_choice'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
+            t_start = time.time()
             action_values[action] = (v_child, child_our_infosets)
     
     if not action_values:
@@ -272,10 +331,13 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
             max_val = 0.0
         result.append(max_val)
     
+    TIME_STATS['our_choice'] += time.time() - t_start
     return result
 
 
 def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp):
+    t_start = time.time()
+    
     our_infosets = node[f'player{player_id}_info_sets']
     opp_infosets = node[f'player{1-player_id}_info_sets']
     children = node['children']
@@ -295,7 +357,11 @@ def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public
             prob = get_action_probability(opp_info, action, avg_strategy, legal_actions)
             r_child.append(r_opp[k] * prob)
         
+        t_before_recursion = time.time()
         v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
+        t_after_recursion = time.time()
+        TIME_STATS['opponent_choice'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
+        t_start = time.time()
         
         child_node = tree['public_states'].get(child_hist)
         if child_node:
@@ -317,12 +383,26 @@ def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public
                         result[i] += card_to_child_value[our_card]
     
     if result is None:
+        TIME_STATS['opponent_choice'] += time.time() - t_start
         return [0.0] * len(our_infosets)
     
+    TIME_STATS['opponent_choice'] += time.time() - t_start
     return result
 
 
 def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_hist=()):
+    global TIME_STATS
+    TIME_STATS = {
+        'compute_payoff': 0.0,
+        'terminal': 0.0,
+        'chance': 0.0,
+        'our_choice': 0.0,
+        'opponent_choice': 0.0,
+        'traverse_routing': 0.0,
+    }
+    
+    t_total_start = time.time()
+    
     root_node = tree['public_states'].get(root_hist)
     if not root_node:
         raise ValueError(f"Root public state not found: {root_hist}")
@@ -347,6 +427,20 @@ def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_h
         
         v_vector = traverse_public_tree(game_name, player_id, tree, avg_strategy, root_hist, r_opp_conditional)
         total_value += (1.0 / len(our_infosets)) * v_vector[i]
+    
+    t_total = time.time() - t_total_start
+    
+    total_measured = sum(TIME_STATS.values())
+    
+    print(f"\n[BR Zeitverteilung Player {player_id}] Gesamt: {t_total:.2f}s")
+    if t_total > 0:
+        print(f"  Terminal: {TIME_STATS['terminal']:.2f}s ({TIME_STATS['terminal']/t_total*100:.1f}%)")
+        print(f"  Compute Payoff: {TIME_STATS['compute_payoff']:.2f}s ({TIME_STATS['compute_payoff']/t_total*100:.1f}%)")
+        print(f"  Chance: {TIME_STATS['chance']:.2f}s ({TIME_STATS['chance']/t_total*100:.1f}%)")
+        print(f"  Our Choice: {TIME_STATS['our_choice']:.2f}s ({TIME_STATS['our_choice']/t_total*100:.1f}%)")
+        print(f"  Opponent Choice: {TIME_STATS['opponent_choice']:.2f}s ({TIME_STATS['opponent_choice']/t_total*100:.1f}%)")
+        print(f"  Traverse Routing: {TIME_STATS['traverse_routing']:.2f}s ({TIME_STATS['traverse_routing']/t_total*100:.1f}%)")
+        print(f"  Summe gemessen: {total_measured:.2f}s ({total_measured/t_total*100:.1f}%)")
     
     return total_value
 

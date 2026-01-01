@@ -176,6 +176,9 @@ class BestResponseTracker:
             self.base_interval = schedule_config.get("base_interval", 10)
             self.target_iteration = schedule_config.get("target_iteration", 100)
             self.target_interval = schedule_config.get("target_interval", 100)
+            # unbounded: Wenn True, wächst das Intervall auch nach target_iteration weiter
+            # target_iteration/target_interval definieren den Wachstumsverlauf (wie schnell es wächst)
+            self.unbounded = schedule_config.get("unbounded", False)
         elif self.schedule_type == "custom":
             self.custom_schedule = schedule_config.get("schedule", [])
             if not self.custom_schedule:
@@ -229,7 +232,12 @@ class BestResponseTracker:
                 return self.base_interval
             
             interval = self.base_interval + (self.target_interval - self.base_interval) * (log_factor / target_log)
-            return max(self.base_interval, min(int(interval), self.target_interval))
+            
+            # Wenn unbounded: Keine obere Begrenzung, Intervall wächst kontinuierlich weiter
+            if self.unbounded:
+                return max(self.base_interval, int(interval))
+            else:
+                return max(self.base_interval, min(int(interval), self.target_interval))
         
         elif self.schedule_type == "custom":
             for i, (threshold, interval) in enumerate(self.custom_schedule):
@@ -308,12 +316,13 @@ class BestResponseTracker:
         """
         return self.total_br_time
     
-    def plot(self, output_path=None):
+    def plot(self, output_path=None, log_scale=True):
         """
         Plottet die Exploitability über die Iterationen.
         
         Args:
             output_path: Optionaler Pfad zum Speichern des Plots
+            log_scale: Wenn True, wird die X-Achse logarithmisch skaliert (default: True)
         """
         if not self.values:
             print("Keine Exploitability Werte zum Plotten vorhanden")
@@ -321,17 +330,41 @@ class BestResponseTracker:
         
         try:
             import matplotlib.pyplot as plt
+            import numpy as np
             
             iterations = [x[0] for x in self.values]
             exploitability = [x[1] for x in self.values]  # Nur Exploitability für Plot
             
-            plt.figure(figsize=(10, 6))
-            plt.plot(iterations, exploitability, label='Exploitability', marker='o', linewidth=2)
-            plt.xlabel('Iteration')
+            plt.figure(figsize=(12, 6))
+            plt.plot(iterations, exploitability, label='Exploitability', marker='o', linewidth=2, markersize=6)
+            
+            if log_scale:
+                plt.xscale('log')
+                plt.xlabel('Iteration (log scale)')
+            else:
+                plt.xlabel('Iteration')
+            
             plt.ylabel('Exploitability (mb/g)')
             plt.title(f'Exploitability During Training ({self.game_name})')
             plt.legend()
-            plt.grid(True, alpha=0.3)
+            plt.grid(True, alpha=0.3, which='both')  # 'both' für log und linear grid
+            
+            # Setze sinnvolle X-Achsen-Ticks für log scale
+            if log_scale and iterations:
+                max_iter = max(iterations)
+                # Erstelle logarithmische Ticks
+                if max_iter <= 100:
+                    ticks = [1, 2, 5, 10, 20, 50, 100]
+                elif max_iter <= 1000:
+                    ticks = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+                elif max_iter <= 10000:
+                    ticks = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+                else:
+                    ticks = [1, 10, 100, 1000, 10000, 100000]
+                
+                # Filtere Ticks die größer als max_iter sind
+                ticks = [t for t in ticks if t <= max_iter]
+                plt.xticks(ticks, [str(t) for t in ticks])
             
             if output_path:
                 plt.savefig(output_path, dpi=300, bbox_inches='tight')

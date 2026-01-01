@@ -111,7 +111,14 @@ class TensorCFRSolver:
         # Iteration Count
         self.t = 0
 
-    def train(self, iterations):
+    def train(self, iterations, br_tracker=None):
+        """
+        Training mit Tensor CFR Solver.
+        
+        Args:
+            iterations: Anzahl der Training-Iterationen
+            br_tracker: Optionaler BestResponseTracker für Best Response Evaluation
+        """
         print(f"Starting Training for {iterations} iterations on {self.device}...")
         start_time = time.time()
         
@@ -126,8 +133,33 @@ class TensorCFRSolver:
                 if i % 100 == 0:
                     print(f"Iteration {i}")
                 
-        self.training_time = time.time() - start_time
-        print(f"Training completed in {self.training_time:.2f}s")
+                # Best Response Evaluation
+                if br_tracker is not None and br_tracker.should_evaluate(i):
+                    current_avg_strategy = self.get_average_strategy()
+                    br_tracker.evaluate_and_add(current_avg_strategy, i)
+                    br_tracker.last_eval_iteration = i
+        
+        # Finale Best Response Evaluation
+        if br_tracker is not None:
+            current_avg_strategy = self.get_average_strategy()
+            br_tracker.evaluate_and_add(current_avg_strategy, iterations)
+        
+        total_time = time.time() - start_time
+        
+        # Ziehe Best Response Zeit von der Trainingszeit ab
+        if br_tracker is not None:
+            br_time = br_tracker.get_total_br_time()
+            self.training_time = total_time - br_time
+            if br_time > 0:
+                print(f"Best Response Evaluation Zeit: {br_time:.2f}s")
+        else:
+            self.training_time = total_time
+        
+        if self.training_time >= 60:
+            minutes = self.training_time / 60
+            print(f"Training completed in {minutes:.2f} minutes (ohne Best Response Evaluation)")
+        else:
+            print(f"Training completed in {self.training_time:.2f} seconds (ohne Best Response Evaluation)")
         
         self.average_strategy = self.get_average_strategy()
 
@@ -278,6 +310,8 @@ class TensorCFRSolver:
         self.delta_regret.zero_()
 
     def get_average_strategy(self):
+        t_start = time.time()
+        
         # We need a map from infoset_id back to Key
         # The TensorizedGameTree doesn't store the keys (it's tensor only).
         # But we need them for the final output.
@@ -356,7 +390,10 @@ class TensorCFRSolver:
                 action_dict[action_name] = float(prob)
                 
             avg_strat[key] = action_dict
-            
+        
+        elapsed = time.time() - t_start
+        print(f"get_average_strategy took {elapsed:.3f}s")
+        
         return avg_strat
 
     def save_gzip(self, filepath):

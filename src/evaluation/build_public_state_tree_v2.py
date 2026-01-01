@@ -15,7 +15,7 @@ from envs.twelve_card_poker.game import TwelveCardPokerGame
 from utils.poker_utils import GAME_CONFIGS
 from utils.data_models import KeyGenerator
 
-def build_public_state_tree(game_class, game_config, progress_interval=1000, use_cache=False):
+def build_public_state_tree(game_class, game_config, progress_interval=10000, use_cache=False):
     """
     Baut den Public State Tree.
     
@@ -98,7 +98,23 @@ def build_public_state_tree(game_class, game_config, progress_interval=1000, use
         
         for item in public_hist:
             if item in valid_actions:
+                # Capture state to detect auto-dealing
+                len_before = 0
+                is_target_game = 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name
+                if is_target_game and hasattr(game, 'public_cards'):
+                    len_before = len(game.public_cards)
+
                 game.step(item)
+                
+                # Remove auto-dealt cards to ensure determinism (we rely on history for cards)
+                if is_target_game and hasattr(game, 'public_cards'):
+                     if len(game.public_cards) > len_before:
+                         # Remove the random card
+                         game.public_cards.pop()
+                         if hasattr(game.players[0], 'public_cards'):
+                             game.players[0].public_cards.pop()
+                             game.players[1].public_cards.pop()
+
             else:
                 # It is a chance outcome (public card)
                 if 'Leduc' in game_name:
@@ -110,16 +126,11 @@ def build_public_state_tree(game_class, game_config, progress_interval=1000, use
                 elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name or 'Limit' in game_name:
                     
                     if hasattr(game, 'public_cards'):
-                        #If step added card, overwrite it / if not add it to list
+                        # If step added card, we already popped it. So just append the correct one.
+                        # Unless it's already there (shouldn't happen with pop logic but good for safety)
                         if item not in game.public_cards:
-                            if len(game.public_cards) > 0:
-                                # Overwrite card added by step
-                                game.public_cards[-1] = item
-                                game.players[0].public_cards[-1] = item
-                                game.players[1].public_cards[-1] = item
-                            else:
-                                # list empty, add card
-                                game.public_cards.append(item)
+                            game.public_cards.append(item)
+                            if hasattr(game.players[0], 'public_cards'):
                                 game.players[0].public_cards.append(item)
                                 game.players[1].public_cards.append(item)
         
@@ -269,9 +280,9 @@ def build_public_state_tree(game_class, game_config, progress_interval=1000, use
                 temp_for_info_sets.players[0].set_public_card(None)
                 temp_for_info_sets.players[1].set_public_card(None)
             elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name:
-                temp_for_info_sets.public_cards = []
-                temp_for_info_sets.players[0].public_cards = []
-                temp_for_info_sets.players[1].public_cards = []
+                temp_for_info_sets.public_cards = list(public_cards_in_history)
+                temp_for_info_sets.players[0].public_cards = list(public_cards_in_history)
+                temp_for_info_sets.players[1].public_cards = list(public_cards_in_history)
             
             player0_info_sets = get_info_sets_simulated(temp_for_info_sets, 0)
             player1_info_sets = get_info_sets_simulated(temp_for_info_sets, 1)

@@ -10,11 +10,9 @@ Der Unterschied zum normalen cfr_solver.py:
 import pickle as pkl
 import gzip
 import time
-import os
 from collections import defaultdict
 
-from utils.data_models import KeyGenerator
-from training.build_game_tree import load_game_tree, GameTree
+from training.build_game_tree import load_game_tree, build_game_tree, save_game_tree, GameTree
 
 
 class Node:
@@ -61,78 +59,27 @@ class CFRSolverWithTree:
         if load_tree and game_name:
             try:
                 print(f"Attempting to load game tree for {game_name}...")
-                self._load_tree(game_name)
+                game_tree = load_game_tree(game_name)
+                self._convert_game_tree_to_internal(game_tree)
                 print(f"Tree loaded: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
             except FileNotFoundError:
                 print(f"Tree file not found for {game_name}, building tree...")
-                self._build_tree()
-                print(f"Tree built: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
+                game_tree = build_game_tree(self.game, self.combination_generator, game_name=game_name)
+                self._convert_game_tree_to_internal(game_tree)
+                save_game_tree(game_tree, game_name)
+                print(f"Tree built and saved: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
         else:
-            # Build Tree einmal beim Initialisieren
             print("Building game tree...")
-            self._build_tree()
+            game_tree = build_game_tree(self.game, self.combination_generator)
+            self._convert_game_tree_to_internal(game_tree)
             print(f"Tree built: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
     
-    def _build_tree(self):
-        """Baut den Game Tree einmal vorher"""
-        start_time = time.time()
-        
-        # Für jede Kombination (Deal) einen Subtree bauen
-        for combo in self.combinations:
-            self.combination_generator.setup_game_with_combination(self.game, combo)
-            root_id = self._traverse_and_build(0)
-            self.root_nodes.append(root_id)
-        
-        build_time = time.time() - start_time
-        print(f"Tree building took {build_time:.2f}s")
-    
-    def _traverse_and_build(self, depth):
-        """
-        Rekursive Funktion die den Tree durchläuft und Nodes erstellt.
-        
-        Returns:
-            node_id des erstellten Nodes
-        """
-        node_id = self.next_node_id
-        self.next_node_id += 1
-        node = Node(node_id)
-        node.depth = depth
-        self.nodes[node_id] = node
-        
-        # Terminal Node?
-        if self.game.done:
-            node.type = 'terminal'
-            node.payoffs = [self.game.get_payoff(0), self.game.get_payoff(1)]
-            return node_id
-        
-        # Decision Node
-        node.type = 'decision'
-        node.player = self.game.current_player
-        node.legal_actions = self.game.get_legal_actions()
-        node.infoset_key = KeyGenerator.get_info_set_key(self.game, node.player)
-        
-        # InfoSet Mapping aktualisieren
-        self.infoset_to_nodes[node.infoset_key].append(node_id)
-        
-        # Für jede legale Aktion: Child Node erstellen
-        for action in node.legal_actions:
-            self.game.step(action)
-            child_id = self._traverse_and_build(depth + 1)
-            self.game.step_back()
-            node.children[action] = child_id
-        
-        return node_id
-    
-    def _load_tree(self, game_name):
-        """Lädt einen Game Tree aus einer Datei"""
-        game_tree = load_game_tree(game_name)
-        
-        # Konvertiere GameTree zu interner Struktur
+    def _convert_game_tree_to_internal(self, game_tree):
+        """Konvertiert ein GameTree Objekt zu interner Struktur"""
         self.nodes = {}
         self.infoset_to_nodes = defaultdict(list)
         self.root_nodes = game_tree.root_nodes
         
-        # Konvertiere Nodes
         for node_id, node_data in game_tree.nodes.items():
             node = Node(node_data.node_id)
             node.type = node_data.type
@@ -144,11 +91,9 @@ class CFRSolverWithTree:
             node.depth = node_data.depth
             self.nodes[node_id] = node
             
-            # InfoSet Mapping
             if node.infoset_key is not None:
                 self.infoset_to_nodes[node.infoset_key].append(node_id)
         
-        # Setze next_node_id auf max node_id + 1
         if self.nodes:
             self.next_node_id = max(self.nodes.keys()) + 1
         else:
