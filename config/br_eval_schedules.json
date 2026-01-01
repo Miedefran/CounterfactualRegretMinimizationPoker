@@ -50,6 +50,18 @@
       [100, 50],
       [500, 100]
     ]
+  },
+  "custom_twelve": {
+    "type": "custom",
+    "schedule": [
+      [1, 1],
+      [5, 2],
+      [10, 5],
+      [20, 10],
+      [50, 20],
+      [100, 50],
+      [500, 100]
+    ]
   },"Custom_Testr": {
     "type": "custom",
     "schedule": [

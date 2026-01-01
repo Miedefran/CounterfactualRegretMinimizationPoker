@@ -5,6 +5,7 @@ import sys
 import os
 import time
 from collections import defaultdict
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -16,6 +17,8 @@ TIME_STATS = {
     'opponent_choice': 0.0,
     'traverse_routing': 0.0,
 }
+
+NUM_WORKERS = None
 
 
 def load_public_tree(path):
@@ -156,6 +159,11 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
     return result
 
 
+def _traverse_subtree_worker(args):
+    game_name, player_id, tree, avg_strategy, public_hist, r_opp = args
+    return traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, r_opp)
+
+
 def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, r_opp):
     t_start = time.time()
     
@@ -188,6 +196,37 @@ def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, 
     raise ValueError(f"Unknown node type: {node_type}")
 
 
+def get_hand_strength_for_info_set(game_name, info_set):
+    judger = get_judger(game_name)
+    if not judger:
+        return None
+    
+    our_card = info_set[0]
+    our_public = info_set[1]
+    
+    p = PlayerDummy()
+    
+    if 'kuhn' in game_name.lower():
+        p.private_card = our_card
+        if hasattr(judger, 'hand_rank'):
+            return (judger.hand_rank.get(our_card, 0),)
+        return (0,)
+    elif 'leduc' in game_name.lower():
+        p.private_card = our_card
+        if len(our_public) > 0:
+            p.public_card = our_public[0]
+        else:
+            p.public_card = None
+        if hasattr(judger, 'evaluate_hand'):
+            return judger.evaluate_hand(p)
+    elif 'twelve' in game_name.lower() or 'rhode' in game_name.lower() or 'royal' in game_name.lower():
+        p.private_card = our_card
+        p.public_cards = list(our_public)
+        if hasattr(judger, 'evaluate_hand'):
+            return judger.evaluate_hand(p)
+    
+    return None
+
 def terminal_value(game_name, player_id, node, r_opp):
     t_start = time.time()
     
@@ -196,28 +235,99 @@ def terminal_value(game_name, player_id, node, r_opp):
     pot = node['pot']
     player_bets = node['player_bets']
     
-    result = []
+    if len(our_infosets) == 0 or len(opp_infosets) == 0:
+        TIME_STATS['terminal'] += time.time() - t_start
+        return [0.0] * len(our_infosets)
     
-    for our_info in our_infosets:
+    sample_our_info = our_infosets[0]
+    sample_hist = sample_our_info[2]
+    is_fold = len(sample_hist) > 0 and sample_hist[-1] == 'fold'
+    
+    if is_fold:
+        last_actor = node.get('last_actor', None)
+        if last_actor is not None:
+            fold_player = last_actor
+            winner = 1 - fold_player
+            if winner == player_id:
+                win_util = pot - player_bets[player_id]
+            else:
+                win_util = -player_bets[player_id]
+            
+            result = []
+            for our_info in our_infosets:
+                our_card = our_info[0]
+                value = 0.0
+                for j, opp_info in enumerate(opp_infosets):
+                    if r_opp[j] == 0:
+                        continue
+                    opp_card = opp_info[0]
+                    if our_card == opp_card:
+                        continue
+                    value += r_opp[j] * win_util
+                result.append(value)
+            
+            TIME_STATS['terminal'] += time.time() - t_start
+            return result
+    
+    our_with_strength = []
+    for i, our_info in enumerate(our_infosets):
+        strength = get_hand_strength_for_info_set(game_name, our_info)
+        our_with_strength.append((i, our_info, strength))
+    
+    opp_with_strength = []
+    for j, opp_info in enumerate(opp_infosets):
+        if r_opp[j] == 0:
+            continue
+        strength = get_hand_strength_for_info_set(game_name, opp_info)
+        opp_with_strength.append((j, opp_info, strength, r_opp[j]))
+    
+    if len(opp_with_strength) == 0:
+        TIME_STATS['terminal'] += time.time() - t_start
+        return [0.0] * len(our_infosets)
+    
+    our_with_strength.sort(key=lambda x: x[2] if x[2] is not None else (float('-inf'),))
+    opp_with_strength.sort(key=lambda x: x[2] if x[2] is not None else (float('-inf'),))
+    
+    win_util = pot - player_bets[player_id]
+    lose_util = -player_bets[player_id]
+    tie_util = 0.0
+    
+    result = [0.0] * len(our_infosets)
+    
+    for our_idx, our_info, our_strength in our_with_strength:
         our_card = our_info[0]
-        value = 0.0
         
-        # Optimized loop: Merge validity check and computation
-        # Skip if opponent probability is 0 to avoid expensive compute_payoff
+        if our_strength is None:
+            for j, opp_info, opp_strength, r_val in opp_with_strength:
+                opp_card = opp_info[0]
+                if our_card == opp_card:
+                    continue
+                util = compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, node)
+                result[our_idx] += r_val * util
+            continue
         
-        for j, opp_info in enumerate(opp_infosets):
-            if r_opp[j] == 0:
-                continue
-                
+        worse_prob = 0.0
+        equal_prob = 0.0
+        better_prob = 0.0
+        
+        for j, opp_info, opp_strength, r_val in opp_with_strength:
             opp_card = opp_info[0]
             if our_card == opp_card:
                 continue
             
-            # Pass 'node' to compute_payoff
-            util = compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, node)
-            value += r_opp[j] * util
+            if opp_strength is None:
+                util = compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, node)
+                result[our_idx] += r_val * util
+                continue
+            
+            if opp_strength < our_strength:
+                worse_prob += r_val
+            elif opp_strength == our_strength:
+                equal_prob += r_val
+            else:
+                better_prob += r_val
         
-        result.append(value)
+        result[our_idx] = worse_prob * win_util + equal_prob * tie_util + better_prob * lose_util
     
     TIME_STATS['terminal'] += time.time() - t_start
     return result
@@ -231,18 +341,16 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
     children = node['children']
 
     result = [0.0] * len(our_infosets)
-    # Calculate chance probability dynamically based on remaining cards.
-    # The public tree 'children' include all cards not yet public.
-    # We must subtract 2 for the private cards held by the players.
+    
     num_unknown_cards = len(children)
     if num_unknown_cards > 2:
         chance_prob = 1.0 / (num_unknown_cards - 2)
     else:
-        # Should not happen in standard play unless deck is exhausted
         chance_prob = 0.0
 
     parent_card_to_r_opp = {info[0]: r for info, r in zip(opp_infosets, r_opp)}
 
+    tasks = []
     for outcome, child_hist in children.items():
         child_node = tree['public_states'].get(child_hist)
         if not child_node:
@@ -264,24 +372,56 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
             r_child.append(val)
             if val > 0: has_mass = True
 
-        if not has_mass:
-            continue
+        if has_mass:
+            tasks.append((outcome, child_hist, child_our_infosets, r_child))
 
-        t_before_recursion = time.time()
-        v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
-        t_after_recursion = time.time()
-        TIME_STATS['chance'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
-        t_start = time.time()
+    if not tasks:
+        TIME_STATS['chance'] += time.time() - t_start
+        return result
 
-        card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
+    use_parallel = NUM_WORKERS is not None and NUM_WORKERS > 1 and len(tasks) > 1
 
-        for i, our_info in enumerate(our_infosets):
-            our_card = our_info[0]
-            if our_card == outcome:
-                continue
+    if use_parallel:
+        with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
+            futures = {}
+            for outcome, child_hist, child_our_infosets, r_child in tasks:
+                args = (game_name, player_id, tree, avg_strategy, child_hist, r_child)
+                future = executor.submit(_traverse_subtree_worker, args)
+                futures[future] = (outcome, child_our_infosets)
 
-            if our_card in card_to_child_value:
-                result[i] += card_to_child_value[our_card]
+            for future in as_completed(futures):
+                outcome, child_our_infosets = futures[future]
+                try:
+                    v_child = future.result()
+                    card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
+
+                    for i, our_info in enumerate(our_infosets):
+                        our_card = our_info[0]
+                        if our_card == outcome:
+                            continue
+
+                        if our_card in card_to_child_value:
+                            result[i] += card_to_child_value[our_card]
+                except Exception as e:
+                    print(f"Error in parallel chance computation: {e}")
+                    raise
+    else:
+        for outcome, child_hist, child_our_infosets, r_child in tasks:
+            t_before_recursion = time.time()
+            v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
+            t_after_recursion = time.time()
+            TIME_STATS['chance'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
+            t_start = time.time()
+
+            card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
+
+            for i, our_info in enumerate(our_infosets):
+                our_card = our_info[0]
+                if our_card == outcome:
+                    continue
+
+                if our_card in card_to_child_value:
+                    result[i] += card_to_child_value[our_card]
 
     TIME_STATS['chance'] += time.time() - t_start
     return result
@@ -296,12 +436,38 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
     if not children:
         return [0.0] * len(our_infosets)
     
-    action_values = {}
-    
+    tasks = []
     for action, child_hist in children.items():
         child_node = tree['public_states'].get(child_hist)
         if child_node:
             child_our_infosets = child_node[f'player{player_id}_info_sets']
+            tasks.append((action, child_hist, child_our_infosets))
+    
+    if not tasks:
+        return [0.0] * len(our_infosets)
+    
+    use_parallel = NUM_WORKERS is not None and NUM_WORKERS > 1 and len(tasks) > 1
+    
+    action_values = {}
+    
+    if use_parallel:
+        with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
+            futures = {}
+            for action, child_hist, child_our_infosets in tasks:
+                args = (game_name, player_id, tree, avg_strategy, child_hist, r_opp)
+                future = executor.submit(_traverse_subtree_worker, args)
+                futures[future] = (action, child_our_infosets)
+            
+            for future in as_completed(futures):
+                action, child_our_infosets = futures[future]
+                try:
+                    v_child = future.result()
+                    action_values[action] = (v_child, child_our_infosets)
+                except Exception as e:
+                    print(f"Error in parallel our_choice computation: {e}")
+                    raise
+    else:
+        for action, child_hist, child_our_infosets in tasks:
             t_before_recursion = time.time()
             v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_opp)
             t_after_recursion = time.time()
@@ -310,6 +476,7 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
             action_values[action] = (v_child, child_our_infosets)
     
     if not action_values:
+        TIME_STATS['our_choice'] += time.time() - t_start
         return [0.0] * len(our_infosets)
     
     result = []
@@ -390,8 +557,9 @@ def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public
     return result
 
 
-def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_hist=()):
-    global TIME_STATS
+def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_hist=(), num_workers=None):
+    global TIME_STATS, NUM_WORKERS
+    NUM_WORKERS = num_workers
     TIME_STATS = {
         'compute_payoff': 0.0,
         'terminal': 0.0,
@@ -451,11 +619,14 @@ def main():
     parser.add_argument('--player', type=int, required=True)
     parser.add_argument('--public-tree', required=True)
     parser.add_argument('--strategy', required=True)
+    parser.add_argument('--num-workers', type=int, default=4, 
+                        help='Number of parallel workers (default: None = sequential)')
     args = parser.parse_args()
     
     tree = load_public_tree(args.public_tree)
     avg_strategy = load_average_strategy(args.strategy)
-    value = compute_best_response_value(args.game, args.player, tree, avg_strategy, root_hist=())
+    value = compute_best_response_value(args.game, args.player, tree, avg_strategy, 
+                                       root_hist=(), num_workers=args.num_workers)
     print(f"best_response_value={value}")
 
 
