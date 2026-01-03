@@ -257,11 +257,12 @@ class BestResponseTracker:
         Returns:
             True wenn evaluiert werden soll, sonst False
         """
-        if iteration == 1:
-            return True
-        
         if self.schedule_type == "fixed":
             return iteration % self.interval == 0
+        
+        if self.schedule_type == "custom":
+            if iteration < self.custom_schedule[0][0]:
+                return False
         
         current_interval = self.get_current_interval(iteration)
         return (iteration - self.last_eval_iteration) >= current_interval

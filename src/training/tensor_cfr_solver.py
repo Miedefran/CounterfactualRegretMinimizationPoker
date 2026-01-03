@@ -35,6 +35,9 @@ class TensorCFRSolver:
             if os.path.exists(tree_path):
                 try:
                     self.tree = TensorizedGameTree.load(tree_path)
+                    if self.tree.infoset_keys_map is None:
+                        print("Tree loaded but missing infoset_keys_map, rebuilding...")
+                        self.tree = None
                 except Exception as e:
                     print(f"Failed to load tree: {e}")
             else:
@@ -312,84 +315,83 @@ class TensorCFRSolver:
     def get_average_strategy(self):
         t_start = time.time()
         
-        # We need a map from infoset_id back to Key
-        # The TensorizedGameTree doesn't store the keys (it's tensor only).
-        # But we need them for the final output.
-        # This is a trade-off. To get keys, we need to rebuild the map or save it.
-        # Ideally, we should save infoset_keys in the tensor tree file (as a pickled list or string array).
-        
-        # For now, if we loaded the tree, we might not have the keys map.
-        # We can regenerate it if necessary, OR we modify TensorizedGameTree to store keys.
-        # Given "bruuuh" optimization, regenerating is slow.
-        # Let's rely on the user passing `game` and `combination_generator` to regenerate keys *only* at the end.
-        
         print("Reconstructing strategy dictionary...")
         strat_sum = self.strategy_sum.cpu().numpy()
         avg_strat = {}
         
-        # We need to iterate the game to map keys to IDs again.
-        # This seems redundant but avoids storing millions of strings in the tensor file.
-        # Actually, we can just traverse the tree quickly to recover keys.
-        
-        # Better approach: Just like we built the tree, we can traverse and match IDs.
-        # But we have `infosets` array.
-        
-        # Let's just do a quick traversal to map keys to infoset_ids.
-        infoset_map = {}
-        next_infoset_id = 0
-        
-        actions = ['check', 'bet', 'call', 'fold']
-        action_to_idx = {a: i for i, a in enumerate(actions)}
-        
-        # Re-traversal helper to get keys
-        def traverse(depth):
-            nonlocal next_infoset_id
-            if self.game.done: return
+        if self.tree.infoset_keys_map is not None:
+            idx_to_key = {v: k for k, v in self.tree.infoset_keys_map.items()}
             
-            player = self.game.current_player
-            legal_actions = self.game.get_legal_actions()
+            for i in range(len(strat_sum)):
+                if i not in idx_to_key:
+                    continue
+                
+                key = idx_to_key[i]
+                probs = strat_sum[i]
+                total = np.sum(probs)
+                
+                if total > 0:
+                    normalized = probs / total
+                else:
+                    normalized = np.ones_like(probs) / len(probs)
+                    
+                action_dict = {}
+                for a_idx, prob in enumerate(normalized):
+                    action_name = self.actions[a_idx]
+                    action_dict[action_name] = float(prob)
+                    
+                avg_strat[key] = action_dict
+        else:
+            print("Warning: No infoset_keys_map found, falling back to re-traversal...")
+            infoset_map = {}
+            next_infoset_id = 0
             
-            key = KeyGenerator.get_info_set_key(self.game, player)
-            if key not in infoset_map:
-                infoset_map[key] = next_infoset_id
-                next_infoset_id += 1
+            actions = ['check', 'bet', 'call', 'fold']
+            action_to_idx = {a: i for i, a in enumerate(actions)}
             
-            for action in legal_actions:
-                if action not in action_to_idx: continue
-                self.game.step(action)
-                traverse(depth + 1)
-                self.game.step_back()
+            def traverse(depth):
+                nonlocal next_infoset_id
+                if self.game.done: return
+                
+                player = self.game.current_player
+                legal_actions = self.game.get_legal_actions()
+                
+                key = KeyGenerator.get_info_set_key(self.game, player)
+                if key not in infoset_map:
+                    infoset_map[key] = next_infoset_id
+                    next_infoset_id += 1
+                
+                for action in legal_actions:
+                    if action not in action_to_idx: continue
+                    self.game.step(action)
+                    traverse(depth + 1)
+                    self.game.step_back()
 
-        combinations = self.combination_generator.get_all_combinations()
-        for combo in combinations:
-            self.combination_generator.setup_game_with_combination(self.game, combo)
-            traverse(1)
-            
-        # Now map
-        # infoset_map: Key -> ID
-        # strat_sum: ID -> Probs
-        
-        # Invert map
-        idx_to_key = {v: k for k, v in infoset_map.items()}
-        
-        for i in range(len(strat_sum)):
-            if i not in idx_to_key: continue
-            
-            key = idx_to_key[i]
-            probs = strat_sum[i]
-            total = np.sum(probs)
-            
-            if total > 0:
-                normalized = probs / total
-            else:
-                normalized = np.ones_like(probs) / len(probs)
+            combinations = self.combination_generator.get_all_combinations()
+            for combo in combinations:
+                self.combination_generator.setup_game_with_combination(self.game, combo)
+                traverse(1)
                 
-            action_dict = {}
-            for a_idx, prob in enumerate(normalized):
-                action_name = self.actions[a_idx]
-                action_dict[action_name] = float(prob)
+            idx_to_key = {v: k for k, v in infoset_map.items()}
+            
+            for i in range(len(strat_sum)):
+                if i not in idx_to_key: continue
                 
-            avg_strat[key] = action_dict
+                key = idx_to_key[i]
+                probs = strat_sum[i]
+                total = np.sum(probs)
+                
+                if total > 0:
+                    normalized = probs / total
+                else:
+                    normalized = np.ones_like(probs) / len(probs)
+                    
+                action_dict = {}
+                for a_idx, prob in enumerate(normalized):
+                    action_name = self.actions[a_idx]
+                    action_dict[action_name] = float(prob)
+                    
+                avg_strat[key] = action_dict
         
         elapsed = time.time() - t_start
         print(f"get_average_strategy took {elapsed:.3f}s")

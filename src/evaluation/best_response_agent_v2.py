@@ -5,7 +5,6 @@ import sys
 import os
 import time
 from collections import defaultdict
-from concurrent.futures import ProcessPoolExecutor, as_completed
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -17,8 +16,6 @@ TIME_STATS = {
     'opponent_choice': 0.0,
     'traverse_routing': 0.0,
 }
-
-NUM_WORKERS = None
 
 
 def load_public_tree(path):
@@ -50,6 +47,9 @@ def get_action_probability(info_set_key, action, avg_strategy, legal_actions):
 
 # Global cache for judgers
 JUDGER_CACHE = {}
+
+# Global cache for hand strength evaluations
+HAND_STRENGTH_CACHE = {}
 
 class PlayerDummy:
     pass
@@ -159,11 +159,6 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
     return result
 
 
-def _traverse_subtree_worker(args):
-    game_name, player_id, tree, avg_strategy, public_hist, r_opp = args
-    return traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, r_opp)
-
-
 def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, r_opp):
     t_start = time.time()
     
@@ -197,8 +192,13 @@ def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, 
 
 
 def get_hand_strength_for_info_set(game_name, info_set):
+    cache_key = (game_name, info_set)
+    if cache_key in HAND_STRENGTH_CACHE:
+        return HAND_STRENGTH_CACHE[cache_key]
+    
     judger = get_judger(game_name)
     if not judger:
+        HAND_STRENGTH_CACHE[cache_key] = None
         return None
     
     our_card = info_set[0]
@@ -206,11 +206,13 @@ def get_hand_strength_for_info_set(game_name, info_set):
     
     p = PlayerDummy()
     
+    result = None
     if 'kuhn' in game_name.lower():
         p.private_card = our_card
         if hasattr(judger, 'hand_rank'):
-            return (judger.hand_rank.get(our_card, 0),)
-        return (0,)
+            result = (judger.hand_rank.get(our_card, 0),)
+        else:
+            result = (0,)
     elif 'leduc' in game_name.lower():
         p.private_card = our_card
         if len(our_public) > 0:
@@ -218,14 +220,15 @@ def get_hand_strength_for_info_set(game_name, info_set):
         else:
             p.public_card = None
         if hasattr(judger, 'evaluate_hand'):
-            return judger.evaluate_hand(p)
+            result = judger.evaluate_hand(p)
     elif 'twelve' in game_name.lower() or 'rhode' in game_name.lower() or 'royal' in game_name.lower():
         p.private_card = our_card
         p.public_cards = list(our_public)
         if hasattr(judger, 'evaluate_hand'):
-            return judger.evaluate_hand(p)
+            result = judger.evaluate_hand(p)
     
-    return None
+    HAND_STRENGTH_CACHE[cache_key] = result
+    return result
 
 def terminal_value(game_name, player_id, node, r_opp):
     t_start = time.time()
@@ -375,55 +378,27 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
         if has_mass:
             tasks.append((outcome, child_hist, child_our_infosets, r_child))
 
+    t_setup = time.time() - t_start
+    TIME_STATS['chance'] += t_setup
+
     if not tasks:
-        TIME_STATS['chance'] += time.time() - t_start
         return result
 
-    use_parallel = NUM_WORKERS is not None and NUM_WORKERS > 1 and len(tasks) > 1
+    for outcome, child_hist, child_our_infosets, r_child in tasks:
+        v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
 
-    if use_parallel:
-        with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
-            futures = {}
-            for outcome, child_hist, child_our_infosets, r_child in tasks:
-                args = (game_name, player_id, tree, avg_strategy, child_hist, r_child)
-                future = executor.submit(_traverse_subtree_worker, args)
-                futures[future] = (outcome, child_our_infosets)
+        t_merge_start = time.time()
+        card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
 
-            for future in as_completed(futures):
-                outcome, child_our_infosets = futures[future]
-                try:
-                    v_child = future.result()
-                    card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
+        for i, our_info in enumerate(our_infosets):
+            our_card = our_info[0]
+            if our_card == outcome:
+                continue
 
-                    for i, our_info in enumerate(our_infosets):
-                        our_card = our_info[0]
-                        if our_card == outcome:
-                            continue
+            if our_card in card_to_child_value:
+                result[i] += card_to_child_value[our_card]
+        TIME_STATS['chance'] += time.time() - t_merge_start
 
-                        if our_card in card_to_child_value:
-                            result[i] += card_to_child_value[our_card]
-                except Exception as e:
-                    print(f"Error in parallel chance computation: {e}")
-                    raise
-    else:
-        for outcome, child_hist, child_our_infosets, r_child in tasks:
-            t_before_recursion = time.time()
-            v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
-            t_after_recursion = time.time()
-            TIME_STATS['chance'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
-            t_start = time.time()
-
-            card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
-
-            for i, our_info in enumerate(our_infosets):
-                our_card = our_info[0]
-                if our_card == outcome:
-                    continue
-
-                if our_card in card_to_child_value:
-                    result[i] += card_to_child_value[our_card]
-
-    TIME_STATS['chance'] += time.time() - t_start
     return result
 
 
@@ -443,42 +418,22 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
             child_our_infosets = child_node[f'player{player_id}_info_sets']
             tasks.append((action, child_hist, child_our_infosets))
     
+    t_setup = time.time() - t_start
+    TIME_STATS['our_choice'] += t_setup
+    
     if not tasks:
         return [0.0] * len(our_infosets)
     
-    use_parallel = NUM_WORKERS is not None and NUM_WORKERS > 1 and len(tasks) > 1
-    
     action_values = {}
     
-    if use_parallel:
-        with ProcessPoolExecutor(max_workers=NUM_WORKERS) as executor:
-            futures = {}
-            for action, child_hist, child_our_infosets in tasks:
-                args = (game_name, player_id, tree, avg_strategy, child_hist, r_opp)
-                future = executor.submit(_traverse_subtree_worker, args)
-                futures[future] = (action, child_our_infosets)
-            
-            for future in as_completed(futures):
-                action, child_our_infosets = futures[future]
-                try:
-                    v_child = future.result()
-                    action_values[action] = (v_child, child_our_infosets)
-                except Exception as e:
-                    print(f"Error in parallel our_choice computation: {e}")
-                    raise
-    else:
-        for action, child_hist, child_our_infosets in tasks:
-            t_before_recursion = time.time()
-            v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_opp)
-            t_after_recursion = time.time()
-            TIME_STATS['our_choice'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
-            t_start = time.time()
-            action_values[action] = (v_child, child_our_infosets)
+    for action, child_hist, child_our_infosets in tasks:
+        v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_opp)
+        action_values[action] = (v_child, child_our_infosets)
     
     if not action_values:
-        TIME_STATS['our_choice'] += time.time() - t_start
         return [0.0] * len(our_infosets)
     
+    t_max_start = time.time()
     result = []
     for our_info in our_infosets:
         our_card = our_info[0]
@@ -498,7 +453,7 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
             max_val = 0.0
         result.append(max_val)
     
-    TIME_STATS['our_choice'] += time.time() - t_start
+    TIME_STATS['our_choice'] += time.time() - t_max_start
     return result
 
 
@@ -514,22 +469,29 @@ def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public
     
     legal_actions = list(children.keys())
     
+    action_prob_cache = {}
+    for action in legal_actions:
+        action_prob_cache[action] = []
+        for k, opp_info in enumerate(opp_infosets):
+            prob = get_action_probability(opp_info, action, avg_strategy, legal_actions)
+            action_prob_cache[action].append(prob)
+    
+    t_setup = time.time() - t_start
+    TIME_STATS['opponent_choice'] += t_setup
+    
     result = None
     
     for action in legal_actions:
         child_hist = children[action]
         
         r_child = []
-        for k, opp_info in enumerate(opp_infosets):
-            prob = get_action_probability(opp_info, action, avg_strategy, legal_actions)
-            r_child.append(r_opp[k] * prob)
+        probs = action_prob_cache[action]
+        for k, r_val in enumerate(r_opp):
+            r_child.append(r_val * probs[k])
         
-        t_before_recursion = time.time()
         v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
-        t_after_recursion = time.time()
-        TIME_STATS['opponent_choice'] += (t_before_recursion - t_start) + (time.time() - t_after_recursion)
-        t_start = time.time()
         
+        t_merge_start = time.time()
         child_node = tree['public_states'].get(child_hist)
         if child_node:
             child_our_infosets = child_node[f'player{player_id}_info_sets']
@@ -548,18 +510,16 @@ def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public
                     our_card = our_info[0]
                     if our_card in card_to_child_value:
                         result[i] += card_to_child_value[our_card]
+        TIME_STATS['opponent_choice'] += time.time() - t_merge_start
     
     if result is None:
-        TIME_STATS['opponent_choice'] += time.time() - t_start
         return [0.0] * len(our_infosets)
     
-    TIME_STATS['opponent_choice'] += time.time() - t_start
     return result
 
 
-def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_hist=(), num_workers=None):
-    global TIME_STATS, NUM_WORKERS
-    NUM_WORKERS = num_workers
+def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_hist=()):
+    global TIME_STATS, HAND_STRENGTH_CACHE
     TIME_STATS = {
         'compute_payoff': 0.0,
         'terminal': 0.0,
@@ -568,6 +528,7 @@ def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_h
         'opponent_choice': 0.0,
         'traverse_routing': 0.0,
     }
+    HAND_STRENGTH_CACHE.clear()
     
     t_total_start = time.time()
     
@@ -619,14 +580,11 @@ def main():
     parser.add_argument('--player', type=int, required=True)
     parser.add_argument('--public-tree', required=True)
     parser.add_argument('--strategy', required=True)
-    parser.add_argument('--num-workers', type=int, default=4, 
-                        help='Number of parallel workers (default: None = sequential)')
     args = parser.parse_args()
     
     tree = load_public_tree(args.public_tree)
     avg_strategy = load_average_strategy(args.strategy)
-    value = compute_best_response_value(args.game, args.player, tree, avg_strategy, 
-                                       root_hist=(), num_workers=args.num_workers)
+    value = compute_best_response_value(args.game, args.player, tree, avg_strategy, root_hist=())
     print(f"best_response_value={value}")
 
 

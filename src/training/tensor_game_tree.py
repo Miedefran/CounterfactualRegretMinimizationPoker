@@ -2,6 +2,8 @@ import torch
 import numpy as np
 import os
 import time
+import gzip
+import pickle
 from utils.data_models import KeyGenerator
 
 class TensorizedGameTree:
@@ -18,7 +20,8 @@ class TensorizedGameTree:
                  depths: np.ndarray,
                  roots: np.ndarray,
                  num_actions: int,
-                 infoset_counts: int):
+                 infoset_counts: int,
+                 infoset_keys_map: dict = None):
         
         self.node_types = node_types # 0: Terminal, 1: Decision
         self.players = players
@@ -29,6 +32,7 @@ class TensorizedGameTree:
         self.roots = roots
         self.num_actions = num_actions
         self.infoset_counts = infoset_counts
+        self.infoset_keys_map = infoset_keys_map  # {key: infoset_id}
 
     def save(self, filepath):
         """Saves the tree using numpy compressed format"""
@@ -43,6 +47,13 @@ class TensorizedGameTree:
             roots=self.roots,
             meta=np.array([self.num_actions, self.infoset_counts])
         )
+        
+        if self.infoset_keys_map is not None:
+            keys_path = filepath.replace('.npz', '_keys.pkl.gz')
+            with gzip.open(keys_path, 'wb') as f:
+                pickle.dump(self.infoset_keys_map, f)
+            print(f"Infoset keys map saved to {keys_path}")
+        
         print(f"Tensorized tree saved to {filepath}")
 
     @classmethod
@@ -51,6 +62,18 @@ class TensorizedGameTree:
         print(f"Loading tensor tree from {filepath}...")
         t0 = time.time()
         data = np.load(filepath)
+        
+        keys_path = filepath.replace('.npz', '_keys.pkl.gz')
+        infoset_keys_map = None
+        if os.path.exists(keys_path):
+            try:
+                with gzip.open(keys_path, 'rb') as f:
+                    infoset_keys_map = pickle.load(f)
+                print(f"Infoset keys map loaded from {keys_path}")
+            except Exception as e:
+                print(f"Warning: Could not load infoset keys map: {e}")
+        else:
+            print(f"Warning: No infoset keys map found at {keys_path} (tree may be old format)")
         
         tree = cls(
             node_types=data['node_types'],
@@ -61,7 +84,8 @@ class TensorizedGameTree:
             depths=data['depths'],
             roots=data['roots'],
             num_actions=int(data['meta'][0]),
-            infoset_counts=int(data['meta'][1])
+            infoset_counts=int(data['meta'][1]),
+            infoset_keys_map=infoset_keys_map
         )
         print(f"Tree loaded in {time.time() - t0:.4f}s")
         return tree
@@ -183,7 +207,8 @@ def build_tensor_tree(game, combination_generator):
         depths=depths,
         roots=roots,
         num_actions=num_actions,
-        infoset_counts=next_infoset_id
+        infoset_counts=next_infoset_id,
+        infoset_keys_map=infoset_map
     )
     
     print(f"Tree built in {time.time() - start_time:.2f}s")
