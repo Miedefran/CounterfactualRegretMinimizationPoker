@@ -10,6 +10,8 @@ from training.fold_solver import AlwaysFoldSolver
 from training.mccfr_solver import MCCFRSolver
 from training.tensor_cfr_solver import TensorCFRSolver
 from training.cfr_solver_with_tree import CFRSolverWithTree
+from training.chance_sampling_cfr_solver import ChanceSamplingCFRSolver
+from training.external_sampling_cfr_solver import ExternalSamplingCFRSolver
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
@@ -37,7 +39,7 @@ def main():
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
     parser.add_argument('algorithm', type=str,
-                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree'],
+                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling'],
                        nargs='?',
                        default='cfr',
                        help='Algorithm to use (default: cfr)')
@@ -81,6 +83,12 @@ def main():
     elif args.algorithm == 'cfr_with_tree':
         # Übergebe game_name für automatisches Laden des Trees
         solver = CFRSolverWithTree(game, combo_gen, game_name=args.game)
+    elif args.algorithm == 'chance_sampling':
+        # Übergebe game_name für automatisches Laden des Trees
+        solver = ChanceSamplingCFRSolver(game, combo_gen, game_name=args.game)
+    elif args.algorithm == 'external_sampling':
+        # Übergebe game_name für automatisches Laden des Trees
+        solver = ExternalSamplingCFRSolver(game, combo_gen, game_name=args.game)
     
     # Best Response Tracker initialisieren falls gewünscht
     br_tracker = None

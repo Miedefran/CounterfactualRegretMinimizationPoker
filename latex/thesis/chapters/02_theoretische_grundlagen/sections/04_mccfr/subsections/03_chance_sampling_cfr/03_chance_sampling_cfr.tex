@@ -1,0 +1,7 @@
+\subsection{Chance Sampling CFR}
+
+Chance Sampling CFR ist ein Spezialfall des MCCFR Frameworks, bei dem nur die Zufallsereignisse gesampelt werden (\cite{lanctot2009monte}).
+In jeder Iteration wird ein bestimmter Kartendeal gesampelt, wobei jeder Block $Q_j$ genau einem Kartendeal entspricht.
+Nach dem Sampling wird der gesamte Subtree für diesen Deal traversiert, das heißt, alle Spieleraktionen werden betrachtet.
+Dies unterscheidet Chance Sampling CFR von External Sampling MCCFR, bei dem zusätzlich die Aktionen des Gegners gesampelt werden.
+Die theoretischen Eigenschaften wie Unverzerrtheit und Konvergenz ergeben sich direkt aus dem MCCFR Framework.
