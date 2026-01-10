@@ -46,24 +46,25 @@ GAME_CONFIGS = {
 }
 
 def get_model_path(game, iterations, algorithm='cfr'):
-    base_dir = 'models'
+    base_dir = 'data/models'
     filename = f"{game}_{iterations}.pkl.gz"
+    iterations_dir = str(iterations)
     
     if game.startswith('kuhn'):
         case = game.split('_')[1]
-        path = os.path.join(base_dir, 'kuhn', case, algorithm, filename)
+        path = os.path.join(base_dir, 'kuhn', case, algorithm, iterations_dir, filename)
     elif game == 'leduc':
-        path = os.path.join(base_dir, 'leduc', algorithm, filename)
+        path = os.path.join(base_dir, 'leduc', algorithm, iterations_dir, filename)
     elif game == 'rhode_island':
-        path = os.path.join(base_dir, 'rhode_island', algorithm, filename)
+        path = os.path.join(base_dir, 'rhode_island', algorithm, iterations_dir, filename)
     elif game == 'twelve_card_poker':
-        path = os.path.join(base_dir, 'twelve_card_poker', algorithm, filename)
+        path = os.path.join(base_dir, 'twelve_card_poker', algorithm, iterations_dir, filename)
     elif game == 'royal_holdem':
-        path = os.path.join(base_dir, 'royal_holdem', algorithm, filename)
+        path = os.path.join(base_dir, 'royal_holdem', algorithm, iterations_dir, filename)
     elif game == 'limit_holdem':
-        path = os.path.join(base_dir, 'limit_holdem', algorithm, filename)
+        path = os.path.join(base_dir, 'limit_holdem', algorithm, iterations_dir, filename)
     else:
-        path = os.path.join(base_dir, algorithm, filename)
+        path = os.path.join(base_dir, algorithm, iterations_dir, filename)
     
     os.makedirs(os.path.dirname(path), exist_ok=True)
     return path

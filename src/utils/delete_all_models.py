@@ -32,15 +32,15 @@ def main():
         raise SystemExit("Use only one of --game or --keep-game.")
 
     if args.game:
-        pattern = f"models/{args.game}/**/*.pkl.gz"
+        pattern = f"data/models/{args.game}/**/*.pkl.gz"
     elif args.keep_game:
-        pattern = "models/**/*.pkl.gz"
+        pattern = "data/models/**/*.pkl.gz"
     else:
-        pattern = "models/**/*.pkl.gz"
+        pattern = "data/models/**/*.pkl.gz"
 
     model_files = glob.glob(pattern, recursive=True)
     if args.keep_game:
-        keep_prefix = f"models/{args.keep_game}/"
+        keep_prefix = f"data/models/{args.keep_game}/"
         model_files = [p for p in model_files if not p.startswith(keep_prefix)]
     
     if not model_files:

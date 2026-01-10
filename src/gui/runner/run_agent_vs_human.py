@@ -14,9 +14,9 @@ from gui.agent_vs_human import AgentVsHumanGUI
 def find_leduc_strategy(project_root):
     """Sucht nach einer Leduc-Strategy-Datei in verschiedenen möglichen Verzeichnissen."""
     possible_paths = [
-        project_root / 'models' / 'leduc' / 'cfr' / 'leduc_1000.pkl.gz',
-        project_root / 'models' / 'leduc' / 'leduc_1000.pkl.gz',
-        project_root / 'models' / 'leduc.pkl.gz',
+        project_root / 'data' / 'models' / 'leduc' / 'cfr' / 'leduc_1000.pkl.gz',
+        project_root / 'data' / 'models' / 'leduc' / 'leduc_1000.pkl.gz',
+        project_root / 'data' / 'models' / 'leduc.pkl.gz',
         project_root / 'leduc_1000.pkl.gz',
     ]
     
@@ -51,7 +51,7 @@ def main():
     if args.game == 'kuhn':
         game = KuhnPokerGame(ante=1, bet_size=1)
         if not strategy_file:
-            default_strategy = project_root / 'models' / 'kuhn' / 'case2' / 'cfr' / 'kuhn_case2_100000.pkl.gz'
+            default_strategy = project_root / 'data' / 'models' / 'kuhn' / 'case2' / 'cfr' / 'kuhn_case2_100000.pkl.gz'
             if default_strategy.exists():
                 strategy_file = str(default_strategy)
                 print(f"Using default Kuhn strategy: {strategy_file}")

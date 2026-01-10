@@ -161,15 +161,14 @@ def save_game_tree(tree, game_name, output_dir=None):
     Args:
         tree: GameTree Objekt
         game_name: Name des Spiels (für Dateinamen)
-        output_dir: Optionales Verzeichnis (default: trees/game_trees)
+        output_dir: Optionales Verzeichnis (default: data/trees/game_trees/normal)
     
     Returns:
         Pfad zur gespeicherten Datei
     """
     if output_dir is None:
-        # Relativ zum Projekt-Root
         script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        output_dir = os.path.join(script_dir, 'trees', 'game_trees')
+        output_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'normal')
     
     os.makedirs(output_dir, exist_ok=True)
     filename = f"{game_name}_game_tree.pkl.gz"
@@ -190,15 +189,14 @@ def load_game_tree(game_name, input_dir=None):
     
     Args:
         game_name: Name des Spiels (für Dateinamen)
-        input_dir: Optionales Verzeichnis (default: trees/game_trees)
+        input_dir: Optionales Verzeichnis (default: data/trees/game_trees/normal)
     
     Returns:
         GameTree Objekt
     """
     if input_dir is None:
-        # Relativ zum Projekt-Root
         script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        input_dir = os.path.join(script_dir, 'trees', 'game_trees')
+        input_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'normal')
     
     filename = f"{game_name}_game_tree.pkl.gz"
     filepath = os.path.join(input_dir, filename)

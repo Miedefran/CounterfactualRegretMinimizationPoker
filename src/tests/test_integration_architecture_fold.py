@@ -26,7 +26,7 @@ def test_pipeline_new_architecture_fold():
         "uv run python src/evaluation/best_response_agent_v2.py "
         "--game leduc --player 0 "
         "--public-tree evaluation/public_state_trees/leduc_public_tree_v2.pkl.gz "
-        "--strategy models/leduc/fold/leduc_1.pkl.gz"
+        "--strategy data/models/leduc/fold/leduc_1.pkl.gz"
     )
     res_p0 = run_command(cmd_p0)
     assert res_p0.returncode == 0
@@ -36,7 +36,7 @@ def test_pipeline_new_architecture_fold():
         "uv run python src/evaluation/best_response_agent_v2.py "
         "--game leduc --player 1 "
         "--public-tree evaluation/public_state_trees/leduc_public_tree_v2.pkl.gz "
-        "--strategy models/leduc/fold/leduc_1.pkl.gz"
+        "--strategy data/models/leduc/fold/leduc_1.pkl.gz"
     )
     res_p1 = run_command(cmd_p1)
     assert res_p1.returncode == 0

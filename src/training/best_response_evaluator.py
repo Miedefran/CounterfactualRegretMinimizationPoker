@@ -56,8 +56,8 @@ def get_public_state_tree_path(game_name):
     else:
         save_name = game_name
     
-    # Public state trees werden in src/evaluation/public state trees/ gespeichert
-    base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'evaluation', 'public state trees')
+    script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    base_dir = os.path.join(script_dir, 'data', 'trees', 'public_state_trees')
     filename = f"{save_name}_public_tree_v2.pkl.gz"
     path = os.path.join(base_dir, filename)
     

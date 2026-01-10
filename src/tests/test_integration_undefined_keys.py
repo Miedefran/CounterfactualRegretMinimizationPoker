@@ -31,7 +31,7 @@ def test_pipeline_undefined_keys():
         "uv run python src/evaluation/best_response_agent_v2.py "
         "--game leduc --player 0 "
         "--public-tree evaluation/public_state_trees/leduc_public_tree_v2.pkl.gz "
-        "--strategy models/leduc/fold/leduc_1.pkl.gz"
+        "--strategy data/models/leduc/fold/leduc_1.pkl.gz"
     )
     res_eval = run_command(cmd_eval)
     assert res_eval.returncode == 0, f"Evaluation failed: {res_eval.stderr}"

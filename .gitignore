@@ -31,9 +31,8 @@ ENV/
 *.log
 
 # Trained models
-*.pkl
-*.pkl.gz
-models/
+data/models/
+data/tree
 
 # Development files
 PROMPT_CURSOR.md
@@ -74,9 +73,12 @@ test_data/TESTING_NOTES.md
 # *.pdf
 *.md
 
+
 # Reference projects and literature
 githubProjects/
 Literatur/
 NGROK_ANLEITUNG.md
 
+# Random bullshit
+random_bullshit/
 

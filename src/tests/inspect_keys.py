@@ -2,7 +2,7 @@ import pickle
 import gzip
 import sys
 
-# Usage: python inspect_keys.py models/leduc/fold/leduc_1.pkl.gz
+# Usage: python inspect_keys.py data/models/leduc/fold/leduc_1.pkl.gz
 def inspect(path):
     with gzip.open(path, 'rb') as f:
         data = pickle.load(f)

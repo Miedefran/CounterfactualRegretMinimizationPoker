@@ -216,6 +216,6 @@ def build_tensor_tree(game, combination_generator):
 
 def get_tree_path(game_name):
     script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    output_dir = os.path.join(script_dir, 'trees', 'tensor_trees')
+    output_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'tensor')
     os.makedirs(output_dir, exist_ok=True)
     return os.path.join(output_dir, f"{game_name}_tensor_tree.npz")
