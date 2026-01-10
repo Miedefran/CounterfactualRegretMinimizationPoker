@@ -32,7 +32,7 @@ ENV/
 
 # Trained models
 data/models/
-data/tree
+data/trees
 
 # Development files
 PROMPT_CURSOR.md
