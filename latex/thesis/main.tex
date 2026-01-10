@@ -27,6 +27,22 @@
 \usepackage{comment}
 \usepackage[hidelinks]{hyperref}
 \setlength{\parskip}{1.5ex plus 0.5ex minus 0.2ex}
+\setlength{\headsep}{18pt}
+
+\makeatletter
+\renewcommand{\@makechapterhead}[1]{%
+  \vspace*{40pt}%
+  {\parindent \z@ \raggedright \normalfont
+    \ifnum \c@secnumdepth >\m@ne
+        \huge\bfseries \@chapapp\space \thechapter
+        \par\nobreak
+        \vskip 20\p@
+    \fi
+    \interlinepenalty\@M
+    \Huge \bfseries #1\par\nobreak
+    \vskip 40\p@
+  }}
+\makeatother
 
 %%
 %% Pfad zu den Bildern
@@ -42,7 +58,7 @@
 %% Titel, Autor und Betreuer
 %%
 \fachbereich{VI -- Informatik und Medien} 
-\studiengang{Informatik}
+\studiengang{Technische Informatik}
 \autor{Friedemann Doll}
 \edvnr{924315}
 \titel{Implementierung von Counterfactual Regret Minimization in zunehmend komplexen Pokervarianten} 

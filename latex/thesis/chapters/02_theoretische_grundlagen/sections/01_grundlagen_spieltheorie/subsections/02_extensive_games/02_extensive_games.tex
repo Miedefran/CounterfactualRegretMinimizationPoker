@@ -1,6 +1,6 @@
 \subsection{Extensive Games with Imperfect Information}
-Pokerspiele sind extensive Spiele mit imperfekter Information. 
-Da diese Arbeit CFR in Pokervarianten implementiert, wird dieser Spieltyp im Folgenden detailliert betrachtet.
+Nachdem die grundlegenden Konzepte der Spieltheorie eingeführt wurden, widmet sich dieses Kapitel den extensiven Spielen mit imperfekter Information.
+Diese Spielklasse ist für die vorliegende Arbeit von zentraler Bedeutung, da die meisten Pokerspiele, insbesondere Hold'em-Varianten, zu den extensiven Spielen mit imperfekter Information gehören.
 
 \subsubsection{Definition}
 Ein extensives Spiel mit imperfekter Information modelliert eine sequenzielle Interaktion zwischen Spielern, bei der nicht alle Spieler stets vollständig über alle vergangenen Aktionen informiert sind. 
@@ -12,20 +12,21 @@ Dies kann sowohl vergangene Aktionen anderer Spieler als auch Ausgänge von Zufa
 
 Ein extensives Spiel mit imperfekter Information lässt sich formal durch folgende Komponenten definieren:
 \begin{itemize}
-  \item Eine Menge $H$ von Historien. 
-  Eine Historie ist eine Sequenz (endlich oder unendlich) von Aktionen, getätigt von Spielern oder dem Zufall.
+  \item Eine Menge von Historien $H$.
+  Eine Historie ist eine endliche oder unendliche Sequenz von Aktionen, getätigt von Spielern oder dem Zufall.\\
   Die Menge $H$ erfüllt folgende Eigenschaften:
   \begin{itemize}
     \item Die leere Sequenz $\emptyset$ ist ein Element von $H$.
     \item Ist $(a^k)_{k=1,\dots,K} \in H$ (wobei $K$ unendlich sein kann) und $L < K$, dann gilt $(a^k)_{k=1,\dots,L} \in H$.
-    Das bedeutet, wenn eine Sequenz in $H$ ist, dann ist auch jeder Präfix dieser Sequenz in $H$.
+    Das bedeutet, wenn eine Sequenz ein Teil von $H$ ist, dann ist auch jeder Präfix dieser Sequenz ein Teil von $H$.
     \item Wenn für eine unendliche Folge $(a^k)_{k=1}^\infty$ die Bedingung $(a^k)_{k=1,\dots,L} \in H$ für jede positive ganze Zahl $L$ erfüllt ist, dann gilt $(a^k)_{k=1}^\infty \in H$.
   \end{itemize}
   \item Eine Historie $(a^k)_{k=1,\dots,K} \in H$ ist terminal, wenn sie unendlich ist oder wenn kein $a^{K+1}$ existiert, so dass $(a^k)_{k=1,\dots,K+1} \in H$ gilt. 
-  Die Menge aller terminalen Historien wird mit $Z$ bezeichnet. 
+Man bezeichnet die Menge aller terminalen Historien mit $Z$.\\
   Die Menge der Aktionen, die nach einer nicht-terminalen Historie $h$ verfügbar sind, wird mit $A(h) = \{a : (h,a) \in H\}$ bezeichnet.
-  \item Die Funktion $P$ ordnet jeder nicht-terminalen Historie $h \in H \setminus Z$ einen Spieler aus $N$ oder $c$ zu. $P(h)$ ist der Spieler, der nach $h$ am Zug ist. 
-  Ist $P(h) = c$, wählt der Zufall die nächste Aktion.
+  \item Die Funktion $P$ ordnet jeder nicht-terminalen Historie $h \in H \setminus Z$ einen Spieler aus $N$ oder $c$ zu.
+  $P(h)$ bezeichnet den Spieler, der nach $h$ am Zug ist. 
+  In dem Fall, das $P(h) = c$ ist, bestimmt der Zufall die nächste Aktion.
   \item Die Funktion $f_c$ ordnet jeder Historie $h$ mit $P(h) = c$ eine Zufallsverteilung $f_c(\cdot \mid h)$ auf $A(h)$ zu.
   $f_c(a \mid h)$ ist die Wahrscheinlichkeit, dass nach $h$ die Aktion $a$ folgt. 
   Diese Verteilungen sind unabhängig voneinander.
@@ -42,33 +43,30 @@ Ein extensives Spiel mit imperfekter Information lässt sich formal durch folgen
   Es existiert eine Nutzenfunktion $u_i: Z \to \mathbb{R}$, so dass für zwei Lotterien $L_1, L_2$ gilt:
   $L_1 \succeq_i L_2 \iff \mathbb{E}[u_i \mid L_1] \ge \mathbb{E}[u_i \mid L_2]$
 \end{itemize}
+Formale Definition entspricht~\cite[Ch.~11, Sec.~11.1, Def.~200.1]{osborne1994course}.
 
+\subsubsection{Strategien}
 \begin{comment}
-  Pure/behavioral strategies
-  Gemischte Strategien
-  Nash-Gleichgewicht im extensiven Spiel
-  Perfect recall hast du bereits. Ein Einzeiler kann die Relevanz für die Äquivalenz von behavioral vs. mixed betonen.
+  Hier nochmal sprachlich und inhaltlich anpassen
 \end{comment}
-\newpage
-\subsubsection{Strategie}
-\begin{comment}
-  Hier nochmal sprachlich und inhlatlich anpassen
-\end{comment}
-Eine reine Strategie von Spieler $i \in N$ ordnet jedem Informationsset $I \in \mathcal{I}_i$ genau eine zulässige Aktion $\sigma_i(I) \in A(I)$ zu. 
-Sie legt somit einen vollständigen Handlungsplan für alle Informationslagen von $i$ fest.
-Eine gemischte Strategie $\alpha_i$ ist eine Wahrscheinlichkeitsverteilung über der Menge der reinen Strategien von $i$.
-Eine behaviorale Strategie $\beta_i$ weist für jedes Informationsset $I \in \mathcal{I}_i$ eine Verteilung $\beta_i(\cdot \mid I)$ über $A(I)$ zu.
+In extensiven Spielen mit imperfekter Information gibt es verschiedene Möglichkeiten, wie die Strategien von Spielern definiert sein können.\\
+Eine reine Strategie von Spieler $i \in N$ ordnet jedem Informationsset $I \in \mathcal{I}_i$ genau eine zulässige Aktion $\sigma_i(I) \in A(I)$ zu.
+Sie legt somit einen vollständigen Handlungsplan für alle Informationslagen von $i$ fest.\\
+Eine gemischte Strategie $\alpha_i$ ist eine Wahrscheinlichkeitsverteilung über der Menge der reinen Strategien von $i$.\\
+Eine behavioral Strategie $\beta_i$ hingegen ist eine Sammlung unabhängiger Wahrscheinlichkeitsverteilungen $(\beta_i(I))_{I \in \mathcal{I}_i}$, wobei $\beta_i(I)$ eine Wahrscheinlichkeitsverteilung über die Aktionen $A(I)$ am Informationsset $I$ ist~\cite[Ch.~11, Sec.~11.4, Def.~212.1]{osborne1994course}.\\
 Der Unterschied liegt darin, dass bei einer gemischten Strategie vor Spielbeginn zufällig eine komplette reine Strategie ausgewählt wird, die dann während des gesamten Spiels deterministisch befolgt wird.
-Bei einer behavioralen Strategie wird hingegen an jedem Informationsset unabhängig eine Wahrscheinlichkeitsverteilung über die verfügbaren Aktionen verwendet, sodass die zufällige Auswahl der Aktionen während des Spiels erfolgt.
-Unter der Annahme von perfect recall erzeugen beide Repräsentationen dieselben Wahrscheinlichkeitsverteilungen über die Endzustände des Spiels.\footnote{\cite[Ch.~11, Sec.~11.1–11.2]{osborne1994course}}
+Im Gegensatz dazu wird bei einer behavioral Strategie in jedem Informationsset unabhängig eine Wahrscheinlichkeitsverteilung über die verfügbaren Aktionen verwendet, sodass die zufällige Auswahl der Aktionen während des Spiels erfolgt~\cite[Ch.~11, Sec.~11.4]{osborne1994course}.\\
+Ein extensives Spiel hat perfect recall, wenn jeder Spieler zu jedem Zeitpunkt alles erinnert, was er in der Vergangenheit wusste und welche Aktionen er selbst getroffen hat~\cite[Ch.~11, Sec.~11.1]{osborne1994course}.\\
+Unter der Annahme von perfect recall erzeugen beide Repräsentationen outcome-\\äquivalente Wahrscheinlichkeitsverteilungen über die terminalen Historien\\~\cite[Ch.~11, Sec.~11.4, Prop.~214.1]{osborne1994course}.
 
-Ein Profil behavioraler Strategien $\beta=(\beta_i)_{i\in N}$ zusammen mit den Zufallszügen $f_c$ bestimmt eine Wahrscheinlichkeitsverteilung über die terminalen Historien $Z$.
+Ein Profil von behavioral Strategien $\beta=(\beta_i)_{i\in N}$ zusammen mit den Zufallszügen $f_c$ bestimmt eine Wahrscheinlichkeitsverteilung über die terminalen Historien $Z$.
 Daraus lässt sich für jede Auszahlungsfunktion $u_i$ der Erwartungswert $\mathbb{E}[u_i \mid \beta, f_c]$ berechnen.
-Ein Nash‑Gleichgewicht ist ein Strategienprofil, in dem kein Spieler seinen erwarteten Nutzen durch eine einseitige Abweichung seiner Strategie verbessern kann.
-Formal ist ein Strategienprofil $\sigma^*$ ein Nash‑Gleichgewicht in gemischten Strategien, wenn für jeden Spieler $i \in N$ gilt:
+
+Ein Nash‑Gleichgewicht beschreibt ein Strategienprofil, bei dem kein Spieler durch eine einseitige Änderung seiner Strategie seinen erwarteten Nutzen erhöhen kann.
+Formal ist ein Strategienprofil $\sigma^*$ ein Nash‑Gleichgewicht in gemischten Strategien, wenn für jeden Spieler $i \in N$ und für jede gemischte Strategie $\sigma_i$ von Spieler $i$ die Bedingung
 \begin{equation}
 O(\sigma_{-i}^*, \sigma_i^*) \succeq_i O(\sigma_{-i}^*, \sigma_i)
 \end{equation}
-für jede gemischte Strategie $\sigma_i$ von Spieler $i$, wobei $O(\sigma)$ die durch $\sigma$ entstehende Lotterie über Endzuständen ist.
+erfüllt ist, wobei $O(\sigma)$ die durch das Strategienprofil $\sigma$ entstehende Lotterie über Endzuständen bezeichnet~\cite[Ch.~11, Sec.~11.5]{osborne1994course}.
 
 

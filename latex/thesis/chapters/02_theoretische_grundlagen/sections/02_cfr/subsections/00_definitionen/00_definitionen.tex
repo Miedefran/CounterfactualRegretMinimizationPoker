@@ -1,14 +1,45 @@
 \subsection{Definitionen}
 
+Dieser Abschnitt führt die grundlegenden Definitionen und Konzepte ein, die für das Verständnis von Counterfactual Regret Minimization notwendig sind.
+
+\subsubsection{Wahrscheinlichkeiten und Werte}
+
 Für ein Strategieprofil $\sigma$ definieren wir folgende Wahrscheinlichkeiten und Werte:
 
-\begin{itemize}
-\item $\pi^\sigma(h)$ bezeichnet die Wahrscheinlichkeit, dass History $h$ auftritt, wenn alle Spieler gemäß $\sigma$ handeln.
-\item $\pi^\sigma(h)$ kann in ein Produkt zerlegt werden: $\pi^\sigma = \prod_{i \in N \cup \{c\}} \pi_i^\sigma(h)$, welches sich zusammensetzt aus den Wahrscheinlichkeiten der einzelnen Spieler und des Zufalls
-\item $\pi_i^\sigma(h)$ ist die Wahrscheinlichkeit, dass Spieler $i$ in all seinen Entscheidungsknoten auf dem Pfad zu $h$ gemäß $\sigma$ die Aktionen gewählt hat, die zu $h$ führen.
-\item $\pi_{-i}^\sigma(h)$ ist das Produkt der Wahrscheinlichkeiten aller anderen Spieler (inklusive Chance), die auf dem Pfad zu $h$ auftreten.
-\item Für ein Informationsset $I$ ist $\pi^\sigma(I) = \sum_{h \in I} \pi^\sigma(h)$ die Wahrscheinlichkeit, $I$ zu erreichen.
-%\item $\pi_i^\sigma(I)$ und $\pi_{-i}^\sigma(I)$ sind analog definiert.
-\item Der Overall Value $u_i(\sigma)$ gibt den erwarteten Payoff für Spieler $i$ unter Strategieprofil $\sigma$ an.
-Er berechnet sich als Summe über alle terminalen Histories $h$, wobei für jedes Spielende der Payoff $u_i(h)$ mit der Wahrscheinlichkeit $\pi^\sigma(h)$, dass dieses Spielende erreicht wird, multipliziert wird: $u_i(\sigma) = \sum_{h \in Z} u_i(h) \pi^\sigma(h)$.
-\end{itemize}
+Die Wahrscheinlichkeit, dass eine History $h$ auftritt, wenn alle Spieler gemäß $\sigma$ handeln, bezeichnen wir mit $\pi^\sigma(h)$.
+Diese Wahrscheinlichkeit kann in ein Produkt zerlegt werden:
+\begin{equation}
+\pi^\sigma(h) = \prod_{i \in N \cup \{c\}} \pi_i^\sigma(h),
+\end{equation}
+wobei $\pi_i^\sigma(h)$ die Wahrscheinlichkeit bezeichnet, dass Spieler $i$ in all seinen Entscheidungsknoten auf dem Pfad zu $h$ gemäß $\sigma$ die Aktionen gewählt hat, die zu $h$ führen.
+Das Produkt der Wahrscheinlichkeiten aller anderen Spieler (inklusive Chance) bezeichnen wir mit $\pi_{-i}^\sigma(h)$.
+
+Für ein Informationsset $I$ definieren wir die Erreichbarkeitswahrscheinlichkeit als
+\begin{equation}
+\pi^\sigma(I) = \sum_{h \in I} \pi^\sigma(h).
+\end{equation}
+Analog definieren wir $\pi_i^\sigma(I)$ und $\pi_{-i}^\sigma(I)$ als die Wahrscheinlichkeiten, dass Spieler $i$ beziehungsweise die anderen Spieler das Informationsset $I$ erreichen.
+
+Der erwartete Payoff für Spieler $i$ unter Strategieprofil $\sigma$, auch \emph{Overall Value} genannt, berechnet sich als
+\begin{equation}
+u_i(\sigma) = \sum_{h \in Z} u_i(h) \pi^\sigma(h),
+\end{equation}
+
+
+\subsubsection{Nash Gleichgewicht}
+
+Ein Nash Gleichgewicht für ein Zweispieler Nullsummenspiel ist ein Strategieprofil $\sigma = (\sigma_1, \sigma_2)$, welches folgende Ungleichungen erfüllt:
+\begin{equation}
+u_1(\sigma) \ge \max_{\sigma_1' \in \Sigma_1} u_1(\sigma_1', \sigma_2),
+\qquad
+u_2(\sigma) \ge \max_{\sigma_2' \in \Sigma_2} u_2(\sigma_1, \sigma_2')
+\end{equation}
+(\cite[Eq.~1]{zinkevich2007regret}).
+
+Eine Approximation eines Nash Gleichgewichts, auch $\varepsilon$-Nash Gleichgewicht genannt, ist ein Strategieprofil $\sigma$, welches folgende Ungleichungen erfüllt:
+\begin{equation}
+u_1(\sigma) + \varepsilon \ge \max_{\sigma_1' \in \Sigma_1} u_1(\sigma_1', \sigma_2),
+\qquad
+u_2(\sigma) + \varepsilon \ge \max_{\sigma_2' \in \Sigma_2} u_2(\sigma_1, \sigma_2')
+\end{equation}
+(\cite[Eq.~2]{zinkevich2007regret}).

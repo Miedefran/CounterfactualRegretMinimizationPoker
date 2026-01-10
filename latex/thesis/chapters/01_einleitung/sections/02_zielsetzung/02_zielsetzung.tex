@@ -1,3 +1,29 @@
 \section{Zielsetzung und Fragestellungen}
 
+\begin{comment}
+
+\end{comment}
+
+%Praktischer Ansatz 
+Im Rahmen dieser Arbeit wird Counterfactual Regret Minimization implementiert und auf verschiedenen Pokervarianten unterschiedlicher Komplexität angewendet.
+Dabei soll untersucht werden, wie sich die Leistungsfähigkeit des Algorithmus mit steigender Spielkomplexität in Bezug auf Parameter wie Laufzeit und Speicherbedarf verhält.
+Außerdem wird ermittelt, ab welchem Komplexitätsgrad algorithmische und implementierungsspezifische Optimierungsverfahren notwendig werden.
+
+%Was war ursprünglich geplant
+Ursprünglich waren im Exposé drei Pokervarianten geplant: Kuhn Poker als einfachste Variante, Leduc Hold'em als etabliertes Forschungsspiel und eine selbst entwickelte Pokervariante mit zwölf Karten als Zwischenstufe der Komplexität. 
+Zusätzlich sollten alternative Versionen wie CFR+ und Monte Carlo CFR implementiert werden, um deren Auswirkungen auf verschiedene Parameter des Lernprozesses zu untersuchen. 
+Zur Evaluation der Qualität trainierter Strategien wird deren Ausnutzbarkeit mittels des Best Response Agents ermittelt.
+
+%TODO: Hypothesen nochmal überarbeiten
+%Forschungsfragen
+Zur Beantwortung der genannten Ziele werden folgende Forschungsfragen untersucht:
+\begin{enumerate}
+    \item \textbf{Komplexitätsverhalten:} Wie verhält sich CFR bei zunehmender Spielkomplexität? Welche Faktoren wie Anzahl der Karten, Betting-Runden oder Bet-Limits beeinflussen die Konvergenzgeschwindigkeit und den Ressourcenbedarf am stärksten?
+    
+    \item \textbf{Optimierungsverfahren:} Ab welchem Komplexitätsgrad werden Optimierungsverfahren wie CFR+ oder MCCFR zwingend erforderlich? Welche Verbesserungen können durch diese Varianten erzielt werden?
+    
+    \item \textbf{Skalierbarkeit:} Welche Grenzen existieren für die direkte Anwendung von CFR ohne weitere Abstraktionstechniken? Bis zu welcher Komplexität können Pokervarianten erfolgreich gelöst werden?
+    
+    \item \textbf{Algorithmenvergleich:} Wie unterscheiden sich die verschiedenen CFR-Varianten hinsichtlich Konvergenzgeschwindigkeit, Speicherverbrauch und finaler Strategiequalität?
+\end{enumerate}
 

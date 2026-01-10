@@ -57,11 +57,25 @@ test_data/TESTING_NOTES.md
 *.bbl
 *.blg
 *.npz
+*.glo
+*.gls
+*.glsdefs
+*.acn
+*.acr
+*.alg
+*.ist
+*.idx
+*.ilg
+*.ind
+*.xdy
 
 # LaTeX output (keep main.pdf)
 # *.pdf
+*.md
 
 # Reference projects and literature
 githubProjects/
 Literatur/
 NGROK_ANLEITUNG.md
+
+
