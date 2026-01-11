@@ -68,11 +68,11 @@ test_data/TESTING_NOTES.md
 *.ilg
 *.ind
 *.xdy
-
+*.ping
 # LaTeX output (keep main.pdf)
 # *.pdf
 *.md
-
+*.png
 
 # Reference projects and literature
 githubProjects/
@@ -82,3 +82,4 @@ NGROK_ANLEITUNG.md
 # Random bullshit
 random_bullshit/
 
+external/

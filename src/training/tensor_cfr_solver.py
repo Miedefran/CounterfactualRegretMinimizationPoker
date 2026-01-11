@@ -139,13 +139,15 @@ class TensorCFRSolver:
                 # Best Response Evaluation
                 if br_tracker is not None and br_tracker.should_evaluate(i):
                     current_avg_strategy = self.get_average_strategy()
-                    br_tracker.evaluate_and_add(current_avg_strategy, i)
+                    # Zeit wird automatisch in evaluate_and_add berechnet wenn start_time gegeben
+                    br_tracker.evaluate_and_add(current_avg_strategy, i, start_time=start_time)
                     br_tracker.last_eval_iteration = i
         
         # Finale Best Response Evaluation
         if br_tracker is not None:
             current_avg_strategy = self.get_average_strategy()
-            br_tracker.evaluate_and_add(current_avg_strategy, iterations)
+            # Zeit wird automatisch in evaluate_and_add berechnet wenn start_time gegeben
+            br_tracker.evaluate_and_add(current_avg_strategy, iterations, start_time=start_time)
         
         total_time = time.time() - start_time
         

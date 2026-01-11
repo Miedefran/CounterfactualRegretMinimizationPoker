@@ -68,3 +68,12 @@ R_i^T \le \left(1 + \sqrt{\frac{2}{p}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqr
 Obwohl External Sampling die gleiche Ordnung von Iterationen benötigt wie Vanilla CFR, muss der Algorithmus in jeder Iteration nur einen Bruchteil des Spielbaums traversieren.
 Für ausgewogene Spiele, in denen die Spieler ungefähr gleich viele Entscheidungen treffen, betragen die Iterationskosten von External Sampling $O(\sqrt{|H|})$, während Vanilla CFR $O(|H|)$ benötigt.
 Dies bedeutet, dass External Sampling MCCFR asymptotisch weniger Zeit benötigt, um ein approximatives Gleichgewicht zu berechnen als Vanilla CFR (\cite{lanctot2009monte}).
+
+Für Outcome Sampling MCCFR kann ebenfalls ein probabilistisches Regret Bound angegeben werden.
+Falls für jede terminal history $z \in Z$ entweder $\pi_{-i}^\sigma(z) = 0$ oder $q(z) \ge \delta > 0$ zu jedem Zeitpunkt gilt, dann gilt für jeden Parameter $p \in (0, 1]$ mit Wahrscheinlichkeit mindestens $1-p$:
+\begin{equation}
+R_i^T \le \left(1 + \sqrt{\frac{2}{p}} \cdot \frac{1}{\sqrt{\delta}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T}.
+\end{equation}
+(\cite[Thm.~5]{lanctot2009monte})
+Im Vergleich zu External Sampling enthält diese Schranke einen zusätzlichen Faktor $\frac{1}{\sqrt{\delta}}$, der von der Wahl der sampling policy abhängt.
+Je größer $\delta$ ist, desto besser ist die Schranke, was bedeutet, dass die sampling policy eine ausreichend große Wahrscheinlichkeit für alle relevanten terminal histories gewährleisten sollte.

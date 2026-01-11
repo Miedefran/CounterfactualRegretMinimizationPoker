@@ -1,7 +1,12 @@
-\section{MCCFR}
+\section{Monte Carlo CFR}
+
+Der CFR Algorithmus benötigt in jeder Iteration eine vollständige Traversierung des game trees.
+Monte Carlo CFR ist ein Framework von Algorithmen welchen diesen Aufwand durch verschiedene Sampling Varianten reduziert.
+In diesem Kapitel wird zuerst die Grundidee des Frameworks erklärt und anschließend genauer auf die einzelnen Sampling Verfahren eingegangen.
+Abschließend wird ein neues Maß zur Abschätzung der Spielkomplexität eingeführt und die theoretischen Eigenschaften der Algorithmen besprochen.
 
 \input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/02_monte_carlo_cfr/02_monte_carlo_cfr}
 \input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/03_chance_sampling_cfr/03_chance_sampling_cfr}
-\input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/03_outcome_sampling_mccfr/03_outcome_sampling_mccfr}
 \input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/04_external_sampling_mccfr/04_external_sampling_mccfr}
+\input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/03_outcome_sampling_mccfr/03_outcome_sampling_mccfr}
 \input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/05_theoretische_eigenschaften/05_theoretische_eigenschaften}

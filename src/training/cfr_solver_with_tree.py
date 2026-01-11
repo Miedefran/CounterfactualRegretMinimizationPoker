@@ -49,6 +49,9 @@ class CFRSolverWithTree:
         self.iteration_count = 0
         self.training_time = 0
         
+        # Policy-Cache für Konsistenz während der Traversierung
+        self._current_policy_cache = {}  # {info_set_key: {action: prob}}
+        
         # Tree Datenstrukturen
         self.nodes = {}  # {node_id: Node}
         self.next_node_id = 0
@@ -126,13 +129,15 @@ class CFRSolverWithTree:
             # Best Response Evaluation
             if br_tracker is not None and br_tracker.should_evaluate(i + 1):
                 current_avg_strategy = self.get_average_strategy()
-                br_tracker.evaluate_and_add(current_avg_strategy, i + 1)
+                # Zeit wird automatisch in evaluate_and_add berechnet wenn start_time gegeben
+                br_tracker.evaluate_and_add(current_avg_strategy, i + 1, start_time=start_time)
                 br_tracker.last_eval_iteration = i + 1
         
         # Finale Best Response Evaluation
         if br_tracker is not None:
             current_avg_strategy = self.get_average_strategy()
-            br_tracker.evaluate_and_add(current_avg_strategy, iterations)
+            # Zeit wird automatisch in evaluate_and_add berechnet wenn start_time gegeben
+            br_tracker.evaluate_and_add(current_avg_strategy, iterations, start_time=start_time)
         
         total_time = time.time() - start_time
         
@@ -159,18 +164,95 @@ class CFRSolverWithTree:
         
         Statt game.step()/step_back() zu verwenden, navigieren wir
         über die Node-Struktur mit node.children[action]
+        
+        KRITISCHER FIX: Bei alternierenden Updates muss die Policy zwischen
+        den Spieler-Updates aktualisiert werden.
         """
-        # Für jeden Root (jede Kombination)
+        # KRITISCHER FIX: Initialisiere Policy-Cache vor der Traversierung
+        # (falls noch nicht vorhanden, wird sie bei _get_cached_policy berechnet)
+        
+        # KRITISCHER FIX: Alternierende Updates mit Policy-Aktualisierung
+        # Zuerst alle Kombinationen für Spieler 0
         for root_id in self.root_nodes:
             reach_probs = [1.0, 1.0]
-            
-            # Traverse für beide Spieler
             self.traverse_tree(root_id, 0, reach_probs)
+        
+        # KRITISCHER FIX: Aktualisiere Policy nach Spieler 0 Update
+        self._update_current_policy()
+        
+        # Dann alle Kombinationen für Spieler 1 (mit aktualisierter Policy)
+        for root_id in self.root_nodes:
+            reach_probs = [1.0, 1.0]
             self.traverse_tree(root_id, 1, reach_probs)
+        
+        # KRITISCHER FIX: Aktualisiere Policy nach Spieler 1 Update
+        self._update_current_policy()
+    
+    def traverse_tree_simultaneous(self, node_id, reach_probabilities):
+        """
+        Traversiert den Tree für BEIDE Spieler gleichzeitig (wie im originalen CFR Paper).
+        
+        Args:
+            node_id: ID des aktuellen Nodes
+            reach_probabilities: [reach_p0, reach_p1]
+        
+        Returns:
+            [utility_p0, utility_p1] - Utilities für beide Spieler
+        """
+        node = self.nodes[node_id]
+        
+        # Terminal Node: Payoffs für beide Spieler zurückgeben
+        if node.type == 'terminal':
+            return [node.payoffs[0], node.payoffs[1]]
+        
+        # Decision Node
+        current_player = node.player
+        info_set_key = node.infoset_key
+        self.ensure_init(info_set_key, node.legal_actions)
+        current_strategy = self.get_current_strategy(info_set_key, node.legal_actions)
+        
+        # Berechne Utilities für beide Spieler gleichzeitig
+        action_utilities = {}  # {action: [utility_p0, utility_p1]}
+        
+        for action in node.legal_actions:
+            child_id = node.children[action]
+            
+            # Propagate Reach: Der aktuelle Spieler multipliziert mit seiner Strategie
+            new_reach_probs = reach_probabilities.copy()
+            new_reach_probs[current_player] *= current_strategy[action]
+            
+            # Rekursiv: Utilities für beide Spieler
+            child_utilities = self.traverse_tree_simultaneous(child_id, new_reach_probs)
+            action_utilities[action] = child_utilities
+        
+        # Expected Value für beide Spieler
+        utilities = [0.0, 0.0]
+        for action in node.legal_actions:
+            action_prob = current_strategy[action]
+            child_utils = action_utilities[action]
+            utilities[0] += action_prob * child_utils[0]
+            utilities[1] += action_prob * child_utils[1]
+        
+        # Regret Updates für den aktuellen Spieler
+        # Counterfactual Weight = Opponent's Reach
+        counterfactual_weight = reach_probabilities[1 - current_player]
+        player_reach = reach_probabilities[current_player]
+        
+        # Action Utilities für den aktuellen Spieler
+        action_utilities_player = {action: action_utilities[action][current_player] 
+                                   for action in node.legal_actions}
+        current_utility_player = utilities[current_player]
+        
+        self.update_regrets(info_set_key, node.legal_actions, action_utilities_player, 
+                           current_utility_player, counterfactual_weight)
+        self.update_strategy_sum(info_set_key, node.legal_actions, current_strategy, player_reach)
+        
+        return utilities
     
     def traverse_tree(self, node_id, player_id, reach_probabilities):
         """
-        Traversiert den vorher gebauten Tree.
+        ALTE Methode - wird nicht mehr verwendet, aber für Kompatibilität behalten.
+        Traversiert den vorher gebauten Tree für einen einzelnen Spieler.
         
         Args:
             node_id: ID des aktuellen Nodes
@@ -194,7 +276,8 @@ class CFRSolverWithTree:
             opponent = 1 - player_id
             opponent_info_set = node.infoset_key
             self.ensure_init(opponent_info_set, node.legal_actions)
-            opponent_strategy = self.get_current_strategy(opponent_info_set, node.legal_actions)
+            # KRITISCHER FIX: Verwende gecachte Policy für Konsistenz
+            opponent_strategy = self._get_cached_policy(opponent_info_set, node.legal_actions)
             
             state_value = 0.0
             for action in node.legal_actions:
@@ -211,7 +294,8 @@ class CFRSolverWithTree:
         # Player's node: Regret Updates
         info_set_key = node.infoset_key
         self.ensure_init(info_set_key, node.legal_actions)
-        current_strategy = self.get_current_strategy(info_set_key, node.legal_actions)
+        # KRITISCHER FIX: Verwende gecachte Policy für Konsistenz
+        current_strategy = self._get_cached_policy(info_set_key, node.legal_actions)
         
         action_utilities = {}
         for action in node.legal_actions:
@@ -256,6 +340,34 @@ class CFRSolverWithTree:
         else:
             # Wenn keine positiven Regrets: Gleichverteilung
             return {a: 1.0 / len(legal_actions) for a in legal_actions}
+    
+    def _update_current_policy(self):
+        """
+        KRITISCHER FIX: Aktualisiert die aktuelle Policy für alle InfoSets.
+        
+        Wird nach jedem Spieler-Update aufgerufen, um sicherzustellen,
+        dass alle Nodes die aktualisierte Policy verwenden.
+        """
+        # Berechne Policy für alle InfoSets basierend auf aktuellen Regrets
+        for info_set_key in self.regret_sum:
+            legal_actions = list(self.regret_sum[info_set_key].keys())
+            policy = self.get_current_strategy(info_set_key, legal_actions)
+            self._current_policy_cache[info_set_key] = policy
+    
+    def _get_cached_policy(self, info_set_key, legal_actions):
+        """
+        Gibt die gecachte Policy zurück, oder berechnet sie neu falls nicht im Cache.
+        
+        KRITISCHER FIX: Stellt sicher, dass alle Nodes in einer Traversierung
+        die gleiche Policy verwenden.
+        """
+        if info_set_key in self._current_policy_cache:
+            return self._current_policy_cache[info_set_key]
+        else:
+            # Falls nicht im Cache, berechne und cache
+            policy = self.get_current_strategy(info_set_key, legal_actions)
+            self._current_policy_cache[info_set_key] = policy
+            return policy
     
     def get_average_strategy(self):
         """Gleichung 4 aus Zinkevich et al. (2007)"""

@@ -19,7 +19,7 @@ Aufgrund von perfect recall kann während dieser Traversierung nie mehr als eine
 
 Für jedes besuchte Informationsset werden die sampled counterfactual regrets berechnet und zu den Gesamtregrets hinzugefügt:
 \begin{equation}
-\tilde{r}(I, a) = (1 - \sigma(a|I)) \sum_{z \in Q \cap Z_I} u_i(z) \pi_i^\sigma(z[I]a, z).
+\tilde{r}(I, a) = (1 - \sigma(a|I)) \sum_{z \in Q_\tau \cap Z_I} u_i(z) \pi_i^\sigma(z[I]a, z).
 \end{equation}
 (\cite[Eq.~11]{lanctot2009monte})
 Die Summation kann während der Traversierung effizient berechnet werden, indem für jede History eine gewichtete Summe der Utilities aller von dieser History erreichbaren terminal histories aufrechterhalten wird.

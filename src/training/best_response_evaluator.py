@@ -156,9 +156,10 @@ class BestResponseTracker:
                            Falls None oder Integer, wird fester Intervall verwendet (Rückwärtskompatibilität)
         """
         self.game_name = game_name
-        self.values = []  # Liste von (iteration, exploitability_mb, br_value_p0, br_value_p1)
+        self.values = []  # Liste von (iteration, exploitability_mb, br_value_p0, br_value_p1, cumulative_training_time)
         self.total_br_time = 0.0  # Kumulierte Zeit für Best Response Evaluierungen
         self.last_eval_iteration = 0
+        self.training_start_time = None  # Startzeit des Trainings
         
         if schedule_config is None:
             schedule_config = {"type": "fixed", "interval": 100}
@@ -267,7 +268,7 @@ class BestResponseTracker:
         current_interval = self.get_current_interval(iteration)
         return (iteration - self.last_eval_iteration) >= current_interval
     
-    def add_value(self, iteration, exploitability_mb, br_value_p0, br_value_p1):
+    def add_value(self, iteration, exploitability_mb, br_value_p0, br_value_p1, cumulative_training_time=None):
         """
         Fügt einen Exploitability Wert und BR-Werte hinzu.
         
@@ -276,16 +277,22 @@ class BestResponseTracker:
             exploitability_mb: Exploitability in milliblinds per game
             br_value_p0: Best Response Wert für Spieler 0 (roh)
             br_value_p1: Best Response Wert für Spieler 1 (roh)
+            cumulative_training_time: Kumulative Trainingszeit bis zu dieser Iteration (ohne BR Zeit)
         """
-        self.values.append((iteration, exploitability_mb, br_value_p0, br_value_p1))
+        if cumulative_training_time is None:
+            cumulative_training_time = 0.0
+        self.values.append((iteration, exploitability_mb, br_value_p0, br_value_p1, cumulative_training_time))
     
-    def evaluate_and_add(self, average_strategy, iteration):
+    def evaluate_and_add(self, average_strategy, iteration, cumulative_training_time=None, start_time=None):
         """
         Berechnet Best Response Wert und fügt ihn hinzu.
         
         Args:
             average_strategy: Aktuelle Average Strategy
             iteration: Aktuelle Iterationsnummer
+            cumulative_training_time: Kumulative Trainingszeit bis zu dieser Iteration (ohne BR Zeit).
+                                     Falls None und start_time gegeben, wird automatisch berechnet.
+            start_time: Startzeit des Trainings (optional, für automatische Zeitberechnung)
         
         Returns:
             Verbrauchte Zeit für die Evaluierung (in Sekunden)
@@ -294,15 +301,25 @@ class BestResponseTracker:
             # Tree konnte nicht geladen werden, überspringe Evaluation
             return 0.0
         
+        # Berechne Zeit VOR der Evaluation (ohne die aktuelle BR-Evaluation)
+        # total_br_time enthält alle bisherigen BR-Evaluationen
+        if cumulative_training_time is None and start_time is not None:
+            import time
+            # Zeit OHNE alle bisherigen BR-Evaluationen
+            cumulative_training_time = time.time() - start_time - self.total_br_time
+        
+        # Führe Best Response Evaluation durch
         result = evaluate_best_response(self.game_name, self.tree, average_strategy, iteration)
         if result is not None:
             br_value_p0, br_value_p1, elapsed_time = result
+            # Aktualisiere total_br_time NACH der Zeitberechnung
             self.total_br_time += elapsed_time
             
             # Exploitability = (BR Wert P0 + BR Wert P1) / 2
             exploitability = (br_value_p0 + br_value_p1) / 2.0
             exploitability_mb = to_milliblinds_per_game(exploitability, self.game_name)
-            self.add_value(iteration, exploitability_mb, br_value_p0, br_value_p1)
+            # Speichere die Zeit OHNE BR-Evaluationen
+            self.add_value(iteration, exploitability_mb, br_value_p0, br_value_p1, cumulative_training_time)
             
             return elapsed_time
         
@@ -317,13 +334,14 @@ class BestResponseTracker:
         """
         return self.total_br_time
     
-    def plot(self, output_path=None, log_scale=True):
+    def plot(self, output_path=None, log_scale=True, log_log=True):
         """
         Plottet die Exploitability über die Iterationen.
         
         Args:
             output_path: Optionaler Pfad zum Speichern des Plots
             log_scale: Wenn True, wird die X-Achse logarithmisch skaliert (default: True)
+            log_log: Wenn True, werden BEIDE Achsen logarithmisch skaliert (log-log plot, default: True)
         """
         if not self.values:
             print("Keine Exploitability Werte zum Plotten vorhanden")
@@ -334,24 +352,31 @@ class BestResponseTracker:
             import numpy as np
             
             iterations = [x[0] for x in self.values]
-            exploitability = [x[1] for x in self.values]  # Nur Exploitability für Plot
+            exploitability = [x[1] for x in self.values]  # Exploitability
             
-            plt.figure(figsize=(12, 6))
+            plt.figure(figsize=(12, 8))
             plt.plot(iterations, exploitability, label='Exploitability', marker='o', linewidth=2, markersize=6)
             
-            if log_scale:
+            # X-Achse
+            if log_scale or log_log:
                 plt.xscale('log')
-                plt.xlabel('Iteration (log scale)')
+                plt.xlabel('Iterations (log scale)')
             else:
-                plt.xlabel('Iteration')
+                plt.xlabel('Iterations')
             
-            plt.ylabel('Exploitability (mb/g)')
+            # Y-Achse
+            if log_log:
+                plt.yscale('log')
+                plt.ylabel('Exploitability (mb/g, log scale)')
+            else:
+                plt.ylabel('Exploitability (mb/g)')
+            
             plt.title(f'Exploitability During Training ({self.game_name})')
             plt.legend()
             plt.grid(True, alpha=0.3, which='both')  # 'both' für log und linear grid
             
             # Setze sinnvolle X-Achsen-Ticks für log scale
-            if log_scale and iterations:
+            if (log_scale or log_log) and iterations:
                 max_iter = max(iterations)
                 # Erstelle logarithmische Ticks
                 if max_iter <= 100:
@@ -366,6 +391,31 @@ class BestResponseTracker:
                 # Filtere Ticks die größer als max_iter sind
                 ticks = [t for t in ticks if t <= max_iter]
                 plt.xticks(ticks, [str(t) for t in ticks])
+            
+            # Setze sinnvolle Y-Achsen-Ticks für log scale
+            if log_log and exploitability:
+                # Filtere negative oder null Werte
+                positive_values = [v for v in exploitability if v > 0]
+                if positive_values:
+                    min_exp = min(positive_values)
+                    max_exp = max(positive_values)
+                    
+                    # Erstelle logarithmische Ticks basierend auf dem Wertebereich
+                    if max_exp <= 1:
+                        y_ticks = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0]
+                    elif max_exp <= 10:
+                        y_ticks = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0]
+                    elif max_exp <= 100:
+                        y_ticks = [1, 2, 5, 10, 20, 50, 100]
+                    elif max_exp <= 1000:
+                        y_ticks = [10, 20, 50, 100, 200, 500, 1000]
+                    else:
+                        y_ticks = [1, 10, 100, 1000, 10000]
+                    
+                    # Filtere Ticks die außerhalb des Wertebereichs sind
+                    y_ticks = [t for t in y_ticks if min_exp <= t <= max_exp * 1.1]
+                    if y_ticks:
+                        plt.yticks(y_ticks, [f'{t:.2f}' if t < 1 else f'{int(t) if t == int(t) else t}' for t in y_ticks])
             
             if output_path:
                 plt.savefig(output_path, dpi=300, bbox_inches='tight')
@@ -426,14 +476,24 @@ class BestResponseTracker:
             self.schedule_type = "fixed"
             self.interval = eval_interval
         
-        # Rückwärtskompatibilität: Alte Dateien haben nur (iteration, exploitability)
-        # Neue Dateien haben (iteration, exploitability_mb, br_value_p0, br_value_p1)
-        if loaded_values and len(loaded_values[0]) == 2:
-            # Alte Format: Konvertiere zu neuem Format (BR-Werte fehlen)
-            self.values = [(it, exp, None, None) for it, exp in loaded_values]
-            print(f"WARNING: Alte Datei-Format erkannt, BR-Werte fehlen")
+        # Rückwärtskompatibilität: Alte Dateien haben verschiedene Formate
+        # Format 1: (iteration, exploitability) - sehr alt
+        # Format 2: (iteration, exploitability_mb, br_value_p0, br_value_p1) - alt
+        # Format 3: (iteration, exploitability_mb, br_value_p0, br_value_p1, cumulative_training_time) - neu
+        if loaded_values:
+            if len(loaded_values[0]) == 2:
+                # Alte Format: Konvertiere zu neuem Format (BR-Werte und Zeit fehlen)
+                self.values = [(it, exp, None, None, 0.0) for it, exp in loaded_values]
+                print(f"WARNING: Alte Datei-Format erkannt (2 Werte), BR-Werte und Zeit fehlen")
+            elif len(loaded_values[0]) == 4:
+                # Alte Format: Konvertiere zu neuem Format (Zeit fehlt)
+                self.values = [(it, exp, br0, br1, 0.0) for it, exp, br0, br1 in loaded_values]
+                print(f"WARNING: Alte Datei-Format erkannt (4 Werte), Zeit fehlt - wird auf 0 gesetzt")
+            else:
+                # Neues Format mit Zeit
+                self.values = loaded_values
         else:
-            self.values = loaded_values
+            self.values = []
         
         print(f"Best Response Werte geladen: {filepath}")
 

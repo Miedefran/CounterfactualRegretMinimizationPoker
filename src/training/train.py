@@ -12,6 +12,9 @@ from training.tensor_cfr_solver import TensorCFRSolver
 from training.cfr_solver_with_tree import CFRSolverWithTree
 from training.chance_sampling_cfr_solver import ChanceSamplingCFRSolver
 from training.external_sampling_cfr_solver import ExternalSamplingCFRSolver
+from training.cfr_plus_with_tree import CFRPlusWithTree
+from training.cfr_plus_optimized import CFRPlusOptimized
+from training.cfr_optimized import CFROptimized
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
@@ -39,12 +42,16 @@ def main():
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
     parser.add_argument('algorithm', type=str,
-                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling'],
+                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling', 'cfr_plus_with_tree', 'cfr_plus_optimized', 'cfr_optimized'],
                        nargs='?',
                        default='cfr',
                        help='Algorithm to use (default: cfr)')
     parser.add_argument('--br-eval-schedule', type=str, default=None,
                        help='Best Response Evaluierungs-Schedule: Integer (fester Intervall), JSON-Pfad, oder Schedule-Name aus config/br_eval_schedules.json (None = deaktiviert)')
+    parser.add_argument('--tensor-algorithm', type=str, choices=['cfr', 'cfr_plus'], default='cfr',
+                       help='Algorithmus für Tensor CFR: cfr (ohne CFR+) oder cfr_plus (mit CFR+). Standard: cfr')
+    parser.add_argument('--alternating-updates', type=str, choices=['true', 'false'], default='true',
+                       help='Für cfr_optimized: true für alternierende Updates (wie OpenSpiel), false für simultane Updates (wie original CFR). Standard: true')
     args = parser.parse_args()
     config = GAME_CONFIGS[args.game]
     
@@ -79,7 +86,8 @@ def main():
         solver = AlwaysFoldSolver(game, combo_gen)
     elif args.algorithm == 'tensor_cfr':
         # Übergebe game_name für automatisches Laden des Trees
-        solver = TensorCFRSolver(game, combo_gen, game_name=args.game)
+        # algorithm Parameter bestimmt ob CFR+ verwendet wird
+        solver = TensorCFRSolver(game, combo_gen, algorithm=args.tensor_algorithm, game_name=args.game)
     elif args.algorithm == 'cfr_with_tree':
         # Übergebe game_name für automatisches Laden des Trees
         solver = CFRSolverWithTree(game, combo_gen, game_name=args.game)
@@ -89,6 +97,20 @@ def main():
     elif args.algorithm == 'external_sampling':
         # Übergebe game_name für automatisches Laden des Trees
         solver = ExternalSamplingCFRSolver(game, combo_gen, game_name=args.game)
+    elif args.algorithm == 'cfr_plus_with_tree':
+        # Übergebe game_name für automatisches Laden des Trees
+        solver = CFRPlusWithTree(game, combo_gen, game_name=args.game)
+    elif args.algorithm == 'cfr_plus_optimized':
+        # Optimierte CFR+ Implementierung basierend auf OpenSpiel
+        solver = CFRPlusOptimized(game, combo_gen, game_name=args.game)
+    elif args.algorithm == 'cfr_optimized':
+        # Optimierte Vanilla CFR Implementierung basierend auf OpenSpiel
+        alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
+        solver = CFROptimized(game, combo_gen, game_name=args.game, alternating_updates=alternating)
+        if alternating:
+            print("Verwende alternierende Updates (wie OpenSpiel)")
+        else:
+            print("Verwende simultane Updates (wie original CFR Paper)")
     
     # Best Response Tracker initialisieren falls gewünscht
     br_tracker = None
