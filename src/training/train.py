@@ -12,9 +12,10 @@ from training.tensor_cfr_solver import TensorCFRSolver
 from training.cfr_solver_with_tree import CFRSolverWithTree
 from training.chance_sampling_cfr_solver import ChanceSamplingCFRSolver
 from training.external_sampling_cfr_solver import ExternalSamplingCFRSolver
+from training.outcome_sampling_cfr_solver import OutcomeSamplingCFRSolver
 from training.cfr_plus_with_tree import CFRPlusWithTree
-from training.cfr_plus_optimized import CFRPlusOptimized
-from training.cfr_optimized import CFROptimized
+
+# Optional: CFROptimized (falls die Datei existier
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
@@ -34,6 +35,28 @@ from utils.poker_utils import (
 )
 from training.best_response_evaluator import BestResponseTracker
 
+def get_print_interval(iterations):
+    """
+    Berechnet den Print-Intervall basierend auf der Anzahl der Iterationen.
+    
+    Ziel: Etwa 10-20 Print-Statements während des Trainings.
+    
+    Args:
+        iterations: Anzahl der Iterationen
+    
+    Returns:
+        Print-Intervall (int)
+    """
+    if iterations < 1000:
+        return 100
+    elif iterations < 10000:
+        return 1000
+    elif iterations < 100000:
+        return 10000
+    else:
+        # Für >= 100k: alle 100k oder so dass wir ~10 Prints haben
+        return max(10000, iterations // 10)
+
 def main():
     parser = argparse.ArgumentParser(description='Train CFR for Poker')
     parser.add_argument('game', type=str,
@@ -42,7 +65,7 @@ def main():
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
     parser.add_argument('algorithm', type=str,
-                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling', 'cfr_plus_with_tree', 'cfr_plus_optimized', 'cfr_optimized'],
+                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling', 'outcome_sampling', 'cfr_plus_with_tree', 'cfr_plus_optimized', 'cfr_optimized'],
                        nargs='?',
                        default='cfr',
                        help='Algorithm to use (default: cfr)')
@@ -102,6 +125,9 @@ def main():
     elif args.algorithm == 'external_sampling':
         # Übergebe game_name für automatisches Laden des Trees
         solver = ExternalSamplingCFRSolver(game, combo_gen, game_name=args.game)
+    elif args.algorithm == 'outcome_sampling':
+        # Übergebe game_name für automatisches Laden des Trees
+        solver = OutcomeSamplingCFRSolver(game, combo_gen, game_name=args.game)
     elif args.algorithm == 'cfr_plus_with_tree':
         # Übergebe game_name für automatisches Laden des Trees
         solver = CFRPlusWithTree(game, combo_gen, game_name=args.game)
@@ -109,6 +135,8 @@ def main():
         # Optimierte CFR+ Implementierung basierend auf OpenSpiel
         solver = CFRPlusOptimized(game, combo_gen, game_name=args.game)
     elif args.algorithm == 'cfr_optimized':
+        if CFROptimized is None:
+            raise ImportError("cfr_optimized Modul nicht gefunden. Bitte erstelle src/training/cfr_optimized.py")
         # Optimierte Vanilla CFR Implementierung basierend auf OpenSpiel
         alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
         solver = CFROptimized(game, combo_gen, game_name=args.game, alternating_updates=alternating)
@@ -139,7 +167,8 @@ def main():
             print("Best Response Evaluation wird deaktiviert")
             br_tracker = None
     
-    solver.train(args.iterations, br_tracker=br_tracker)
+    print_interval = get_print_interval(args.iterations)
+    solver.train(args.iterations, br_tracker=br_tracker, print_interval=print_interval)
     
     # Für tensor_cfr: Unterscheide zwischen cfr und cfr_plus in Dateinamen
     # Für cfr_with_tree: Unterscheide zwischen alternierend und simultan

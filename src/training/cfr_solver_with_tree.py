@@ -1,10 +1,10 @@
 """
 CFR Solver mit vorher gebautem Game Tree.
 
-Unterschied zum normalen cfr_solver:
-- Tree wird einmal vorher gebaut statt bei jeder Iteration neu durchlaufen
-- Kein game.step()/step_back() mehr nötig
-- Einfach über die Datenstruktur iterieren
+Der Unterschied zum normalen cfr_solver.py:
+- Statt bei jeder Iteration den Tree neu zu durchlaufen (mit game.step/step_back),
+  wird der Tree einmal vorher gebaut und als Datenstruktur gespeichert
+- Bei jeder Iteration wird nur noch über diese Struktur iteriert
 """
 
 import pickle as pkl
@@ -17,25 +17,25 @@ from training.build_game_tree import load_game_tree, build_game_tree, save_game_
 
 
 class Node:
-    """Ein Node im Game Tree"""
+    """Repräsentiert einen Node im Game Tree"""
     def __init__(self, node_id):
         self.node_id = node_id
         self.type = None  # 'terminal' oder 'decision'
-        self.player = None  # 0 oder 1
-        self.infoset_key = None
-        self.legal_actions = []
+        self.player = None  # 0 oder 1 (nur bei decision nodes)
+        self.infoset_key = None  # InfoSet Key (nur bei decision nodes)
+        self.legal_actions = []  # Liste von legalen Aktionen
         self.children = {}  # {action: child_node_id}
-        self.payoffs = None  # [payoff_p0, payoff_p1]
+        self.payoffs = None  # [payoff_p0, payoff_p1] (nur bei terminal nodes)
         self.depth = 0
 
 
 class CFRSolverWithTree:
     """
-    CFR Solver der den Tree vorher baut.
+    CFR Solver der den Game Tree einmal vorher baut.
     
     Vorteile:
-    - Kein wiederholtes game.step()/step_back()
-    - Schnellere Lookups
+    - Kein wiederholtes game.step()/step_back() bei jeder Iteration
+    - Schnellere Lookups über Dictionary
     - Klarere Struktur
     """
     
@@ -46,21 +46,21 @@ class CFRSolverWithTree:
         self.alternating_updates = alternating_updates
         
         # CFR Datenstrukturen
-        self.cumulative_regret = {}
-        self.cumulative_policy = {}
+        self.cumulative_regret = {}  # {info_set_key: {action: float}}
+        self.cumulative_policy = {}  # {info_set_key: {action: float}}
         self.iteration_count = 0
         self.training_time = 0
         
-        # Policy Cache damit wir nicht jedes mal neu berechnen müssen
-        self._policy_cache = {}
+        # Cache für aktuelle Policy (wird nach jedem Update aktualisiert)
+        self._policy_cache = {}  # {info_set_key: {action: prob}}
         
         # Tree Datenstrukturen
-        self.nodes = {}
+        self.nodes = {}  # {node_id: Node}
         self.next_node_id = 0
-        self.infoset_to_nodes = defaultdict(list)
-        self.root_nodes = []
+        self.infoset_to_nodes = defaultdict(list)  # {infoset_key: [node_ids]}
+        self.root_nodes = []  # Liste von root node IDs (eine pro Kombination)
         
-        # Tree laden oder bauen
+        # Versuche Tree zu laden, sonst baue ihn
         if load_tree and game_name:
             try:
                 print(f"Attempting to load game tree for {game_name}...")
@@ -80,7 +80,7 @@ class CFRSolverWithTree:
             print(f"Tree built: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
     
     def _convert_game_tree_to_internal(self, game_tree):
-        """Konvertiert GameTree zu interner Struktur"""
+        """Konvertiert ein GameTree Objekt zu interner Struktur"""
         self.nodes = {}
         self.infoset_to_nodes = defaultdict(list)
         self.root_nodes = game_tree.root_nodes
@@ -105,18 +105,20 @@ class CFRSolverWithTree:
             self.next_node_id = 0
     
     def ensure_init(self, info_set_key, legal_actions):
-        """Initialisiert die Dictionaries falls noch nicht vorhanden"""
+        """Initialisiert cumulative_regret und cumulative_policy für ein InfoSet"""
         if info_set_key not in self.cumulative_regret:
             self.cumulative_regret[info_set_key] = {a: 0.0 for a in legal_actions}
         if info_set_key not in self.cumulative_policy:
             self.cumulative_policy[info_set_key] = {a: 0.0 for a in legal_actions}
     
-    def train(self, iterations, br_tracker=None):
+    def train(self, iterations, br_tracker=None, print_interval=100):
         """
         Training mit vorher gebautem Tree.
         
-        iterations: Anzahl Iterationen
-        br_tracker: Optional für Best Response Evaluation
+        Args:
+            iterations: Anzahl der Training-Iterationen
+            br_tracker: Optionaler BestResponseTracker für Best Response Evaluation
+            print_interval: Intervall für Print-Statements (Standard: 100)
         """
         start_time = time.time()
         
@@ -124,23 +126,25 @@ class CFRSolverWithTree:
             self.cfr_iteration()
             self.iteration_count += 1
             
-            if i % 100 == 0:
-                print(f"Iteration {i}")
+            if (i + 1) % print_interval == 0:
+                print(f"Iteration {i + 1}")
             
             # Best Response Evaluation
             if br_tracker is not None and br_tracker.should_evaluate(i + 1):
                 current_avg_strategy = self.get_average_strategy()
+                # Zeit wird automatisch in evaluate_and_add berechnet wenn start_time gegeben
                 br_tracker.evaluate_and_add(current_avg_strategy, i + 1, start_time=start_time)
                 br_tracker.last_eval_iteration = i + 1
         
         # Finale Best Response Evaluation
         if br_tracker is not None:
             current_avg_strategy = self.get_average_strategy()
+            # Zeit wird automatisch in evaluate_and_add berechnet wenn start_time gegeben
             br_tracker.evaluate_and_add(current_avg_strategy, iterations, start_time=start_time)
         
         total_time = time.time() - start_time
         
-        # Best Response Zeit abziehen
+        # Ziehe Best Response Zeit von der Trainingszeit ab
         if br_tracker is not None:
             br_time = br_tracker.get_total_br_time()
             self.training_time = total_time - br_time
@@ -162,18 +166,18 @@ class CFRSolverWithTree:
         Eine CFR Iteration.
         
         Wenn alternating_updates=True (Standard):
-        - Erst Spieler 0 für alle Kombinationen traversieren
-        - Policy updaten
-        - Dann Spieler 1 für alle Kombinationen traversieren
-        - Policy updaten
+        1. Für alle Kombinationen: Spieler 0 traversieren, Regrets akkumulieren
+        2. Policy aktualisieren
+        3. Für alle Kombinationen: Spieler 1 traversieren, Regrets akkumulieren
+        4. Policy aktualisieren
         
-        Wenn alternating_updates=False:
-        - Beide Spieler gleichzeitig traversieren
-        - Policy updaten
+        Wenn alternating_updates=False (simultane Updates):
+        1. Für alle Kombinationen: Beide Spieler gleichzeitig traversieren
+        2. Policy aktualisieren
         """
         if self.alternating_updates:
-            # Alternierende Updates
-            # Spieler 0 für alle Kombinationen
+            # Alternierende Updates (Standard)
+            # Zuerst Spieler 0 für alle Kombinationen
             for root_id in self.root_nodes:
                 reach_probs = np.array([1.0, 1.0], dtype=np.float64)
                 self._traverse_for_player(root_id, reach_probs, player=0)
@@ -181,7 +185,7 @@ class CFRSolverWithTree:
             # Policy Update nach Spieler 0
             self._update_all_policies()
             
-            # Spieler 1 für alle Kombinationen
+            # Dann Spieler 1 für alle Kombinationen (mit aktualisierter Policy von Spieler 0)
             for root_id in self.root_nodes:
                 reach_probs = np.array([1.0, 1.0], dtype=np.float64)
                 self._traverse_for_player(root_id, reach_probs, player=1)
@@ -189,10 +193,11 @@ class CFRSolverWithTree:
             # Policy Update nach Spieler 1
             self._update_all_policies()
         else:
-            # Simultane Updates
+            # Simultane Updates (wie original CFR Paper)
             # Beide Spieler gleichzeitig für alle Kombinationen
             for root_id in self.root_nodes:
                 reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+                # Traverse für beide Spieler mit derselben Policy
                 self._traverse_for_player(root_id, reach_probs, player=0)
                 self._traverse_for_player(root_id, reach_probs, player=1)
             
@@ -201,30 +206,36 @@ class CFRSolverWithTree:
     
     def _traverse_for_player(self, node_id, reach_probabilities, player):
         """
-        Traversiert den Tree und sammelt Regrets für einen Spieler.
+        Traversiert den Tree und berechnet Counterfactual Regret für einen Spieler.
         
-        node_id: aktueller Node
-        reach_probabilities: [reach_p0, reach_p1]
-        player: für welchen Spieler wir CFR machen (0 oder 1)
+        Args:
+            node_id: ID des aktuellen Nodes
+            reach_probabilities: np.array([reach_p0, reach_p1])
+            player: Spieler für den wir CFR durchführen (0 oder 1)
+        
+        Returns:
+            Utility für player
         """
         node = self.nodes[node_id]
         
+        # Terminal Node: Payoff zurückgeben
         if node.type == 'terminal':
             return node.payoffs[player]
         
+        # Decision Node
         current_player = node.player
         info_state = node.infoset_key
         
-        # Wenn reach probs 0 sind können wir früher abbrechen
+        # Early exit wenn Reach Probabilities 0 sind
         if np.all(reach_probabilities[:2] == 0):
             return 0.0
         
         self.ensure_init(info_state, node.legal_actions)
         
-        # Aktuelle Policy holen
+        # Hole aktuelle Policy für dieses InfoSet
         policy = self._get_policy(info_state)
         
-        # Utilities für alle Aktionen berechnen
+        # Berechne Utilities für alle Aktionen
         action_utilities = {}
         state_value = 0.0
         
@@ -232,34 +243,35 @@ class CFRSolverWithTree:
             action_prob = policy.get(action, 0.0)
             child_id = node.children[action]
             
-            # Neue reach probs für diesen Pfad
+            # Neue Reach Probabilities für diesen Pfad
             new_reach_probs = reach_probabilities.copy()
             new_reach_probs[current_player] *= action_prob
             
-            # Rekursiv weiter
+            # Rekursiv traversieren
             child_utility = self._traverse_for_player(child_id, new_reach_probs, player)
             
             action_utilities[action] = child_utility
             state_value += action_prob * child_utility
         
-        # Wenn wir nicht für diesen Spieler updaten, einfach Wert zurückgeben
+        # Wenn wir nicht für den aktuellen Spieler updaten, nur Wert zurückgeben
         if current_player != player:
             return state_value
         
-        # Regret Updates für aktuellen Spieler
+        # Regret Updates für den aktuellen Spieler
         reach_prob = reach_probabilities[current_player]
         
-        # Counterfactual reach = produkt aller anderen Spieler
+        # Counterfactual Reach Probability = Produkt aller anderen Spieler
         counterfactual_reach = 1.0
         for p in range(len(reach_probabilities)):
             if p != current_player:
                 counterfactual_reach *= reach_probabilities[p]
         
-        # Regrets und Policy akkumulieren
+        # Akkumuliere Regrets und Policy
         for action, action_prob in policy.items():
+            # Instantaneous Regret
             regret = counterfactual_reach * (action_utilities[action] - state_value)
             
-            # Regret akkumulieren (kann negativ sein bei Vanilla CFR)
+            # Akkumuliere Regret (kann negativ sein bei Vanilla CFR)
             self.cumulative_regret[info_state][action] += regret
             
             # Uniform averaging: reach_prob * action_prob
@@ -269,12 +281,13 @@ class CFRSolverWithTree:
     
     def _update_all_policies(self):
         """
-        Aktualisiert alle Policies basierend auf aktuellen Regrets.
+        Aktualisiert die Policy für alle InfoSets basierend auf aktuellen Regrets.
         
-        Wird nach jedem Spieler-Update gemacht, damit die nächste
-        Traversierung die neue Policy verwendet.
+        Die Policy wird nach jedem Spieler-Update neu berechnet, damit alle Nodes
+        in der nächsten Traversierung die aktualisierte Policy verwenden.
         """
         for info_state in self.cumulative_regret:
+            # Hole legal_actions
             node_ids = self.infoset_to_nodes.get(info_state, [])
             if not node_ids:
                 continue
@@ -282,17 +295,22 @@ class CFRSolverWithTree:
             node = self.nodes[node_ids[0]]
             legal_actions = node.legal_actions
             
-            # Neue Policy berechnen
+            # Berechne neue Policy mit Regret Matching
             policy = self._regret_matching(info_state, legal_actions)
             
-            # In Cache speichern
+            # Cache für schnelleren Zugriff
             self._policy_cache[info_state] = policy
     
     def _get_policy(self, info_state):
-        """Gibt die aktuelle Policy zurück, berechnet sie falls nötig"""
+        """
+        Gibt die aktuelle Policy für ein InfoSet zurück.
+        
+        Falls nicht im Cache, wird sie neu berechnet.
+        """
         if info_state in self._policy_cache:
             return self._policy_cache[info_state]
         
+        # Hole legal_actions
         node_ids = self.infoset_to_nodes.get(info_state, [])
         if not node_ids:
             return {}
@@ -300,23 +318,28 @@ class CFRSolverWithTree:
         node = self.nodes[node_ids[0]]
         legal_actions = node.legal_actions
         
-        # Policy neu berechnen
+        # Berechne Policy neu
         policy = self._regret_matching(info_state, legal_actions)
         
-        # Cachen
+        # Cache
         self._policy_cache[info_state] = policy
         
         return policy
     
     def _regret_matching(self, info_state, legal_actions):
         """
-        Berechnet Policy mit Regret Matching.
+        Regret Matching: Berechnet Policy basierend auf positiven Regrets.
         
-        Nur positive Regrets werden verwendet, dann normalisiert.
-        Falls keine positiven Regrets vorhanden, gleichverteilung.
+        Args:
+            info_state: InfoSet Key
+            legal_actions: Liste von legalen Aktionen
+        
+        Returns:
+            {action: prob} Dictionary
         """
         regrets = self.cumulative_regret.get(info_state, {})
         
+        # Berechne positive Regrets
         positive_regrets = {}
         total_positive = 0.0
         
@@ -326,6 +349,7 @@ class CFRSolverWithTree:
             positive_regrets[action] = positive_regret
             total_positive += positive_regret
         
+        # Normalisiere
         if total_positive > 0:
             return {action: positive_regrets[action] / total_positive 
                    for action in legal_actions}
@@ -335,26 +359,38 @@ class CFRSolverWithTree:
             return {action: uniform_prob for action in legal_actions}
     
     def get_current_strategy(self, info_set_key, legal_actions):
-        """Gibt aktuelle Strategie zurück (für Basisklasse)"""
+        """
+        Gibt die aktuelle Strategie für ein InfoSet zurück.
+        
+        Wird von der Basisklasse verwendet.
+        """
         policy = self._get_policy(info_set_key)
+        # Stelle sicher, dass alle legal_actions enthalten sind
         result = {}
         for action in legal_actions:
             result[action] = policy.get(action, 0.0)
         return result
     
     def update_regrets(self, info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight):
-        """Nicht verwendet, nur für Kompatibilität"""
+        """
+        Wird nicht verwendet in dieser Implementierung.
+        Behalten für Kompatibilität mit Basisklasse.
+        """
         pass
     
     def update_strategy_sum(self, info_set_key, legal_actions, current_strategy, player_reach):
-        """Nicht verwendet, nur für Kompatibilität"""
+        """
+        Wird nicht verwendet in dieser Implementierung.
+        Behalten für Kompatibilität mit Basisklasse.
+        """
         pass
     
     def get_average_strategy(self):
         """
-        Berechnet durchschnittliche Strategie mit uniform averaging.
+        Berechnet die durchschnittliche Strategie mit uniform averaging.
         
-        Bei uniform averaging wird einfach durch die Summe geteilt.
+        Bei uniform averaging ist die durchschnittliche Strategie:
+        average_policy[info_state][action] = cumulative_policy[info_state][action] / sum(cumulative_policy[info_state].values())
         """
         average_strategy = {}
         
@@ -362,7 +398,7 @@ class CFRSolverWithTree:
             total = sum(policy_dict.values())
             
             if total == 0:
-                # Gleichverteilung wenn nichts akkumuliert wurde
+                # Gleichverteilung wenn keine Policy akkumuliert
                 node_ids = self.infoset_to_nodes.get(info_state, [])
                 if not node_ids:
                     continue
@@ -372,7 +408,7 @@ class CFRSolverWithTree:
                     action: 1.0 / num_actions for action in node.legal_actions
                 }
             else:
-                # Normalisieren
+                # Normalisiere
                 average_strategy[info_state] = {
                     action: action_sum / total
                     for action, action_sum in policy_dict.items()
@@ -381,7 +417,7 @@ class CFRSolverWithTree:
         return average_strategy
     
     def save_gzip(self, filepath):
-        """Speichert die Daten"""
+        """Speichert CFR Daten"""
         data = {
             'cumulative_regret': self.cumulative_regret,
             'cumulative_policy': self.cumulative_policy,
@@ -396,7 +432,7 @@ class CFRSolverWithTree:
         print(f"Saved to {filepath}")
     
     def load_gzip(self, filepath):
-        """Lädt die Daten"""
+        """Lädt CFR Daten"""
         with gzip.open(filepath, 'rb') as f:
             data = pkl.load(f)
         
@@ -406,7 +442,7 @@ class CFRSolverWithTree:
         self.iteration_count = data.get('iteration_count', 0)
         self.training_time = data.get('training_time', 0)
         
-        # Policy Cache neu aufbauen
+        # Rebuild policy cache
         self._policy_cache = {}
         for info_state in self.cumulative_regret.keys():
             self._get_policy(info_state)

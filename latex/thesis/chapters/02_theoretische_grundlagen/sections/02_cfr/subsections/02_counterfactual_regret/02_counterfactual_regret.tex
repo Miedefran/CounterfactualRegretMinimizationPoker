@@ -4,7 +4,7 @@ Diese Terme können dann unabhängig voneinander minimiert werden.
 Insbesondere wird ein völlig neues regret Konzept mit dem Namen \glqq Counterfactual Regret \grqq eingeführt, welches für jedes Informationsset definiert ist.
 
 Um das Konzept zu erläutern, betrachten wir zunächst ein Informationsset $I \in \mathcal{I}_i$.
-Der \emph{counterfactual utility} $u_i(\sigma, I)$ ist der erwartete Nutzen unter der Bedingung, dass $I$ erreicht wird und alle Spieler mit $\sigma$ agieren, während Spieler $i$ so agiert um den Zustand $I$ zu erreichen.
+Die \emph{counterfactual utility} $u_i(\sigma, I)$ ist der erwartete Nutzen unter der Bedingung, dass $I$ erreicht wird und alle Spieler mit $\sigma$ agieren, während Spieler $i$ so agiert um den Zustand $I$ zu erreichen.
 Mit $\pi^\sigma(h, h')$ als Wahrscheinlichkeit, von $h$ nach $h'$ zu gelangen, gilt
 \begin{equation}
 u_i(\sigma, I) = \frac{\sum_{h \in I,\, h' \in Z} \pi_{-i}^\sigma(h)\,\pi^\sigma(h, h')\,u_i(h')}{\pi_{-i}^\sigma(I)}.

@@ -1,0 +1,8 @@
+\subsection{Effiziente Terminal-Node-Evaluierung}
+
+Ein weiterer Beschleunigungsschritt betrifft die Evaluierung von Terminal Nodes.
+Eine naive Herangehensweise würde für jedes Paar von Informationssets die Utility berechnen, was eine $O(n^2)$ Komplexität bedeutet, wobei $n$ die Anzahl der Informationssets pro Spieler ist.
+
+In Pokerspielen kann diese Komplexität auf $O(n)$ reduziert werden, indem die Informationssets nach ihrer Handstärke sortiert werden.
+Da die Utility nur von der relativen Rangordnung der Hände abhängt, kann die Evaluierung durch geschickte Indizierung effizient durchgeführt werden.
+Für abhängige Verteilungen, wie sie in Poker auftreten, wird das Inklusions-Exklusions-Prinzip verwendet, um die korrekte Berechnung zu gewährleisten.

@@ -21,13 +21,14 @@ class CFRSolver:
         if info_set_key not in self.strategy_sum:
             self.strategy_sum[info_set_key] = {a: 0.0 for a in legal_actions}
     
-    def train(self, iterations, br_tracker=None):
+    def train(self, iterations, br_tracker=None, print_interval=100):
         """
         Trainiert den CFR Solver.
         
         Args:
             iterations: Anzahl der Training-Iterationen
             br_tracker: Optionaler BestResponseTracker für Best Response Evaluation
+            print_interval: Intervall für Print-Statements (Standard: 100)
         """
         start_time = time.time()
         
@@ -35,8 +36,8 @@ class CFRSolver:
             self.cfr_iteration()
             self.iteration_count += 1
             
-            if i % 100 == 0:
-                print(f"Iteration {i}")
+            if (i + 1) % print_interval == 0:
+                print(f"Iteration {i + 1}")
             
             # Best Response Evaluation
             if br_tracker is not None and br_tracker.should_evaluate(i + 1):

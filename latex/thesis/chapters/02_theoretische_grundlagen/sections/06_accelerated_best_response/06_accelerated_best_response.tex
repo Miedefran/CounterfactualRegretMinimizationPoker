@@ -1,0 +1,14 @@
+\section{Accelerated Best Response}
+
+Um die Qualität einer Strategie zu bewerten, ist es wichtig, ihre Worst-Case-Performance zu kennen.
+In Nullsummenspielen kann dies durch die Berechnung einer \emph{best response} ermittelt werden.
+Eine best response ist die optimale Strategie für einen Spieler gegen eine gegebene Gegnerstrategie.
+Die \emph{exploitability} einer Strategie misst, wie viel zusätzlicher Nutzen durch eine best response verloren geht, verglichen mit einer optimalen Strategie.
+
+Die konventionelle Berechnung einer best response erfordert eine vollständige Traversierung des game trees.
+Für große Spiele wie Poker mit $10^{18}$ Zuständen ist dies selbst bei moderner Hardware nicht durchführbar.
+Johanson et al.~\cite{johanson2011accelerating} präsentieren eine beschleunigte Methode, die eine vollständige Traversierung vermeidet.
+
+\input{chapters/02_theoretische_grundlagen/sections/06_accelerated_best_response/subsections/01_public_state_tree/01_public_state_tree}
+\input{chapters/02_theoretische_grundlagen/sections/06_accelerated_best_response/subsections/02_effiziente_terminal_node_evaluierung/02_effiziente_terminal_node_evaluierung}
+\input{chapters/02_theoretische_grundlagen/sections/06_accelerated_best_response/subsections/03_exploitability/03_exploitability}
