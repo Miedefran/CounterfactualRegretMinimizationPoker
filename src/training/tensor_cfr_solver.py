@@ -18,8 +18,8 @@ class TensorCFRSolver:
         if device is None:
             if torch.cuda.is_available():
                 self.device = torch.device('cuda')
-            #elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
-                #self.device = torch.device('mps')
+          #  elif hasattr(torch.backends, 'mps') and torch.backends.mps.is_available():
+             #   self.device = torch.device('mps')
             else:
                 self.device = torch.device('cpu')
         else:
@@ -113,6 +113,9 @@ class TensorCFRSolver:
         
         # Iteration Count
         self.t = 0
+        
+        # Time tracking for strategy reconstruction
+        self.strategy_reconstruction_time = 0.0
 
     def train(self, iterations, br_tracker=None):
         """
@@ -151,14 +154,17 @@ class TensorCFRSolver:
         
         total_time = time.time() - start_time
         
-        # Ziehe Best Response Zeit von der Trainingszeit ab
+        # Ziehe Best Response Zeit und Strategy Reconstruction Zeit von der Trainingszeit ab
         if br_tracker is not None:
             br_time = br_tracker.get_total_br_time()
-            self.training_time = total_time - br_time
+            self.training_time = total_time - br_time - self.strategy_reconstruction_time
             if br_time > 0:
                 print(f"Best Response Evaluation Zeit: {br_time:.2f}s")
         else:
-            self.training_time = total_time
+            self.training_time = total_time - self.strategy_reconstruction_time
+        
+        if self.strategy_reconstruction_time > 0:
+            print(f"Strategy Reconstruction Zeit: {self.strategy_reconstruction_time:.2f}s")
         
         if self.training_time >= 60:
             minutes = self.training_time / 60
@@ -396,6 +402,8 @@ class TensorCFRSolver:
                 avg_strat[key] = action_dict
         
         elapsed = time.time() - t_start
+        # Track time for strategy reconstruction (will be subtracted from training time)
+        self.strategy_reconstruction_time += elapsed
         print(f"get_average_strategy took {elapsed:.3f}s")
         
         return avg_strat

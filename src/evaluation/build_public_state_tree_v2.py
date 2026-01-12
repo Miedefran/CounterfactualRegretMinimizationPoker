@@ -442,7 +442,8 @@ def print_public_state_tree(public_states, root_key=(), indent=""):
 
 def save_public_state_tree(game_name, tree, output_dir=None):
     if output_dir is None:
-        output_dir = os.path.join(os.path.dirname(__file__), 'public state trees')
+        script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        output_dir = os.path.join(script_dir, 'data', 'trees', 'public_state_trees')
     os.makedirs(output_dir, exist_ok=True)
     filename = f"{game_name}_public_tree_v2.pkl.gz"
     path = os.path.join(output_dir, filename)

@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--tensor-algorithm', type=str, choices=['cfr', 'cfr_plus'], default='cfr',
                        help='Algorithmus für Tensor CFR: cfr (ohne CFR+) oder cfr_plus (mit CFR+). Standard: cfr')
     parser.add_argument('--alternating-updates', type=str, choices=['true', 'false'], default='true',
-                       help='Für cfr_optimized: true für alternierende Updates (wie OpenSpiel), false für simultane Updates (wie original CFR). Standard: true')
+                       help='Für cfr_optimized und cfr_with_tree: true für alternierende Updates (wie OpenSpiel), false für simultane Updates (wie original CFR). Standard: true')
     args = parser.parse_args()
     config = GAME_CONFIGS[args.game]
     
@@ -90,7 +90,12 @@ def main():
         solver = TensorCFRSolver(game, combo_gen, algorithm=args.tensor_algorithm, game_name=args.game)
     elif args.algorithm == 'cfr_with_tree':
         # Übergebe game_name für automatisches Laden des Trees
-        solver = CFRSolverWithTree(game, combo_gen, game_name=args.game)
+        alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
+        solver = CFRSolverWithTree(game, combo_gen, game_name=args.game, alternating_updates=alternating)
+        if alternating:
+            print("Verwende alternierende Updates (wie OpenSpiel)")
+        else:
+            print("Verwende simultane Updates (wie original CFR Paper)")
     elif args.algorithm == 'chance_sampling':
         # Übergebe game_name für automatisches Laden des Trees
         solver = ChanceSamplingCFRSolver(game, combo_gen, game_name=args.game)
@@ -136,7 +141,17 @@ def main():
     
     solver.train(args.iterations, br_tracker=br_tracker)
     
-    filepath = get_model_path(args.game, args.iterations, args.algorithm)
+    # Für tensor_cfr: Unterscheide zwischen cfr und cfr_plus in Dateinamen
+    # Für cfr_with_tree: Unterscheide zwischen alternierend und simultan
+    algorithm_for_path = args.algorithm
+    if args.algorithm == 'tensor_cfr' and args.tensor_algorithm == 'cfr_plus':
+        algorithm_for_path = 'tensor_cfr_plus'
+    elif args.algorithm == 'cfr_with_tree':
+        alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
+        if not alternating:
+            algorithm_for_path = 'cfr_with_tree_simultaneous'
+    
+    filepath = get_model_path(args.game, args.iterations, algorithm_for_path)
     solver.save_gzip(filepath)
     
     # Best Response Plotting und Speichern

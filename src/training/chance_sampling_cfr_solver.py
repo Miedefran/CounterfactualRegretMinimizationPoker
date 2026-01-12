@@ -10,6 +10,7 @@ Minimization in Extensive Games
 """
 
 import random
+import numpy as np
 
 from training.cfr_solver_with_tree import CFRSolverWithTree
 
@@ -85,34 +86,112 @@ class ChanceSamplingCFRSolver(CFRSolverWithTree):
                 # Letzter Fallback: Verwende ersten Root-Node
                 root_id = self.root_nodes[0]
         
-        reach_probs = [1.0, 1.0]
+        reach_probs = np.array([1.0, 1.0], dtype=np.float64)
         
-        # Traverse für beide Spieler
-        # Die Gewichtung erfolgt in update_regrets und update_strategy_sum
+        # Traverse für Spieler 0
         self.traverse_tree(root_id, 0, reach_probs)
-        self.traverse_tree(root_id, 1, reach_probs)
-    
-    def update_regrets(self, info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight):
-        """
-        Aktualisiert Regret Sum mit Gewichtung für Chance Sampling.
         
-        Da wir nur eine Kombination pro Iteration samplen, müssen wir die Updates
-        mit der Anzahl der Kombinationen gewichten, um den Erwartungswert beizubehalten.
+        # Policy Update nach Spieler 0 (wichtig: damit Spieler 1 die aktualisierte Policy verwendet)
+        self._update_all_policies()
+        
+        # Traverse für Spieler 1 (mit aktualisierter Policy von Spieler 0)
+        self.traverse_tree(root_id, 1, reach_probs)
+        
+        # Policy Update nach Spieler 1
+        self._update_all_policies()
+    
+    def traverse_tree(self, node_id, player, reach_probabilities):
         """
+        Traversiert den Tree und berechnet Counterfactual Regret für einen Spieler.
+        Verwendet Chance Sampling Gewichtung in den Updates.
+        
+        Args:
+            node_id: ID des aktuellen Nodes
+            reach_probabilities: np.array([reach_p0, reach_p1])
+            player: Spieler für den wir CFR durchführen (0 oder 1)
+        
+        Returns:
+            Utility für player
+        """
+        node = self.nodes[node_id]
+        
+        # Terminal Node: Payoff zurückgeben
+        if node.type == 'terminal':
+            return node.payoffs[player]
+        
+        # Decision Node
+        current_player = node.player
+        info_state = node.infoset_key
+        
+        # Early exit wenn Reach Probabilities 0 sind
+        if np.all(reach_probabilities[:2] == 0):
+            return 0.0
+        
+        self.ensure_init(info_state, node.legal_actions)
+        
+        # Hole aktuelle Policy für dieses InfoSet
+        policy = self._get_policy(info_state)
+        
+        # Berechne Utilities für alle Aktionen
+        action_utilities = {}
+        state_value = 0.0
+        
+        for action in node.legal_actions:
+            action_prob = policy.get(action, 0.0)
+            child_id = node.children[action]
+            
+            # Neue Reach Probabilities für diesen Pfad
+            new_reach_probs = reach_probabilities.copy()
+            new_reach_probs[current_player] *= action_prob
+            
+            # Rekursiv traversieren
+            child_utility = self.traverse_tree(child_id, player, new_reach_probs)
+            
+            action_utilities[action] = child_utility
+            state_value += action_prob * child_utility
+        
+        # Wenn wir nicht für den aktuellen Spieler updaten, nur Wert zurückgeben
+        if current_player != player:
+            return state_value
+        
+        # Regret Updates für den aktuellen Spieler mit Chance Sampling Gewichtung
+        reach_prob = reach_probabilities[current_player]
+        
+        # Counterfactual Reach Probability = Produkt aller anderen Spieler
+        counterfactual_reach = 1.0
+        for p in range(len(reach_probabilities)):
+            if p != current_player:
+                counterfactual_reach *= reach_probabilities[p]
+        
         # Gewichtung: Anzahl der Kombinationen (entspricht 1 / Wahrscheinlichkeit einer Kombination)
         sampling_weight = self.num_combinations
         
-        for action in legal_actions:
-            instantaneous_regret = counterfactual_weight * (action_utilities[action] - current_utility)
+        # Akkumuliere Regrets mit Sampling-Gewichtung
+        for action in node.legal_actions:
+            # Instantaneous Regret
+            instantaneous_regret = counterfactual_reach * (action_utilities[action] - state_value)
             # Gewichte den Regret mit der Sampling-Wahrscheinlichkeit
-            self.regret_sum[info_set_key][action] += sampling_weight * instantaneous_regret
+            self.cumulative_regret[info_state][action] += sampling_weight * instantaneous_regret
+        
+        # Akkumuliere Policy mit Sampling-Gewichtung
+        for action, action_prob in policy.items():
+            # Uniform averaging: reach_prob * action_prob, gewichtet mit sampling_weight
+            self.cumulative_policy[info_state][action] += sampling_weight * reach_prob * action_prob
+        
+        return state_value
+    
+    def update_regrets(self, info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight):
+        """
+        Wird nicht verwendet in dieser Implementierung.
+        Die Updates erfolgen direkt in traverse_tree.
+        Behalten für Kompatibilität mit Basisklasse.
+        """
+        pass
     
     def update_strategy_sum(self, info_set_key, legal_actions, current_strategy, player_reach):
         """
-        Aktualisiert Strategy Sum mit Gewichtung für Chance Sampling.
+        Wird nicht verwendet in dieser Implementierung.
+        Die Updates erfolgen direkt in traverse_tree.
+        Behalten für Kompatibilität mit Basisklasse.
         """
-        # Gewichtung: Anzahl der Kombinationen
-        sampling_weight = self.num_combinations
-        
-        for action in legal_actions:
-            self.strategy_sum[info_set_key][action] += sampling_weight * player_reach * current_strategy[action]
+        pass
