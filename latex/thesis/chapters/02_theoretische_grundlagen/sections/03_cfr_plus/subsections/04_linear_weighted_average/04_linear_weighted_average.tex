@@ -7,12 +7,10 @@ Die linear gewichtete Durchschnittsstrategie ist definiert als
 \end{equation}
 wobei spätere Iterationen stärker gewichtet werden.
 
-Theorem 3 zeigt, dass diese Strategie zu einem $\varepsilon$-Nash Equilibrium konvergiert.
-Für eine Sequenz von $T$ Verhaltensstrategieprofilen $\sigma^t$ aus CFR+ für $T$ Iterationen in einem extensiven Spiel, wobei $\max |v_p(l) - v_p(l')| \le L$ für alle Spieler $p$ und terminale Historien $l, l'$ gilt, ist die linear gewichtete Durchschnittsstrategie ein $2(|\mathcal{I}_1| + |\mathcal{I}_2|)L\sqrt{k}/\sqrt{T}$-Nash Equilibrium (\cite[Thm.~3]{tammelin2015solving}).
+Die linear gewichtete Durchschnittsstrategie konvergiert zu einem $\varepsilon$-Nash Equilibrium (\cite[Thm.~3]{tammelin2015solving}).
+Für eine Sequenz von $T$ Verhaltensstrategieprofilen $\sigma^t$ aus CFR+ in einem extensiven Spiel, wobei $\max |v_p(l) - v_p(l')| \le L$ für alle Spieler $p$ und terminale Historien $l, l'$ gilt, ist die linear gewichtete Durchschnittsstrategie ein $2(|\mathcal{I}_1| + |\mathcal{I}_2|)L\sqrt{k}/\sqrt{T}$-Nash Equilibrium.
 
-Die Schranke $\varepsilon = 2(|\mathcal{I}_1| + |\mathcal{I}_2|)L\sqrt{k}/\sqrt{T}$ setzt sich aus folgenden Komponenten zusammen:
-$|\mathcal{I}_1| + |\mathcal{I}_2|$ ist die Summe der Information Sets beider Spieler, $L$ ist der Nutzenbereich als maximaler Unterschied zwischen terminalen Historien, und $k = \max_{I \in \mathcal{I}} |A(I)|$ ist die maximale Anzahl Aktionen in einem Information Set.
-Die Schranke impliziert eine Konvergenzrate von $O(1/\sqrt{T})$, die asymptotisch identisch mit der Rate von uniform weighting ist.
+Die Schranke $\varepsilon = 2(|\mathcal{I}_1| + |\mathcal{I}_2|)L\sqrt{k}/\sqrt{T}$ impliziert eine Konvergenzrate von $O(1/\sqrt{T})$, die asymptotisch identisch mit der Rate von uniform weighting ist.
 Theorem 3 gilt nicht für CFR, und im Gegensatz zu CFR+, wo linear weighting die Performance verbessert, verschlechtert linear weighting die Performance von CFR.
-In der Praxis erreicht die aktuelle Strategie in CFR+ oft bereits eine gute Approximation zum Nash Equilibrium, sodass das aggressive Weighting die Konvergenz weiter beschleunigen kann (\cite{tammelin2015solving}).
+In der Praxis erreicht die aktuelle Strategie in CFR+ oft bereits eine gute Approximation zum Nash Equilibrium, sodass das aggressive Weighting die Konvergenz weiter beschleunigen kann.
 

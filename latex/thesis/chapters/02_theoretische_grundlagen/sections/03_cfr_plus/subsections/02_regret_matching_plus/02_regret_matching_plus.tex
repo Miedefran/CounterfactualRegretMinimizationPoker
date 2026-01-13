@@ -1,7 +1,7 @@
 \subsection{Regret Matching+}
 
-Regret Matching+ ist ein Regret minimierender Algorithmus, der sehr ähnlich zu Regret Matching operiert.
-Der entscheidende Unterschied liegt im Umgang mit negativen Regrets: Während Regret Matching Aktionen mit akkumuliertem negativen Regret ignoriert, setzt Regret Matching+ jeden akkumulierten negativen Regret aktiv auf null zurück.
+Regret Matching+ ist ein Regret minimierender Algorithmus, der ähnlich zu Regret Matching operiert.
+Der entscheidende Unterschied liegt im Umgang mit negativen Regrets: Während Regret Matching Aktionen mit akkumuliertem negativen Regret ignoriert, setzt Regret Matching+ jeden akkumulierten negativen Regret auf null zurück.
 
 Formal speichert Regret Matching+ nicht die Regrets $R^t(a)$, sondern verfolgt einen regret ähnlichen Wert:
 \begin{equation}
@@ -14,7 +14,7 @@ Die Strategie basiert auf diesen Werten:
 \end{equation}
 (\cite{tammelin2015solving})
 
-Theorem 1 liefert eine Regret Bound für Regret Matching+.
+Für Regret Matching+ gilt folgende Regret-Schranke (\cite[Thm.~1]{tammelin2015solving}).
 Gegeben sei eine Menge von Aktionen $A$ und eine Sequenz von $T$ Wertfunktionen $v^t : A \to \mathbb{R}$.
 Es existiere eine Schranke $L$, sodass $|v^t(a) - v^t(b)| \le L$ für alle $t$ und $a, b \in A$ gilt.
 Ein Agent, der nach dem Regret Matching+ Algorithmus handelt, hat dann einen Regret von höchstens
@@ -23,9 +23,9 @@ R^T \le L\sqrt{|A|T}.
 \end{equation}
 (\cite[Thm.~1]{tammelin2015solving})
 
-Diese Schranke ist identisch mit der Regret Bound von Regret Matching.
-Folglich hat CFR+ die gleiche theoretische Regret Bound wie CFR.
-In der Praxis konvergiert CFR+ jedoch deutlich schneller als CFR, was teilweise durch die besseren Tracking Regret Eigenschaften von Regret Matching+ erklärt werden kann.
+Diese Schranke ist identisch mit der Regret-Schranke von Regret Matching.
+CFR+ hat daher die gleiche theoretische Regret-Schranke wie CFR, konvergiert in der Praxis jedoch deutlich schneller.
+Dies lässt sich durch die besseren Tracking Regret Eigenschaften von Regret Matching+ erklären.
 
 Die empirische Überlegenheit von Regret Matching+ hat eine intuitive Erklärung.
 Regret Matching+ übertrifft Regret Matching insbesondere dann, wenn sich die beste Aktion plötzlich ändert.

@@ -1,0 +1,10 @@
+\subsection{Game-Spezifische Isomorphismen}
+
+Ein weiterer Beschleunigungsschritt nutzt strategisch äquivalente Aktionen oder Ereignisse.
+In vielen Kartenspielen sind Karten mit gleichem Rang, aber unterschiedlicher Farbe strategisch äquivalent.
+Beispielsweise ist eine 2 Herz äquivalent zu einer 2 Pik, zumindest bis weitere Karten aufgedeckt werden.
+Solche Mengen äquivalenter Chance-Aktionen werden als \emph{isomorph} bezeichnet, und eine wird willkürlich als kanonisch gewählt.
+
+Wenn die zu evaluierende Strategie für jedes Mitglied jeder Menge isomorpher Historien gleich ist, kann die Größe des public state trees erheblich reduziert werden, indem nur kanonische Aktionen betrachtet werden.
+Beim Zurückkehren durch einen Chance-Knoten während der Traversierung muss der Nutzen einer kanonischen Aktion mit der Anzahl der isomorphen States gewichtet werden, die sie repräsentiert.
+In Texas Hold'em führt diese Reduktion zu einem public state tree, der 21.5-mal kleiner ist als das vollständige Spiel.

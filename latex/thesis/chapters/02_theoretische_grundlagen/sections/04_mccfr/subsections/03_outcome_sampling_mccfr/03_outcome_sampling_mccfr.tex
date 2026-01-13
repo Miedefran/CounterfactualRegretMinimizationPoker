@@ -1,13 +1,12 @@
 \subsection{Outcome Sampling MCCFR}
 
-Bei Outcome Sampling MCCFR wird in jeder Iteration nur eine einzelne terminal history gesampelt.
-Jeder Block $Q \in Q$ enthält genau eine terminal history, das heißt $\forall Q \in Q: |Q| = 1$.
-Dies ist der extremste Fall des Samplings, da in jeder Iteration nur ein einziger Pfad durch den game tree betrachtet wird.
+Outcome Sampling MCCFR sampelt in jeder Iteration nur eine einzelne terminal history.
+Jeder Block $Q \in Q$ enthält genau eine terminal history: $\forall Q \in Q: |Q| = 1$.
 
 Die Sampling-Wahrscheinlichkeiten $q_j$ müssen eine Verteilung über die terminal histories spezifizieren.
 Dazu wird eine \emph{sampling policy} $\sigma'$ verwendet, sodass $q(z) = \pi^{\sigma'}(z)$ gilt.
 Jede Wahl einer sampling policy induziert eine bestimmte Verteilung über die Blockwahrscheinlichkeiten.
-Solange $\sigma'_i(a|I) > \epsilon$ für ein $\epsilon > 0$ gilt, existiert ein $\delta > 0$ mit $q(z) > \delta$, wodurch sichergestellt wird, dass der sampled counterfactual value wohldefiniert ist.
+Für $\sigma'_i(a|I) > \epsilon$ mit $\epsilon > 0$ existiert ein $\delta > 0$ mit $q(z) > \delta$, sodass der Nenner $\pi^{\sigma'}(z)$ in der Formel für $w_I$ nicht null wird.
 
 Der Algorithmus funktioniert, indem eine terminal history $z$ gemäß der sampling policy $\sigma'$ gesampelt wird und dabei $\pi^{\sigma'}(z)$ gespeichert wird.
 Die einzelne History wird dann vorwärts traversiert, um für jeden Präfix $h$ von $z$ die Wahrscheinlichkeit $\pi_i^\sigma(h)$ zu berechnen, mit der Spieler $i$ diesen Präfix erreicht.
@@ -25,9 +24,3 @@ wobei
 w_I = \frac{u_i(z) \pi_{-i}^\sigma(z) \pi_i^\sigma(z[I]a, z)}{\pi^{\sigma'}(z)}.
 \end{equation}
 (\cite[Eq.~10]{lanctot2009monte})
-
-Ein wichtiger Vorteil von Outcome Sampling MCCFR ist, dass wenn die terminal history gemäß der Strategie des Gegners gesampelt wird, das heißt $\sigma'_{-i} = \sigma_{-i}$, dann benötigt das Update keine explizite Kenntnis von $\sigma_{-i}$, da sich dieser Term in $w_I$ aufhebt.
-In diesem Fall wird $w_I$ zu $u_i(z) \pi_i^{\sigma'}(z[I], z) / \pi_i^{\sigma'}(z)$.
-Daher kann Outcome Sampling MCCFR für \emph{online regret minimization} verwendet werden, wenn die Strategie des Gegners nicht bekannt ist.
-Dazu muss der eigene Spieler seine Aktionen so wählen, dass $\sigma'_i \approx \sigma_i^t$ gilt, jedoch mit etwas Exploration, um $q_j \ge \delta > 0$ zu garantieren.
-Durch die Balance zwischen dem durch Exploration verursachten Regret und dem durch ein kleines $\delta$ verursachten Regret kann der average overall regret beschränkt werden, solange die Anzahl der Spiele $T$ im Voraus bekannt ist (\cite{lanctot2009monte}).

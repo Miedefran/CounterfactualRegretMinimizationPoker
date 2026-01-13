@@ -1,5 +1,13 @@
 \section{CFR+}
 
+CFR+ wurde 2015 von Tammelin et al.~\cite{tammelin2015solving} als Optimierung von CFR vorgestellt.
+Der Algorithmus erreicht durch drei Hauptänderungen eine deutlich schnellere Konvergenz als Vanilla CFR.
+CFR+ bildet die Grundlage für Cepheus, das erste Programm, welches Heads-up Limit Texas Hold'em erfolgreich gelöst hat~\cite{bowling2015heads}.
+Zudem wurde CFR+ in Libratus eingesetzt, einer Poker-KI, die 2017 professionelle Spieler in Heads-up No-Limit Texas Hold'em besiegte~\cite{brown2017superhuman}.
+
+Dieses Kapitel stellt die theoretischen Grundlagen vor: Regret Matching+ als zentrale Änderung, alternierende Updates und eine linear gewichtete Durchschnittsstrategie.
+Zudem werden die Tracking Regret Eigenschaften erläutert, die die praktische Überlegenheit von CFR+ erklären.
+
 \input{chapters/02_theoretische_grundlagen/sections/03_cfr_plus/subsections/01_unterschiede_zu_vanilla_cfr/01_unterschiede_zu_vanilla_cfr}
 \input{chapters/02_theoretische_grundlagen/sections/03_cfr_plus/subsections/02_regret_matching_plus/02_regret_matching_plus}
 \input{chapters/02_theoretische_grundlagen/sections/03_cfr_plus/subsections/03_tracking_regret/03_tracking_regret}

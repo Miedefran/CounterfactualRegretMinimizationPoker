@@ -1,0 +1,10 @@
+\subsection{Parallele Berechnung}
+
+Ein vierter Beschleunigungsschritt nutzt die Möglichkeit, unabhängige Teilbäume des public state trees parallel zu lösen.
+Da der Graph der public states einen Baum bildet, können zwei public states, von denen einer kein Nachfahre des anderen ist, parallel gelöst werden, da sie keine gemeinsamen Nachfahren und somit keine gemeinsamen Berechnungen haben.
+
+Beispielsweise können beim Erreichen eines öffentlichen Chance-Ereignisses während der Traversierung alle Kinder parallel gelöst werden.
+Der Wertvektor wird wie üblich zurückgegeben, sobald jede Teilbaum-Berechnung abgeschlossen ist.
+
+In Texas Hold'em ist eine natürliche Wahl für unabhängige Teilspiele der Beginn der zweiten Runde, der \emph{Flop}.
+Es gibt 7 nicht-terminale Aktionssequenzen in der ersten Runde und 1755 kanonische öffentliche Chance-Ereignisse zu Beginn des Flops, was zu 12.285 unabhängigen Teilspielen pro Position führt, insgesamt 24.570 Teilspiele.

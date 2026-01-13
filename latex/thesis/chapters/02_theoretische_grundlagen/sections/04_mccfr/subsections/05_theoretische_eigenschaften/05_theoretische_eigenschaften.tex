@@ -53,7 +53,7 @@ R_i^T \le \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T},
 (\cite[Thm.~3]{lanctot2009monte})
 wobei $\Delta_{u,i} = \max_z u_i(z) - \min_z u_i(z)$ der Nutzenbereich für Spieler $i$ ist und $|A_i| = \max_{h:P(h)=i} |A(h)|$ die maximale Anzahl verfügbarer Aktionen für Spieler $i$ bezeichnet.
 
-Diese Schranke verbessert die ursprüngliche Bound aus Theorem 4 des Zinkevich Papers, die $|\mathcal{I}_i|$ anstelle von $M_i$ verwendet.
+Diese Schranke verbessert die ursprüngliche Schranke aus Theorem 4 des Zinkevich Papers, die $|\mathcal{I}_i|$ anstelle von $M_i$ verwendet.
 Da $M_i \le |\mathcal{I}_i|$ gilt, ist die neue Schranke mindestens so gut wie die ursprüngliche und oft deutlich besser.
 Die Konvergenzrate bleibt bei $O(1/\sqrt{T})$, wobei der konstante Faktor durch die strukturabhängige Komplexität $M_i$ statt der einfachen Anzahl der Information Sets bestimmt wird.
 
@@ -69,11 +69,9 @@ Obwohl External Sampling die gleiche Ordnung von Iterationen benötigt wie Vanil
 Für ausgewogene Spiele, in denen die Spieler ungefähr gleich viele Entscheidungen treffen, betragen die Iterationskosten von External Sampling $O(\sqrt{|H|})$, während Vanilla CFR $O(|H|)$ benötigt.
 Dies bedeutet, dass External Sampling MCCFR asymptotisch weniger Zeit benötigt, um ein approximatives Gleichgewicht zu berechnen als Vanilla CFR (\cite{lanctot2009monte}).
 
-Für Outcome Sampling MCCFR kann ebenfalls ein probabilistisches Regret Bound angegeben werden.
-Falls für jede terminal history $z \in Z$ entweder $\pi_{-i}^\sigma(z) = 0$ oder $q(z) \ge \delta > 0$ zu jedem Zeitpunkt gilt, dann gilt für jeden Parameter $p \in (0, 1]$ mit Wahrscheinlichkeit mindestens $1-p$:
+Für Outcome Sampling MCCFR gilt mit Wahrscheinlichkeit mindestens $1-p$ für $p \in (0, 1]$:
 \begin{equation}
-R_i^T \le \left(1 + \sqrt{\frac{2}{p}} \cdot \frac{1}{\sqrt{\delta}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T}.
+R_i^T \le \left(1 + \sqrt{\frac{2}{p}} \cdot \frac{1}{\sqrt{\delta}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T},
 \end{equation}
-(\cite[Thm.~5]{lanctot2009monte})
-Im Vergleich zu External Sampling enthält diese Schranke einen zusätzlichen Faktor $\frac{1}{\sqrt{\delta}}$, der von der Wahl der sampling policy abhängt.
-Je größer $\delta$ ist, desto besser ist die Schranke, was bedeutet, dass die sampling policy eine ausreichend große Wahrscheinlichkeit für alle relevanten terminal histories gewährleisten sollte.
+wenn $q(z) \ge \delta > 0$ für alle relevanten terminal histories $z$ gilt (\cite[Thm.~5]{lanctot2009monte}).
+Im Vergleich zu External Sampling enthält diese Schranke den zusätzlichen Faktor $\frac{1}{\sqrt{\delta}}$, der von der sampling policy abhängt.

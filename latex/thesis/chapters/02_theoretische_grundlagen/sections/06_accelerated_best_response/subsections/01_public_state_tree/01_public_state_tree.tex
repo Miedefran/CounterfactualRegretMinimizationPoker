@@ -1,0 +1,10 @@
+\subsection{Public State Tree}
+
+Der zentrale Ansatz besteht darin, statt des Information Set Trees einen \emph{public state tree} zu traversieren.
+Ein \emph{public state} ist definiert durch alle Informationen, die beiden Spielern bekannt sind, also wie das Spiel für einen Beobachter ohne private Informationen aussieht.
+Der public state tree ist deutlich kleiner als der Information Set Tree, da er nur die öffentlich sichtbaren Informationen enthält.
+
+Bei der Traversierung des public state trees werden die reach probabilities des Gegners einmal berechnet.
+Diese werden für alle eigenen Informationssets in diesem public state wiederverwendet.
+Dies ermöglicht eine erhebliche Reduzierung der Strategieabfragen.
+In Spielen wie Texas Hold'em, wo jeder Spieler bis zu 1326 Informationssets pro public state haben kann, werden dadurch 1325 unnötige Strategieabfragen vermieden.

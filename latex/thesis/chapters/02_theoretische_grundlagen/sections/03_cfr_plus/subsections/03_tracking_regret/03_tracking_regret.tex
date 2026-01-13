@@ -1,14 +1,13 @@
 \subsection{Tracking Regret}
 
-Tracking Regret ist ein von Herbster und Warmuth eingeführtes Konzept~\cite{herbster1998tracking}, das die Performance im Nachhinein gegen eine größere Menge von Alternativen betrachtet.
+Tracking Regret ist ein von Herbster und Warmuth eingeführtes Konzept~\cite{herbster1998tracking}.
 Während Standard Regret nur gegen statische Strategien vergleicht, die immer die gleiche Aktion wählen, erlaubt Tracking Regret den Vergleich gegen Strategien, die ihre Aktion höchstens $(k-1)$ Mal ändern können.
 
 Regret Matching hat sehr schlechte Tracking Regret Eigenschaften.
 Der Algorithmus kann lineares Regret haben, selbst wenn die Vergleichsstrategie nur einmal wechselt ($k = 2$).
 Im Gegensatz dazu ist Regret Matching+ der erste Regret Matching basierte Algorithmus mit sublinearem Tracking Regret.
 
-Theorem 2 formalisiert diese Eigenschaft.
-Für alternative Strategien, die bis zu $(k-1)$ Mal wechseln können, hat Regret Matching+ eine Regret Schranke von
+Für alternative Strategien, die bis zu $(k-1)$ Mal wechseln können, hat Regret Matching+ eine Regret-Schranke von
 \begin{equation}
 R^T \le kL\sqrt{|A|T}.
 \end{equation}
