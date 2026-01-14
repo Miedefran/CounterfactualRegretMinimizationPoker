@@ -85,7 +85,7 @@ class GameTree:
         return tree
 
 
-def build_game_tree(game, combination_generator, game_name=None, game_config=None):
+def build_game_tree(game, combination_generator, game_name=None, game_config=None, abstract_suits=False):
     """
     Baut einen Game Tree für das gegebene Spiel.
     
@@ -94,11 +94,13 @@ def build_game_tree(game, combination_generator, game_name=None, game_config=Non
         combination_generator: Der CombinationGenerator für das Spiel
         game_name: Optionaler Name des Spiels (für Speicherung)
         game_config: Optionale Game-Konfiguration (für Speicherung)
+        abstract_suits: Wenn True, werden Suits in InfoSet Keys entfernt (Suit Abstraction)
     
     Returns:
         GameTree Objekt
     """
-    print("Building game tree...")
+    abstraction_str = " (suit abstracted)" if abstract_suits else ""
+    print(f"Building game tree{abstraction_str}...")
     start_time = time.time()
     
     tree = GameTree()
@@ -154,21 +156,23 @@ def build_game_tree(game, combination_generator, game_name=None, game_config=Non
     return tree
 
 
-def save_game_tree(tree, game_name, output_dir=None):
+def save_game_tree(tree, game_name, output_dir=None, abstract_suits=False):
     """
     Speichert einen Game Tree in einer Datei.
     
     Args:
         tree: GameTree Objekt
         game_name: Name des Spiels (für Dateinamen)
-        output_dir: Optionales Verzeichnis (default: data/trees/game_trees/normal)
+        output_dir: Optionales Verzeichnis (default: data/trees/game_trees/normal oder abstracted)
+        abstract_suits: Wenn True, wird in abstracted Verzeichnis gespeichert
     
     Returns:
         Pfad zur gespeicherten Datei
     """
     if output_dir is None:
         script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        output_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'normal')
+        subdir = 'abstracted' if abstract_suits else 'normal'
+        output_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', subdir)
     
     os.makedirs(output_dir, exist_ok=True)
     filename = f"{game_name}_game_tree.pkl.gz"
@@ -183,20 +187,22 @@ def save_game_tree(tree, game_name, output_dir=None):
     return filepath
 
 
-def load_game_tree(game_name, input_dir=None):
+def load_game_tree(game_name, input_dir=None, abstract_suits=False):
     """
     Lädt einen Game Tree aus einer Datei.
     
     Args:
         game_name: Name des Spiels (für Dateinamen)
-        input_dir: Optionales Verzeichnis (default: data/trees/game_trees/normal)
+        input_dir: Optionales Verzeichnis (default: data/trees/game_trees/normal oder abstracted)
+        abstract_suits: Wenn True, wird aus abstracted Verzeichnis geladen
     
     Returns:
         GameTree Objekt
     """
     if input_dir is None:
         script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        input_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'normal')
+        subdir = 'abstracted' if abstract_suits else 'normal'
+        input_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', subdir)
     
     filename = f"{game_name}_game_tree.pkl.gz"
     filepath = os.path.join(input_dir, filename)

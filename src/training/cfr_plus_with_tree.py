@@ -53,7 +53,7 @@ class CFRPlusWithTree(CFRSolverWithTree):
         Eine CFR+ Iteration.
         
         Macht alternierende Updates: erst Spieler 0, dann Spieler 1.
-        Nach jedem Spieler werden negative Regrets auf 0 geklappt und
+        Nach jedem Spieler werden negative Regrets auf 0 gesetzt und
         die Policy neu berechnet.
         """
         self._current_iteration = self.iteration_count + 1

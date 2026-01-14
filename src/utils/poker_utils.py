@@ -117,6 +117,41 @@ class LeducHoldemCombinations(PokerCombinationGenerator):
         game.dealer.deck = [combination[2]]
 
 
+class LeducHoldemCombinationsAbstracted(PokerCombinationGenerator):
+    """
+    Suit-abstracted Combination Generator für Leduc Holdem.
+    Verwendet nur Ranks (J, Q, K) ohne Suits.
+    Generiert nur eindeutige Kombinationen nach Rank (nicht nach Index),
+    um die Anzahl der Root Nodes zu reduzieren.
+    """
+    
+    def get_all_combinations(self):
+        ranks = ['J', 'Q', 'K']
+        combinations = []
+        seen = set()
+        
+        # Generiere alle Kombinationen, aber filtere Duplikate nach Rank
+        # WICHTIG: Reihenfolge der private cards ist wichtig (p0, p1)
+        for r1 in ranks:
+            for r2 in ranks:
+                if r1 != r2:  # Verschiedene private cards
+                    for r3 in ranks:
+                        # Kombination: (p0_card, p1_card, public_card)
+                        # NICHT sortieren, da Reihenfolge wichtig ist!
+                        combo_key = (r1, r2, r3)
+                        if combo_key not in seen:
+                            seen.add(combo_key)
+                            combinations.append((r1, r2, r3))
+        
+        return combinations
+    
+    def setup_game_with_combination(self, game, combination):
+        game.reset(0)
+        game.players[0].private_card = combination[0]
+        game.players[1].private_card = combination[1]
+        game.dealer.deck = [combination[2]]
+
+
 class RhodeIslandCombinations(PokerCombinationGenerator):
     
     def get_all_combinations(self):
@@ -159,6 +194,44 @@ class TwelveCardPokerCombinations(PokerCombinationGenerator):
                             for l, public2 in enumerate(deck):
                                 if l != i and l != j and l != k:
                                     combinations.append((p0_card, p1_card, public1, public2))
+        
+        return combinations
+    
+    def setup_game_with_combination(self, game, combination):
+        game.reset(0)
+        game.players[0].private_card = combination[0]
+        game.players[1].private_card = combination[1]
+        game.dealer.deck = [combination[2], combination[3]]
+
+
+class TwelveCardPokerCombinationsAbstracted(PokerCombinationGenerator):
+    """
+    Suit-abstracted Combination Generator für Twelve Card Poker.
+    Verwendet nur Ranks (J, Q, K, A) ohne Suits.
+    Generiert nur eindeutige Kombinationen nach Rank (nicht nach Index),
+    um die Anzahl der Nodes zu reduzieren.
+    """
+    
+    def get_all_combinations(self):
+        ranks = ['J', 'Q', 'K', 'A']
+        combinations = []
+        seen = set()
+        
+        # Generiere alle Kombinationen, aber filtere Duplikate nach Rank
+        for r1 in ranks:
+            for r2 in ranks:
+                if r1 != r2:  # Verschiedene private cards
+                    for r3 in ranks:
+                        if r3 != r1 and r3 != r2:  # Public card 1
+                            for r4 in ranks:
+                                if r4 != r1 and r4 != r2 and r4 != r3:  # Public card 2
+                                    # Kombination als Tuple von Ranks (ohne Index)
+                                    # Sortiere private cards und public cards für Eindeutigkeit
+                                    combo_key = tuple(sorted([r1, r2])) + tuple(sorted([r3, r4]))
+                                    if combo_key not in seen:
+                                        seen.add(combo_key)
+                                        # Speichere in ursprünglicher Reihenfolge
+                                        combinations.append((r1, r2, r3, r4))
         
         return combinations
     

@@ -26,8 +26,10 @@ from utils.poker_utils import (
     GAME_CONFIGS,
     KuhnPokerCombinations,
     LeducHoldemCombinations,
+    LeducHoldemCombinationsAbstracted,
     RhodeIslandCombinations,
     TwelveCardPokerCombinations,
+    TwelveCardPokerCombinationsAbstracted,
     RoyalHoldemCombinations,
     LimitHoldemCombinations,
 )
@@ -35,11 +37,13 @@ from utils.poker_utils import (
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python build_and_save_tree.py <game_name>")
+        print("Usage: python build_and_save_tree.py <game_name> [--no-suit-abstraction]")
         print("Available games: kuhn_case1, kuhn_case2, kuhn_case3, kuhn_case4, leduc, rhode_island, twelve_card_poker, royal_holdem, limit_holdem")
+        print("Note: leduc and twelve_card_poker use suit abstraction by default. Use --no-suit-abstraction to build normal tree.")
         sys.exit(1)
     
     game_name = sys.argv[1]
+    no_suit_abstraction = '--no-suit-abstraction' in sys.argv
     
     if game_name not in GAME_CONFIGS:
         print(f"Unknown game: {game_name}")
@@ -47,19 +51,31 @@ def main():
     
     config = GAME_CONFIGS[game_name]
     
+    # Bestimme ob Suit Abstraction verwendet werden soll
+    # Standardmäßig für leduc und twelve_card_poker, außer wenn --no-suit-abstraction gesetzt ist
+    use_suit_abstraction = False
+    if game_name in ['leduc', 'twelve_card_poker']:
+        use_suit_abstraction = not no_suit_abstraction
+    
     # Erstelle Game und Combination Generator
     if game_name.startswith('kuhn'):
         game = KuhnPokerGame(ante=config['ante'], bet_size=config['bet_size'])
         combo_gen = KuhnPokerCombinations()
     elif game_name == 'leduc':
         game = LeducHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
-        combo_gen = LeducHoldemCombinations()
+        if use_suit_abstraction:
+            combo_gen = LeducHoldemCombinationsAbstracted()
+        else:
+            combo_gen = LeducHoldemCombinations()
     elif game_name == 'rhode_island':
         game = RhodeIslandGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = RhodeIslandCombinations()
     elif game_name == 'twelve_card_poker':
         game = TwelveCardPokerGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
-        combo_gen = TwelveCardPokerCombinations()
+        if use_suit_abstraction:
+            combo_gen = TwelveCardPokerCombinationsAbstracted()
+        else:
+            combo_gen = TwelveCardPokerCombinations()
     elif game_name == 'royal_holdem':
         game = RoyalHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = RoyalHoldemCombinations()
@@ -69,12 +85,13 @@ def main():
         combo_gen = LimitHoldemCombinations()
     
     # Baue Tree
-    tree = build_game_tree(game, combo_gen, game_name=game_name, game_config=config)
+    tree = build_game_tree(game, combo_gen, game_name=game_name, game_config=config, abstract_suits=use_suit_abstraction)
     
     # Speichere Tree
-    save_game_tree(tree, game_name)
+    save_game_tree(tree, game_name, abstract_suits=use_suit_abstraction)
     
-    print(f"\nGame tree for {game_name} successfully built and saved!")
+    abstraction_str = " (suit abstracted)" if use_suit_abstraction else ""
+    print(f"\nGame tree for {game_name}{abstraction_str} successfully built and saved!")
 
 
 if __name__ == "__main__":
