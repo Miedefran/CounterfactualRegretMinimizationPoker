@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # Baut nacheinander alle relevanten Trees NEU:
-# - Game Trees (nur leduc & twelve_card_poker, NOT suit-abstracted)
-# - Public State Trees (leduc, twelve_card_poker, small_island_holdem, NOT suit-abstracted)
+# - Game Trees (kuhn_case2, leduc, twelve_card_poker, small_island_holdem; NOT suit-abstracted)
+# - Public State Trees (kuhn_case2, leduc, twelve_card_poker, small_island_holdem; NOT suit-abstracted)
 #
 # Default: alles neu bauen (auch wenn Dateien existieren), um alte/falsche Trees zu vermeiden.
 #
@@ -32,14 +32,14 @@ if [[ "${USE_CACHE}" != "true" ]]; then
 fi
 
 # -----------------------------------------------------------------------------
-# 0) Game Trees neu bauen (nur leduc & twelve_card_poker, NOT abstracted)
+# 0) Game Trees neu bauen (kuhn_case2, leduc, twelve_card_poker, small_island_holdem; NOT abstracted)
 # -----------------------------------------------------------------------------
 echo
-echo "=== BUILD GAME TREES (leduc, twelve_card_poker) ==="
+echo "=== BUILD GAME TREES (kuhn_case2, leduc, twelve_card_poker, small_island_holdem) ==="
 if [[ "${SKIP_EXISTING}" == "true" ]]; then
-  "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --no-suit-abstraction
+  "${RUN_GAME_TREES[@]}" kuhn_case2 leduc twelve_card_poker small_island_holdem --no-suit-abstraction
 else
-  "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --no-suit-abstraction --force
+  "${RUN_GAME_TREES[@]}" kuhn_case2 leduc twelve_card_poker small_island_holdem --no-suit-abstraction --force
 fi
 
 # -----------------------------------------------------------------------------
@@ -49,6 +49,7 @@ fi
 # Liste der Spiele, für die wir Public Trees bauen wollen.
 # Hinweis: Kuhn-Cases würden alle in dieselbe Datei `kuhn_public_tree_v2_NOT_abstracted.pkl.gz` schreiben.
 GAMES=(
+  kuhn_case2
   leduc
   twelve_card_poker
   small_island_holdem

@@ -16,14 +16,18 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
+from envs.small_island_holdem.game import SmallIslandHoldemGame
 from envs.twelve_card_poker.game import TwelveCardPokerGame
 
 from training.build_game_tree import build_game_tree, save_game_tree
 from utils.poker_utils import (
     GAME_CONFIGS,
+    KuhnPokerCombinations,
     LeducHoldemCombinations,
     LeducHoldemCombinationsAbstracted,
+    SmallIslandHoldemCombinations,
     TwelveCardPokerCombinations,
     TwelveCardPokerCombinationsAbstracted,
 )
@@ -35,7 +39,20 @@ def _default_tree_path(game_name: str, abstract_suits: bool) -> Path:
 
 
 def build_one(game: str, abstract_suits: bool, force: bool) -> None:
-    if game == "leduc":
+    if game == "kuhn_case2":
+        # Kuhn: keine Suits → abstract_suits ist hier praktisch irrelevant,
+        # wir unterstützen es trotzdem konsistent über den CLI.
+        config = GAME_CONFIGS["kuhn_case2"]
+        game_obj = KuhnPokerGame(ante=config["ante"], bet_size=config["bet_size"])
+        combo_gen = KuhnPokerCombinations()
+        # Wichtig: Tree-Solver laden per game_name=args.game → Dateiname muss exakt matchen
+        save_name = "kuhn_case2"
+    elif game == "small_island_holdem":
+        config = GAME_CONFIGS["small_island_holdem"]
+        game_obj = SmallIslandHoldemGame(ante=config["ante"], bet_sizes=config["bet_sizes"], bet_limit=config["bet_limit"])
+        combo_gen = SmallIslandHoldemCombinations()
+        save_name = "small_island_holdem"
+    elif game == "leduc":
         config = GAME_CONFIGS["leduc"]
         game_obj = LeducHoldemGame(ante=config["ante"], bet_sizes=config["bet_sizes"], bet_limit=config["bet_limit"])
         combo_gen = LeducHoldemCombinationsAbstracted() if abstract_suits else LeducHoldemCombinations()
@@ -67,7 +84,7 @@ def main() -> None:
     parser.add_argument(
         "games",
         nargs="+",
-        choices=["leduc", "twelve_card_poker"],
+        choices=["kuhn_case2", "leduc", "twelve_card_poker", "small_island_holdem"],
         help="Which game trees to build",
     )
     parser.add_argument(

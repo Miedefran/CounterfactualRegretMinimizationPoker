@@ -200,17 +200,17 @@ fi
 
 if should_plot "small"; then
   SMALL_FILES=(
-    "$(br_file small_island_holdem discounted_cfr_no_pruning "$SMALL_ISLAND_ITERS")"
+    "$(br_file small_island_holdem discounted_cfr_with_tree_no_pruning "$SMALL_ISLAND_ITERS")"
   )
 
   plot_iter \
     "$OUT_DIR/small_island_iter_compare.png" \
-    "Small Island: Exploitability vs Iteration — DCFR, pruning=false" \
+    "Small Island: Exploitability vs Iteration — DCFR with tree, pruning=false" \
     "${SMALL_FILES[@]}"
 
   plot_time \
     "$OUT_DIR/small_island_time_compare.png" \
-    "Small Island: Exploitability vs Zeit — DCFR, pruning=false" \
+    "Small Island: Exploitability vs Zeit — DCFR with tree, pruning=false" \
     "${SMALL_FILES[@]}"
 fi
 

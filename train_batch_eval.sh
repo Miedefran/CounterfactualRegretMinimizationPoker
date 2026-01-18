@@ -112,8 +112,8 @@ bash plot_batch_eval.sh twelve
 # 3) Small Island Hold'em (Demonstrator – größtes gelöstes Spiel)
 ###############################################################################
 
-# Small Island: nur DCFR (ohne Tree)
-SMALL_ISLAND_ALGOS=(discounted_cfr)
+# Small Island: nur DCFR (mit Tree)
+SMALL_ISLAND_ALGOS=(discounted_cfr_with_tree)
 for algo in "${SMALL_ISLAND_ALGOS[@]}"; do
   train_one "small_island_holdem" "$SMALL_ISLAND_ITERS" "$algo" "$SMALL_ISLAND_SCHEDULE"
 done
