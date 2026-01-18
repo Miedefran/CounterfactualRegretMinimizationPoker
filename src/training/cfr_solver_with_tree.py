@@ -16,19 +16,6 @@ from collections import defaultdict
 from training.build_game_tree import load_game_tree, build_game_tree, save_game_tree, GameTree
 
 
-class Node:
-    """Repräsentiert einen Node im Game Tree"""
-    def __init__(self, node_id):
-        self.node_id = node_id
-        self.type = None  # 'terminal' oder 'decision'
-        self.player = None  # 0 oder 1 (nur bei decision nodes)
-        self.infoset_key = None  # InfoSet Key (nur bei decision nodes)
-        self.legal_actions = []  # Liste von legalen Aktionen
-        self.children = {}  # {action: child_node_id}
-        self.payoffs = None  # [payoff_p0, payoff_p1] (nur bei terminal nodes)
-        self.depth = 0
-
-
 class CFRSolverWithTree:
     """
     CFR Solver der den Game Tree einmal vorher baut.
@@ -68,6 +55,7 @@ class CFRSolverWithTree:
         self._policy_cache = {}  # {info_set_key: {action: prob}}
         
         # Tree Datenstrukturen
+        # Hinweis: Nodes stammen aus `training.build_game_tree.Node`
         self.nodes = {}  # {node_id: Node}
         self.next_node_id = 0
         self.infoset_to_nodes = defaultdict(list)  # {infoset_key: [node_ids]}
@@ -98,29 +86,21 @@ class CFRSolverWithTree:
             print(f"Tree built: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
     
     def _convert_game_tree_to_internal(self, game_tree):
-        """Konvertiert ein GameTree Objekt zu interner Struktur"""
-        self.nodes = {}
-        self.infoset_to_nodes = defaultdict(list)
+        """
+        Übernimmt (adoptiert) ein GameTree Objekt als interne Struktur.
+
+        WICHTIG: Wir erzeugen KEINE zweite Node-Welt mehr, sondern referenzieren
+        direkt die Nodes aus `training.build_game_tree`.
+        """
+        # Optional: halte Referenz (hilfreich für Debugging / Ownership)
+        self.game_tree = game_tree
+
+        # Direkt übernehmen: keine Kopie, kein RAM-Peak durch doppelte Nodes
+        self.nodes = game_tree.nodes
+        self.infoset_to_nodes = game_tree.infoset_to_nodes
         self.root_nodes = game_tree.root_nodes
-        
-        for node_id, node_data in game_tree.nodes.items():
-            node = Node(node_data.node_id)
-            node.type = node_data.type
-            node.player = node_data.player
-            node.infoset_key = node_data.infoset_key
-            node.legal_actions = node_data.legal_actions
-            node.children = node_data.children
-            node.payoffs = node_data.payoffs
-            node.depth = node_data.depth
-            self.nodes[node_id] = node
-            
-            if node.infoset_key is not None:
-                self.infoset_to_nodes[node.infoset_key].append(node_id)
-        
-        if self.nodes:
-            self.next_node_id = max(self.nodes.keys()) + 1
-        else:
-            self.next_node_id = 0
+
+        self.next_node_id = (max(self.nodes.keys()) + 1) if self.nodes else 0
     
     def ensure_init(self, info_set_key, legal_actions):
         """Initialisiert regret_sum und strategy_sum für ein InfoSet"""
