@@ -1,0 +1,52 @@
+\section{Evaluationsmethoden}
+
+Zur Bewertung der trainierten Strategien wird der Accelerated Best Response Agent verwendet, welcher die Exploitability einer Strategie berechnet.
+
+\subsection{Accelerated Best Response}
+
+Der Accelerated Best Response Agent berechnet die Exploitability einer Strategie durch Traversierung des Public State Tree statt des Information Set Tree.
+Die theoretischen Grundlagen dieser Methode wurden bereits in Kapitel 2 beschrieben.
+In diesem Abschnitt wird die Architektur und der Ablauf der Implementierung beschrieben.
+
+Der Public State Tree wird einmal vorher durch \texttt{build\_public\_state\_tree\_v2.py} erstellt und enthält Public States, Information Sets pro Spieler und Terminal Nodes.
+Der Tree wird als gzip-komprimiertes Pickle-Format gespeichert und kann bei Bedarf geladen werden.
+
+Abbildung~\ref{fig:best_response_activity} zeigt den Gesamtablauf der Best Response Berechnung.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth]{chapters/04_systemarchitektur/sections/03_evaluationsmethoden/Aktivitaetsdiagramm_best_response.pdf}
+\caption{Aktivitätsdiagramm der Best Response Berechnung}
+\label{fig:best_response_activity}
+\end{figure}
+
+Die Berechnung beginnt mit dem Laden des Public State Trees und der durchschnittlichen Strategie.
+Für jedes Information Set des betrachteten Spielers werden die gültigen Gegner-Information Sets bestimmt (ausschließlich solche mit unterschiedlichen Karten).
+Die Reach Probabilities für den Gegner werden berechnet und anschließend wird der Public State Tree rekursiv traversiert.
+Der Gesamtnutzen wird als gewichtete Summe über alle Information Sets berechnet und als Exploitability zurückgegeben.
+
+Abbildung~\ref{fig:traverse_public_tree} zeigt den Ablauf der rekursiven Traversierung des Public State Trees im Detail.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=1.0\textwidth]{chapters/04_systemarchitektur/sections/03_evaluationsmethoden/Aktivitaetsdiagramm_traverse_public_tree.pdf}
+\caption{Aktivitätsdiagramm der Public State Tree Traversierung}
+\label{fig:traverse_public_tree}
+\end{figure}
+
+Die Traversierung unterscheidet zwischen drei Node-Typen:
+Handelt es sich um einen \textbf{Terminal Node}, wird die Hand Strength für alle Information Sets berechnet (mit Caching zur Performance-Optimierung) und die Payoffs werden als gewichtete Summe über die Reach Probabilities des Gegners berechnet.
+
+Bei einem \textbf{Chance Node} wird für jedes Chance-Event der neue Public State bestimmt und rekursiv weiter traversiert.
+Der erwartete Nutzen wird als gewichtete Summe über alle Chance-Events berechnet.
+
+Bei einem \textbf{Choice Node} wird unterschieden, ob es sich um einen Knoten des betrachteten Spielers oder des Gegners handelt.
+Handelt es sich um einen Knoten des \textbf{betrachteten Spielers}, wird für jede mögliche Aktion rekursiv traversiert und der Nutzen gespeichert.
+Für jedes Information Set wird anschließend der Best Response berechnet, indem das Maximum über alle Aktionen gewählt wird.
+
+Handelt es sich um einen \textbf{Gegner-Knoten}, wird die Strategie des Gegners für die entsprechenden Information Sets abgerufen.
+Für jede mögliche Aktion werden die Reach Probabilities aktualisiert und rekursiv weiter traversiert.
+Der erwartete Nutzen wird als gewichtete Summe über alle Aktionen berechnet, wobei die Gewichte die Strategie-Wahrscheinlichkeiten des Gegners sind.
+
+Die Terminal-Node-Evaluierung nutzt Hand-Strength-Sortierung für O(n) statt O(n²) Komplexität, und Hand Strength Evaluierungen werden gecacht, um wiederholte Berechnungen zu vermeiden.
+Während des Trainings kann der \texttt{BestResponseEvaluator} optional verwendet werden, um in regelmäßigen Abständen Best Response Werte zu berechnen und zu speichern, ohne den Trainingsprozess zu unterbrechen.

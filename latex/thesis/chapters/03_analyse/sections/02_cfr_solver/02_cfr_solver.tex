@@ -1,6 +1,10 @@
 \section{CFR Solver}
-
 In dieser Arbeit werden drei verschiedene Varianten von CFR Algorithmen implementiert: Vanilla CFR, CFR+ und MCCFR mit External Sampling.
-Vanilla CFR dient als Baseline für den Vergleich aller Varianten und ermöglicht es, die Verbesserungen der anderen Algorithmen zu quantifizieren.
+Die Auswahl dieser drei Varianten erfolgte zu Beginn der Arbeit basierend auf einer ersten Literaturrecherche. 
+Diese Varianten wurden in der mir bekannten Literatur am häufigsten diskutiert und bilden die Grundlage für viele erfolgreiche Anwendungen.\\
+Vanilla CFR dient als Baseline für den Vergleich und ermöglicht es festzustellen, inwiefern sich die Ergebnisse der einzelnen Algorithmen unterscheiden.
 MCCFR wurde ausgewählt, um eine Variante zu untersuchen, die nicht den gesamten Game Tree explizit besucht, sondern mittels Sampling arbeitet. 
-CFR+ wurde implementiert, da es die Grundlage für die erfolgreiche Poker KI Libratus bildet, welche in den letzten Jahren bedeutende Erfolge in diesem Bereich erzielt hat.
+Als drittes wird CFR+ umgesetzt, da es die Grundlage für extrem erfolgreiche Poker KIs wie Cepheus oder Libratus bildet.\\
+Zum Zeitpunkt der anfänglichen Literaturrecherche war mir noch nicht bekannt was für ein großes Maß an unterschiedlichen CFR Algorithmen existiert.
+Im Nachhinein betrachtet wäre es durchaus sinnvoll gewesen eine andere Wahl an Optmierungsalgorithmen zu treffen und Varianten wie zum Beispiel BR-CFR oder Discounted CFR zu untersuchen.
+

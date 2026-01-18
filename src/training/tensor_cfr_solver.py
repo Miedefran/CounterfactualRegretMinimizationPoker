@@ -23,10 +23,15 @@ class TensorCFRSolver:
 
         print(f"Initializing TensorCFRSolver on {self.device}...")
 
+        # Bestimme ob Suit Abstraction verwendet wird (basierend auf Combination Generator Typ)
+        from utils.poker_utils import LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted
+        use_suit_abstraction = isinstance(combination_generator, 
+            (LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted))
+
         self.tree = None
         
         if load_tree and game_name:
-            tree_path = get_tree_path(game_name)
+            tree_path = get_tree_path(game_name, abstract_suits=use_suit_abstraction)
             if os.path.exists(tree_path):
                 try:
                     self.tree = TensorizedGameTree.load(tree_path)
@@ -41,7 +46,7 @@ class TensorCFRSolver:
         if self.tree is None:
             self.tree = build_tensor_tree(game, combination_generator)
             if load_tree and game_name:
-                tree_path = get_tree_path(game_name)
+                tree_path = get_tree_path(game_name, abstract_suits=use_suit_abstraction)
                 self.tree.save(tree_path)
 
         self._move_tree_to_device()

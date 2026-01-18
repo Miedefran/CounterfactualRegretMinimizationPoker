@@ -10,12 +10,13 @@ from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
 from envs.royal_holdem.game import RoyalHoldemGame
+from envs.small_island_holdem.game import SmallIslandHoldemGame
 from envs.limit_holdem.game import LimitHoldemGame
 from envs.twelve_card_poker.game import TwelveCardPokerGame
 from utils.poker_utils import GAME_CONFIGS
 from utils.data_models import KeyGenerator
 
-def build_public_state_tree(game_class, game_config, progress_interval=10000, use_cache=False):
+def build_public_state_tree(game_class, game_config, progress_interval=10000, use_cache=False, abstract_suits=False):
     """
     Baut den Public State Tree.
     
@@ -24,6 +25,7 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
         game_config: Die Game-Konfiguration
         progress_interval: Alle N States wird der Fortschritt ausgegeben (default: 1000)
         use_cache: Wenn True, werden Game States gecacht für bessere Performance (default: True)
+        abstract_suits: Wenn True, werden nur eindeutige Ranks verwendet (Suit Abstraction)
     """
     public_states = {}
     states_visited = 0
@@ -37,7 +39,18 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
         dealer_class = game.dealer.__class__
         dealer = dealer_class()
         dealer.reset()
-        return list(dealer.deck)
+        all_cards = list(dealer.deck)
+        
+        # Bei Suit Abstraction: Nur eindeutige Ranks zurückgeben
+        if abstract_suits:
+            unique_ranks = set()
+            for card in all_cards:
+                # Entferne Suit, behalte nur Rank
+                rank = card[0] if len(card) > 1 else card
+                unique_ranks.add(rank)
+            return sorted(list(unique_ranks))
+        
+        return all_cards
     
     "Get all Infosets for a public state"
     def get_info_sets_simulated(game, player_id):
@@ -50,6 +63,10 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
         elif hasattr(game, 'public_card') and game.public_card and game.public_card != 'None':
             current_public = [game.public_card]
         
+        # Bei Suit Abstraction: Entferne Suits aus public cards für Vergleich
+        if abstract_suits:
+            current_public = [c[0] if len(c) > 1 else c for c in current_public]
+        
         #Get all available cards except public card
         available_cards = [c for c in all_cards if c not in current_public]
         
@@ -58,12 +75,21 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
         
         #Generate Infosets for all available private cards
         info_sets = []
+        seen_keys = set()  # Für Suit Abstraction: Filtere Duplikate nach InfoSet Key
+        
         for card in available_cards:
             game.players[player_id].private_card = card
             
             # Generate key via authoritative source
             key = KeyGenerator.get_info_set_key(game, player_id)
-            info_sets.append(key)
+            
+            # Bei Suit Abstraction: Nur eindeutige Keys hinzufügen
+            if abstract_suits:
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    info_sets.append(key)
+            else:
+                info_sets.append(key)
             
         # Restore state with dummy card
         game.players[player_id].private_card = original_card
@@ -100,7 +126,16 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
             if item in valid_actions:
                 # Capture state to detect auto-dealing
                 len_before = 0
-                is_target_game = 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name
+                # Spiele mit (potenziell) implizitem Auto-Deal von Public Cards nach Rundenende.
+                # Wir entfernen auto-dealt Karten wieder, weil der Public State Tree die Chance-Outcomes
+                # explizit über die public history modelliert.
+                is_target_game = (
+                    'Rhode' in game_name
+                    or 'Twelve' in game_name
+                    or 'Royal' in game_name
+                    or 'SmallIsland' in game_name
+                    or 'Limit' in game_name
+                )
                 if is_target_game and hasattr(game, 'public_cards'):
                     len_before = len(game.public_cards)
 
@@ -123,7 +158,13 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
                         game.players[0].set_public_card(item)
                         game.players[1].set_public_card(item)
                 
-                elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name or 'Limit' in game_name:
+                elif (
+                    'Rhode' in game_name
+                    or 'Twelve' in game_name
+                    or 'Royal' in game_name
+                    or 'SmallIsland' in game_name
+                    or 'Limit' in game_name
+                ):
                     
                     if hasattr(game, 'public_cards'):
                         # If step added card, we already popped it. So just append the correct one.
@@ -153,7 +194,13 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
                   f"Chance: {stats['chance']}, Choice: {stats['choice']}, Terminal: {stats['terminal']}")
         
         game_name = game.__class__.__name__
-        public_cards_in_history = [item for item in public_hist if isinstance(item, str) and len(item) == 2 and item[1] in ['s', 'h', 'd', 'c']]
+        # Bei Suit Abstraction: Erkenne auch einzelne Ranks (z.B. 'J', 'Q', 'K')
+        if abstract_suits:
+            public_cards_in_history = [item for item in public_hist if isinstance(item, str) and 
+                                     ((len(item) == 2 and item[1] in ['s', 'h', 'd', 'c']) or 
+                                      (len(item) == 1 and item in ['J', 'Q', 'K', 'A', '2', '3', '4', '5', '6', '7', '8', '9', 'T']))]
+        else:
+            public_cards_in_history = [item for item in public_hist if isinstance(item, str) and len(item) == 2 and item[1] in ['s', 'h', 'd', 'c']]
         has_marker = '|' in public_hist
         
         is_chance = False
@@ -172,8 +219,12 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
                     
                     if betting_round_at_start == 0 and temp_check.betting_round == 1:
                         is_chance = True
-                        chance_outcomes = ['Js', 'Jh', 'Qs', 'Qh', 'Ks', 'Kh']
-            elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name:
+                        if abstract_suits:
+                            # Bei Suit Abstraction: Nur eindeutige Ranks
+                            chance_outcomes = ['J', 'Q', 'K']
+                        else:
+                            chance_outcomes = ['Js', 'Jh', 'Qs', 'Qh', 'Ks', 'Kh']
+            elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name or 'SmallIsland' in game_name:
                 if not has_marker:
                     # Bestimme betting_round BEVOR wir die letzte Action replayen
                     # Dazu replayen wir die History bis zur vorletzten Action
@@ -197,7 +248,7 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
                     betting_round_changed = betting_round_before_last_action != betting_round_after
                     
                     # Spielspezifisch hardcoded:
-                    # Rhode Island und Twelve Card Poker: 2 Betting-Runden
+                    # Rhode Island, Twelve Card Poker und Small Island Hold'em: 2 Betting-Runden
                     #   Chance-Node nach Round 0: betting_round 0 → 1
                     #   Chance-Node nach Round 1: betting_round 1 → 2
                     # Royal Hold'em: 3 Betting-Runden
@@ -210,29 +261,48 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
                         is_second_chance = (betting_round_before_last_action == 1 and betting_round_after == 2)
                         is_third_chance = (betting_round_before_last_action == 2 and betting_round_after == 3)
                         is_valid_chance = is_first_chance or is_second_chance or is_third_chance
-                    else:  # Rhode Island oder Twelve Card Poker
+                    else:  # Rhode Island, Twelve Card Poker oder Small Island Hold'em
                         is_first_chance = (betting_round_before_last_action == 0 and betting_round_after == 1)
                         is_second_chance = (betting_round_before_last_action == 1 and betting_round_after == 2)
                         is_valid_chance = is_first_chance or is_second_chance
                     
                     if betting_round_changed and is_valid_chance and not temp_check.done:
                         is_chance = True
-                        if 'Rhode' in game_name:
-                            ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
-                            suits = ['s', 'h', 'd', 'c']
-                            all_cards = [rank + suit for rank in ranks for suit in suits]
-                        elif 'Twelve' in game_name:
-                            ranks = ['J', 'Q', 'K', 'A']
-                            suits = ['s', 'h', 'd']
-                            all_cards = [rank + suit for rank in ranks for suit in suits]
-                        else:  # Royal Hold'em
-                            ranks = ['T', 'J', 'Q', 'K', 'A']
-                            suits = ['s', 'h', 'd', 'c']
-                            all_cards = [rank + suit for rank in ranks for suit in suits]
-                        
-                        # Deck reduction: Remove already dealt public cards
-                        # Note: Private cards are NOT part of the public state tree
-                        chance_outcomes = [card for card in all_cards if card not in public_cards_in_history]
+                        if abstract_suits:
+                            # Bei Suit Abstraction: Nur eindeutige Ranks
+                            if 'Twelve' in game_name:
+                                ranks = ['J', 'Q', 'K', 'A']
+                            elif 'Rhode' in game_name:
+                                ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+                            elif 'SmallIsland' in game_name:
+                                ranks = ['T', 'J', 'Q', 'K', 'A']
+                            else:  # Royal Hold'em
+                                ranks = ['T', 'J', 'Q', 'K', 'A']
+                            
+                            # Entferne bereits gedealte public cards (nach Rank)
+                            public_ranks = [c[0] if len(c) > 1 else c for c in public_cards_in_history]
+                            chance_outcomes = [rank for rank in ranks if rank not in public_ranks]
+                        else:
+                            if 'Rhode' in game_name:
+                                ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
+                                suits = ['s', 'h', 'd', 'c']
+                                all_cards = [rank + suit for rank in ranks for suit in suits]
+                            elif 'Twelve' in game_name:
+                                ranks = ['J', 'Q', 'K', 'A']
+                                suits = ['s', 'h', 'd']
+                                all_cards = [rank + suit for rank in ranks for suit in suits]
+                            elif 'SmallIsland' in game_name:
+                                ranks = ['T', 'J', 'Q', 'K', 'A']
+                                suits = ['s', 'h', 'd', 'c']
+                                all_cards = [rank + suit for rank in ranks for suit in suits]
+                            else:  # Royal Hold'em
+                                ranks = ['T', 'J', 'Q', 'K', 'A']
+                                suits = ['s', 'h', 'd', 'c']
+                                all_cards = [rank + suit for rank in ranks for suit in suits]
+                            
+                            # Deck reduction: Remove already dealt public cards
+                            # Note: Private cards are NOT part of the public state tree
+                            chance_outcomes = [card for card in all_cards if card not in public_cards_in_history]
         
         if is_chance:
             children = {}
@@ -255,7 +325,13 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
                     if hasattr(game_new.players[0], 'set_public_card'):
                         game_new.players[0].set_public_card(outcome)
                         game_new.players[1].set_public_card(outcome)
-                elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name:
+                elif (
+                    'Rhode' in game_name
+                    or 'Twelve' in game_name
+                    or 'Royal' in game_name
+                    or 'SmallIsland' in game_name
+                    or 'Limit' in game_name
+                ):
                     if not hasattr(game_new, 'public_cards'):
                         game_new.public_cards = []
                     game_new.public_cards.append(outcome)
@@ -279,7 +355,13 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
                 temp_for_info_sets.public_card = None
                 temp_for_info_sets.players[0].set_public_card(None)
                 temp_for_info_sets.players[1].set_public_card(None)
-            elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name:
+            elif (
+                'Rhode' in game_name
+                or 'Twelve' in game_name
+                or 'Royal' in game_name
+                or 'SmallIsland' in game_name
+                or 'Limit' in game_name
+            ):
                 temp_for_info_sets.public_cards = list(public_cards_in_history)
                 temp_for_info_sets.players[0].public_cards = list(public_cards_in_history)
                 temp_for_info_sets.players[1].public_cards = list(public_cards_in_history)
@@ -375,7 +457,8 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
         stats['choice'] += 1
     
     cache_status = "enabled" if use_cache else "disabled"
-    print(f"Building public state tree for {game_class.__name__}... (Cache: {cache_status})")
+    abstraction_str = " (suit abstracted)" if abstract_suits else ""
+    print(f"Building public state tree for {game_class.__name__}{abstraction_str}... (Cache: {cache_status})")
     start_time = time.time()
     
     game = game_class(**game_config)
@@ -440,12 +523,19 @@ def print_public_state_tree(public_states, root_key=(), indent=""):
             print_public_state_tree(public_states, child_key, next_indent)
 
 
-def save_public_state_tree(game_name, tree, output_dir=None):
+def save_public_state_tree(game_name, tree, output_dir=None, abstract_suits=False):
     if output_dir is None:
         script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         output_dir = os.path.join(script_dir, 'data', 'trees', 'public_state_trees')
     os.makedirs(output_dir, exist_ok=True)
-    filename = f"{game_name}_public_tree_v2.pkl.gz"
+    
+    # Wenn abstract_suits=False, füge "_NOT_abstracted" zum Namen hinzu
+    # Wenn abstract_suits=True, verwende den Standard-Namen
+    if abstract_suits:
+        filename = f"{game_name}_public_tree_v2.pkl.gz"
+    else:
+        filename = f"{game_name}_public_tree_v2_NOT_abstracted.pkl.gz"
+    
     path = os.path.join(output_dir, filename)
     with gzip.open(path, 'wb') as f:
         pickle.dump(tree, f)
@@ -457,15 +547,35 @@ if __name__ == "__main__":
     # Parse command line arguments
     use_cache = True
     game_name = None
+    abstract_suits = None  # None bedeutet: automatisch bestimmen
     
     for arg in sys.argv[1:]:
         if arg == '--no-cache':
             use_cache = False
+        elif arg == '--abstract-suits' or arg == '--abstract_suits':
+            abstract_suits = True
+        elif arg == '--no-suit-abstraction' or arg == '--no_suit_abstraction':
+            abstract_suits = False
+        elif arg.startswith('--abstract-suits=') or arg.startswith('--abstract_suits='):
+            # Unterstütze --abstract-suits=true/false und --abstract_suits=True/False
+            value = arg.split('=', 1)[1].lower()
+            if value in ('true', '1', 'yes'):
+                abstract_suits = True
+            elif value in ('false', '0', 'no'):
+                abstract_suits = False
+            else:
+                print(f"WARNING: Unbekannter Wert für abstract-suits: {value}. Verwende automatische Erkennung.")
         elif not arg.startswith('--'):
             game_name = arg
     
     if game_name is None:
         game_name = 'kuhn_case2'
+    
+    # Bestimme ob Suit Abstraction verwendet werden soll
+    # Standardmäßig für leduc und twelve_card_poker, außer wenn explizit deaktiviert
+    if abstract_suits is None:
+        # Automatisch bestimmen basierend auf Spiel
+        abstract_suits = (game_name in ['leduc', 'twelve_card_poker'])
     
     if game_name.startswith('kuhn'):
         game_class = KuhnPokerGame
@@ -483,6 +593,10 @@ if __name__ == "__main__":
         game_class = RoyalHoldemGame
         game_config = GAME_CONFIGS['royal_holdem']
         save_name = 'royal_holdem'
+    elif game_name == 'small_island_holdem' or game_name.lower() == 'small_island':
+        game_class = SmallIslandHoldemGame
+        game_config = GAME_CONFIGS['small_island_holdem']
+        save_name = 'small_island_holdem'
     elif game_name == 'twelve_card_poker' or game_name.lower() == 'twelve_card':
         game_class = TwelveCardPokerGame
         game_config = GAME_CONFIGS['twelve_card_poker']
@@ -496,7 +610,7 @@ if __name__ == "__main__":
         print(f"Unknown game: {game_name}")
         sys.exit(1)
     
-    tree = build_public_state_tree(game_class, game_config, use_cache=use_cache)
+    tree = build_public_state_tree(game_class, game_config, use_cache=use_cache, abstract_suits=abstract_suits)
     states = tree['public_states']
 
     num_choice = sum(1 for s in states.values() if s['type'] == 'choice')
@@ -506,5 +620,5 @@ if __name__ == "__main__":
     print(f"Total public states: {len(states)}")
     print(f"Choice nodes: {num_choice}, Chance nodes: {num_chance}, Terminal nodes: {num_terminal}")
     #print_public_state_tree(states, root_key=())
-
-    save_public_state_tree(save_name, tree)
+    
+    save_public_state_tree(save_name, tree, abstract_suits=abstract_suits)

@@ -1,12 +1,13 @@
 import pickle as pkl
 import gzip
 import time
+import numpy as np
 
 from utils.data_models import KeyGenerator
 
 class CFRSolver:
     
-    def __init__(self, game, combination_generator):
+    def __init__(self, game, combination_generator, alternating_updates=True, partial_pruning=False):
         self.game = game
         self.combination_generator = combination_generator
         self.combinations = combination_generator.get_all_combinations()
@@ -14,6 +15,13 @@ class CFRSolver:
         self.strategy_sum = {}
         self.iteration_count = 0
         self.training_time = 0
+        self.alternating_updates = alternating_updates
+        # Kleine Optimierung: wenn alle Reach-Probs 0 sind, breche die Rekursion ab
+        # (kann optional aktiviert werden, um „pruning an/aus“ vergleichen zu können)
+        self.partial_pruning = partial_pruning
+        
+        # Cache für aktuelle Policy (wird nach jedem Update aktualisiert)
+        self._policy_cache = {}
     
     def ensure_init(self, info_set_key, legal_actions):
         if info_set_key not in self.regret_sum:
@@ -72,20 +80,70 @@ class CFRSolver:
         self.average_strategy = self.get_average_strategy()
     
     def cfr_iteration(self):
-        for combination in self.combinations:
-            self.combination_generator.setup_game_with_combination(self.game, combination)
+        """
+        Eine CFR Iteration.
+        
+        Wenn alternating_updates=True (Standard):
+        1. Für alle Kombinationen: Spieler 0 traversieren, Regrets akkumulieren
+        2. Policy aktualisieren
+        3. Für alle Kombinationen: Spieler 1 traversieren, Regrets akkumulieren
+        4. Policy aktualisieren
+        
+        Wenn alternating_updates=False (simultane Updates):
+        1. Für alle Kombinationen: Beide Spieler gleichzeitig traversieren
+        2. Policy aktualisieren
+        """
+        if self.alternating_updates:
+            # Alternierende Updates (Standard)
+            # Zuerst Spieler 0 für alle Kombinationen
+            for combination in self.combinations:
+                self.combination_generator.setup_game_with_combination(self.game, combination)
+                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+                self.traverse_game_tree(0, reach_probs)
             
-            reach_probs = [1.0, 1.0]
+            # Policy Update nach Spieler 0
+            self._update_all_policies()
             
-            self.traverse_game_tree(0, reach_probs)
-            self.traverse_game_tree(1, reach_probs)
+            # Dann Spieler 1 für alle Kombinationen (mit aktualisierter Policy von Spieler 0)
+            for combination in self.combinations:
+                self.combination_generator.setup_game_with_combination(self.game, combination)
+                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+                self.traverse_game_tree(1, reach_probs)
+            
+            # Policy Update nach Spieler 1
+            self._update_all_policies()
+        else:
+            # Simultane Updates (wie original CFR Paper)
+            # Beide Spieler gleichzeitig für alle Kombinationen
+            for combination in self.combinations:
+                self.combination_generator.setup_game_with_combination(self.game, combination)
+                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+                # Traverse für beide Spieler mit derselben Policy
+                self.traverse_game_tree(0, reach_probs)
+                self.traverse_game_tree(1, reach_probs)
+            
+            # Policy Update nach beiden Spielern
+            self._update_all_policies()
     
     def traverse_game_tree(self, player_id, reach_probabilities):
+        """
+        Traversiert den Game Tree und berechnet Counterfactual Regret für einen Spieler.
         
+        Args:
+            player_id: Spieler für den wir CFR durchführen (0 oder 1)
+            reach_probabilities: np.array([reach_p0, reach_p1])
+        
+        Returns:
+            Utility für player_id
+        """
         if self.game.done:
             return self.game.get_payoff(player_id)
         
         current_player = self.game.current_player
+        
+        # Early exit wenn Reach Probabilities 0 sind
+        if self.partial_pruning and np.all(reach_probabilities[:2] == 0):
+            return 0.0
         
         #Opponent's node, don't update regrets
         if current_player != player_id:
@@ -144,7 +202,19 @@ class CFRSolver:
             self.strategy_sum[info_set_key][action] += player_reach * current_strategy[action]
     
     def get_current_strategy(self, info_set_key, legal_actions):
-        """Equation 8 from Zinkevich et al. (2007)"""
+        """
+        Equation 8 from Zinkevich et al. (2007)
+        
+        Gibt die aktuelle Strategie für ein InfoSet zurück.
+        Falls nicht im Cache, wird sie neu berechnet.
+        """
+        if info_set_key in self._policy_cache:
+            policy = self._policy_cache[info_set_key]
+            # Stelle sicher, dass alle legal_actions enthalten sind
+            result = {}
+            for action in legal_actions:
+                result[action] = policy.get(action, 0.0)
+            return result
         
         regrets = {a: self.regret_sum[info_set_key][a] for a in legal_actions}
         
@@ -153,10 +223,80 @@ class CFRSolver:
         sum_pos = sum(positive_regrets.values())
         
         if sum_pos > 0:
-            return {a: positive_regrets[a] / sum_pos for a in legal_actions}
+            policy = {a: positive_regrets[a] / sum_pos for a in legal_actions}
         else:
             #If there are no positive regrets, play everything equally
-            return {a: 1.0 / len(legal_actions) for a in legal_actions}
+            policy = {a: 1.0 / len(legal_actions) for a in legal_actions}
+        
+        # Cache für schnelleren Zugriff
+        self._policy_cache[info_set_key] = policy
+        return policy
+    
+    def _update_all_policies(self):
+        """
+        Aktualisiert die Policy für alle InfoSets basierend auf aktuellen Regrets.
+        
+        Die Policy wird nach jedem Spieler-Update neu berechnet, damit alle Nodes
+        in der nächsten Traversierung die aktualisierte Policy verwenden.
+        """
+        for info_set_key in self.regret_sum:
+            if info_set_key not in self.strategy_sum:
+                continue
+            
+            legal_actions = list(self.strategy_sum[info_set_key].keys())
+            if not legal_actions:
+                continue
+            
+            # Berechne neue Policy mit Regret Matching
+            policy = self._regret_matching(info_set_key, legal_actions)
+            
+            # Cache für schnelleren Zugriff
+            self._policy_cache[info_set_key] = policy
+    
+    def _get_policy(self, info_set_key, legal_actions):
+        """
+        Gibt die aktuelle Policy für ein InfoSet zurück.
+        
+        Falls nicht im Cache, wird sie neu berechnet.
+        """
+        if info_set_key in self._policy_cache:
+            return self._policy_cache[info_set_key]
+        
+        policy = self._regret_matching(info_set_key, legal_actions)
+        self._policy_cache[info_set_key] = policy
+        return policy
+    
+    def _regret_matching(self, info_set_key, legal_actions):
+        """
+        Regret Matching: Berechnet Policy basierend auf positiven Regrets.
+        
+        Args:
+            info_set_key: InfoSet Key
+            legal_actions: Liste von legalen Aktionen
+        
+        Returns:
+            {action: prob} Dictionary
+        """
+        regrets = self.regret_sum.get(info_set_key, {})
+        
+        # Berechne positive Regrets
+        positive_regrets = {}
+        total_positive = 0.0
+        
+        for action in legal_actions:
+            regret = regrets.get(action, 0.0)
+            positive_regret = max(0.0, regret)
+            positive_regrets[action] = positive_regret
+            total_positive += positive_regret
+        
+        # Normalisiere
+        if total_positive > 0:
+            return {action: positive_regrets[action] / total_positive 
+                   for action in legal_actions}
+        else:
+            # Gleichverteilung wenn keine positiven Regrets
+            uniform_prob = 1.0 / len(legal_actions)
+            return {action: uniform_prob for action in legal_actions}
         
     @staticmethod
     def average_from_strategy_sum(strategy_sum):
@@ -232,4 +372,25 @@ class CFRSolver:
         self.iteration_count = data['iteration_count']
         self.training_time = data.get('training_time', 0)
         
+        # Rebuild policy cache
+        self._policy_cache = {}
+        for info_set_key in self.regret_sum.keys():
+            if info_set_key in self.strategy_sum:
+                legal_actions = list(self.strategy_sum[info_set_key].keys())
+                if legal_actions:
+                    self._get_policy(info_set_key, legal_actions)
+        
         print(f"Loaded from {filepath}")
+    
+    def _get_policy(self, info_set_key, legal_actions):
+        """
+        Gibt die aktuelle Policy für ein InfoSet zurück.
+        
+        Falls nicht im Cache, wird sie neu berechnet.
+        """
+        if info_set_key in self._policy_cache:
+            return self._policy_cache[info_set_key]
+        
+        policy = self._regret_matching(info_set_key, legal_actions)
+        self._policy_cache[info_set_key] = policy
+        return policy

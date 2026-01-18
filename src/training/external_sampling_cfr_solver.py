@@ -46,12 +46,16 @@ class ExternalSamplingCFRSolver:
         self.game = game
         self.combination_generator = combination_generator
         self.combinations = combination_generator.get_all_combinations()
+        self.num_combinations = len(self.combinations)  # Für Sampling-Gewichtung
         
         # CFR Datenstrukturen
-        self.cumulative_regret = {}
-        self.cumulative_policy = {}
+        self.regret_sum = {}
+        self.strategy_sum = {}
         self.iteration_count = 0
         self.training_time = 0
+        
+        # Policy Cache (für schnelleren Zugriff)
+        self._policy_cache = {}  # {info_set_key: {action: prob}}
         
         # Tree Datenstrukturen
         self.nodes = {}
@@ -59,18 +63,23 @@ class ExternalSamplingCFRSolver:
         self.infoset_to_nodes = defaultdict(list)
         self.root_nodes = []
         
+        # Bestimme ob Suit Abstraction verwendet wird (basierend auf Combination Generator Typ)
+        from utils.poker_utils import LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted
+        use_suit_abstraction = isinstance(combination_generator, 
+            (LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted))
+        
         # Tree laden oder bauen
         if load_tree and game_name:
             try:
                 print(f"Attempting to load game tree for {game_name}...")
-                game_tree = load_game_tree(game_name)
+                game_tree = load_game_tree(game_name, abstract_suits=use_suit_abstraction)
                 self._convert_game_tree_to_internal(game_tree)
                 print(f"Tree loaded: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
             except FileNotFoundError:
                 print(f"Tree file not found for {game_name}, building tree...")
-                game_tree = build_game_tree(self.game, self.combination_generator, game_name=game_name)
+                game_tree = build_game_tree(self.game, self.combination_generator, game_name=game_name, abstract_suits=use_suit_abstraction)
                 self._convert_game_tree_to_internal(game_tree)
-                save_game_tree(game_tree, game_name)
+                save_game_tree(game_tree, game_name, abstract_suits=use_suit_abstraction)
                 print(f"Tree built and saved: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
         else:
             print("Building game tree...")
@@ -111,17 +120,18 @@ class ExternalSamplingCFRSolver:
     
     def ensure_init(self, info_set_key, legal_actions):
         """Initialisiert die Dictionaries falls noch nicht vorhanden"""
-        if info_set_key not in self.cumulative_regret:
-            self.cumulative_regret[info_set_key] = {a: 0.0 for a in legal_actions}
-        if info_set_key not in self.cumulative_policy:
-            self.cumulative_policy[info_set_key] = {a: 0.0 for a in legal_actions}
+        if info_set_key not in self.regret_sum:
+            self.regret_sum[info_set_key] = {a: 0.0 for a in legal_actions}
+        if info_set_key not in self.strategy_sum:
+            self.strategy_sum[info_set_key] = {a: 0.0 for a in legal_actions}
     
-    def train(self, iterations, br_tracker=None):
+    def train(self, iterations, br_tracker=None, print_interval=100):
         """
         Training mit External Sampling.
         
         iterations: Anzahl Iterationen
         br_tracker: Optional für Best Response Evaluation
+        print_interval: Intervall für Print-Statements (Standard: 100)
         """
         start_time = time.time()
         
@@ -129,8 +139,8 @@ class ExternalSamplingCFRSolver:
             self.cfr_iteration()
             self.iteration_count += 1
             
-            if i % 100 == 0:
-                print(f"Iteration {i}")
+            if (i + 1) % print_interval == 0:
+                print(f"Iteration {i + 1}")
             
             # Best Response Evaluation
             if br_tracker is not None and br_tracker.should_evaluate(i + 1):
@@ -168,20 +178,62 @@ class ExternalSamplingCFRSolver:
         
         Für jeden Spieler wird UpdateRegrets aufgerufen, beginnend
         vom Root State. Bei External Sampling wird nur EINE Kombination
-        pro Iteration gesampelt.
+        pro Iteration gesampelt (für beide Spieler gleich).
+        
+        WICHTIG: Bei External Sampling müssen alle Nodes im selben Informationsset
+        die gleiche gesampelte Aktion verwenden (Perfect Recall).
+        
+        WICHTIG: Die Policy wird WÄHREND der Traversierung am Gegner-Node akkumuliert
+        (wie in OpenSpiel), nicht danach.
+        
+        WICHTIG: Die Kombination (Chance) wird EINMAL pro Iteration gesampelt,
+        nicht einmal pro Spieler! Beide Spieler müssen die gleiche Kombination sehen.
         """
+        # KRITISCH: Kombination EINMAL pro Iteration sampeln (für beide Spieler gleich)
+        # Bei External Sampling ist Chance ein "externer" Faktor, der für beide Spieler
+        # gleich sein muss. Die Kombination entspricht einem Chance-Node-Outcome.
+        sampled_root_id = random.choice(self.root_nodes)
+        
+        # Policy-Cache für diese Iteration (wird pro InfoSet einmal berechnet)
+        # WICHTIG: Die Policy ändert sich während einer Iteration nicht, da Regrets
+        # erst am Ende aktualisiert werden. Daher können wir die Policy einmal pro InfoSet cachen.
+        self._policy_cache_this_iteration = {}
+        
         # Für jeden Spieler
         for player in range(2):
-            # Eine zufällige Kombination sampeln
-            sampled_root_id = random.choice(self.root_nodes)
-            self._update_regrets(sampled_root_id, player)
+            # Dictionary für gesampelte Aktionen pro Informationsset (Perfect Recall)
+            # Wird für jeden Spieler neu initialisiert (Gegner-Aktionen werden separat gesampelt)
+            self._sampled_actions = {}
+            
+            # Set für Infosets, die bereits Policy-Updates bekommen haben
+            # KRITISCH: Jedes Infoset darf nur EINMAL pro Spieler-Update akkumuliert werden!
+            # Im Paper: "Due to perfect recall it can never visit more than one history
+            # from the same information set during this traversal"
+            # In unserem Tree-basierten Ansatz können mehrere Nodes zum selben Infoset gehören,
+            # daher müssen wir sicherstellen, dass wir die Policy nur einmal akkumulieren.
+            self._policy_updated_infosets = set()
+            
+            # Verwende die GLEICHE Kombination für beide Spieler
+            # Starte mit opponent_reach = 1.0 (am Root ist noch keine Gegner-Aktion gesampelt)
+            self._update_regrets(sampled_root_id, player, opponent_reach=1.0)
     
-    def _update_regrets(self, node_id, player):
+    def _update_regrets(self, node_id, player, opponent_reach=1.0):
         """
         UpdateRegrets für External Sampling.
         
         node_id: aktueller Node
         player: für welchen Spieler wir CFR machen (0 oder 1)
+        opponent_reach: Reach Probability des Gegners bis zu diesem Node (wird rekursiv aktualisiert)
+        
+        WICHTIG: Bei External Sampling müssen alle Nodes im selben Informationsset
+        die gleiche gesampelte Aktion verwenden (Perfect Recall).
+        
+        WICHTIG: Policy-Akkumulation erfolgt WÄHREND der Traversierung am Gegner-Node
+        (wie in OpenSpiel), mit der Policy die VOR den Regret-Updates berechnet wurde.
+        
+        WICHTIG: Bei External Sampling ist q(z) = π_{-i}^σ(z), also die Reach Probability des Gegners.
+        Die Gewichtung ist 1/q(z) = 1/π_{-i}^σ(z). Da wir nur eine Kombination sampeln,
+        müssen wir zusätzlich mit num_combinations gewichten.
         """
         node = self.nodes[node_id]
         
@@ -193,7 +245,8 @@ class ExternalSamplingCFRSolver:
         
         self.ensure_init(info_set_key, node.legal_actions)
         
-        # Aktuelle Policy berechnen
+        # WICHTIG: Policy VOR Regret-Updates berechnen (wie in OpenSpiel)
+        # Diese Policy wird während der Traversierung verwendet und am Gegner-Node akkumuliert
         current_policy = self._get_current_policy(info_set_key, node.legal_actions)
         
         value = 0.0
@@ -201,31 +254,66 @@ class ExternalSamplingCFRSolver:
         
         if current_player != player:
             # Gegner-Node: eine Aktion sampeln
-            sampled_action = self._sample_action(current_policy, node.legal_actions)
+            # WICHTIG: Perfect Recall - verwende bereits gesampelte Aktion falls vorhanden
+            if info_set_key not in self._sampled_actions:
+                # Erste Begegnung mit diesem Informationsset: sampeln und speichern
+                sampled_action = self._sample_action(current_policy, node.legal_actions)
+                self._sampled_actions[info_set_key] = sampled_action
+            else:
+                # Wiederverwende die bereits gesampelte Aktion für dieses Informationsset
+                sampled_action = self._sampled_actions[info_set_key]
+            
+            # Aktualisiere opponent_reach mit der Wahrscheinlichkeit der gesampelten Aktion
+            sampled_action_prob = current_policy.get(sampled_action, 0.0)
+            new_opponent_reach = opponent_reach * sampled_action_prob
+            
             child_id = node.children[sampled_action]
-            value = self._update_regrets(child_id, player)
+            value = self._update_regrets(child_id, player, new_opponent_reach)
         else:
             # Eigener Node: alle Aktionen durchlaufen
             for action in node.legal_actions:
                 child_id = node.children[action]
-                child_value = self._update_regrets(child_id, player)
+                child_value = self._update_regrets(child_id, player, opponent_reach)
                 child_values[action] = child_value
                 value += current_policy.get(action, 0.0) * child_value
         
         # Regret Updates nur am eigenen Node
         if current_player == player:
+            # WICHTIG: Bei External Sampling ist die Gewichtung implizit durch das Sampling enthalten.
+            # Im Paper (Formel 11): r̃(I, a) = (1 - σ(a|I)) * Σ_{z∈Q∩Z_I} u_i(z) * π_i^σ(z[I]a, z)
+            # Es gibt KEINE explizite Gewichtung mit 1/q(z) in dieser Formel.
+            # In OpenSpiel wird auch keine explizite Gewichtung verwendet (siehe external_sampling_mccfr.py Zeile 157-158).
+            # Die Gewichtung ist implizit durch das Sampling der Chance und Gegner-Aktionen enthalten.
             for action in node.legal_actions:
-                # WICHTIG: Bei External Sampling OHNE Counterfactual Reach Probability!
+                # External Sampling Regret-Update:
+                # r(I, a) = (1 - σ(a|I)) * Σ u(z) * π_i^σ(z[I]a, z)
+                # Vereinfacht: regret = child_value - value
+                # Da wir alle eigenen Aktionen durchlaufen, ist value = Σ σ(a|I) * child_value
                 regret = child_values[action] - value
-                self.cumulative_regret[info_set_key][action] += regret
+                # KEINE explizite Gewichtung (wie in OpenSpiel)
+                self.regret_sum[info_set_key][action] += regret
         
-        # Policy Updates am Gegner-Node (Simple Average)
+        # WICHTIG: Policy-Akkumulation WÄHREND der Traversierung am Gegner-Node
+        # (wie in OpenSpiel: Simple Average)
+        # Bei 2 Spielern: Gegner = (player + 1) % 2
+        # KRITISCH: Jedes Infoset darf nur EINMAL pro Spieler-Update akkumuliert werden!
+        # Im Paper: "Due to perfect recall it can never visit more than one history
+        # from the same information set during this traversal"
+        # In unserem Tree-basierten Ansatz können mehrere Nodes zum selben Infoset gehören,
+        # daher müssen wir sicherstellen, dass wir die Policy nur einmal akkumulieren.
         opponent = (player + 1) % 2
-        if current_player == opponent:
-            # WICHTIG: Bei External Sampling OHNE Reach Probability Gewichtung!
+        if current_player == opponent and info_set_key not in self._policy_updated_infosets:
+            # WICHTIG: Bei External Sampling wird die Policy am Gegner-Node akkumuliert (Simple Average).
+            # In OpenSpiel wird auch keine explizite Gewichtung verwendet (siehe external_sampling_mccfr.py Zeile 164-165).
+            # Die Gewichtung ist implizit durch das Sampling enthalten.
+            # Akkumuliere die Policy, die VOR den Regret-Updates berechnet wurde
             for action in node.legal_actions:
                 action_prob = current_policy.get(action, 0.0)
-                self.cumulative_policy[info_set_key][action] += action_prob
+                # KEINE explizite Gewichtung (wie in OpenSpiel)
+                self.strategy_sum[info_set_key][action] += action_prob
+            
+            # Markiere als aktualisiert
+            self._policy_updated_infosets.add(info_set_key)
         
         return value
     
@@ -233,30 +321,38 @@ class ExternalSamplingCFRSolver:
         """
         Sample eine Aktion basierend auf Policy.
         
+        Verwendet np.random.choice wie in OpenSpiel für Konsistenz.
         Falls Policy nicht normalisiert ist, wird normalisiert.
         Falls keine Wahrscheinlichkeiten vorhanden, gleichverteilung.
         """
         actions = list(legal_actions)
-        probabilities = [policy.get(action, 0.0) for action in actions]
+        probabilities = np.array([policy.get(action, 0.0) for action in actions], dtype=np.float64)
         
-        # Normalisieren falls nötig
-        total = sum(probabilities)
+        # Normalisieren falls nötig (np.random.choice normalisiert auch, aber wir machen es explizit)
+        total = probabilities.sum()
         if total > 0:
-            probabilities = [p / total for p in probabilities]
+            probabilities = probabilities / total
         else:
             # Gleichverteilung wenn keine Wahrscheinlichkeiten
-            probabilities = [1.0 / len(actions)] * len(actions)
+            probabilities = np.ones(len(actions), dtype=np.float64) / len(actions)
         
-        return random.choices(actions, weights=probabilities)[0]
+        # Verwende np.random.choice wie in OpenSpiel
+        action_idx = np.random.choice(len(actions), p=probabilities)
+        return actions[action_idx]
     
     def _get_current_policy(self, info_set_key, legal_actions):
         """
         Berechnet aktuelle Policy mit Regret Matching.
         
-        Nur positive Regrets werden verwendet, dann normalisiert.
-        Falls keine positiven Regrets vorhanden, gleichverteilung.
+        PERFORMANCE-OPTIMIERUNG: Die Policy wird pro InfoSet pro Iteration nur einmal berechnet
+        und gecacht, da sich die Regrets während einer Iteration nicht ändern.
         """
-        regrets = self.cumulative_regret.get(info_set_key, {})
+        # Prüfe ob Policy bereits für diese Iteration gecacht ist
+        if info_set_key in self._policy_cache_this_iteration:
+            return self._policy_cache_this_iteration[info_set_key]
+        
+        # Berechne Policy aus aktuellen Regrets
+        regrets = self.regret_sum.get(info_set_key, {})
         
         positive_regrets = {}
         total_positive = 0.0
@@ -268,12 +364,18 @@ class ExternalSamplingCFRSolver:
             total_positive += positive_regret
         
         if total_positive > 0:
-            return {action: positive_regrets[action] / total_positive 
-                   for action in legal_actions}
+            policy = {action: positive_regrets[action] / total_positive 
+                     for action in legal_actions}
         else:
             # Gleichverteilung wenn keine positiven Regrets
             uniform_prob = 1.0 / len(legal_actions)
-            return {action: uniform_prob for action in legal_actions}
+            policy = {action: uniform_prob for action in legal_actions}
+        
+        # Cache die Policy für diese Iteration
+        self._policy_cache_this_iteration[info_set_key] = policy
+        
+        return policy
+    
     
     def get_current_strategy(self, info_set_key, legal_actions):
         """Gibt aktuelle Strategie zurück (für Basisklasse)"""
@@ -287,7 +389,7 @@ class ExternalSamplingCFRSolver:
         """
         average_strategy = {}
         
-        for info_state, policy_dict in self.cumulative_policy.items():
+        for info_state, policy_dict in self.strategy_sum.items():
             total = sum(policy_dict.values())
             
             if total == 0:
@@ -312,8 +414,8 @@ class ExternalSamplingCFRSolver:
     def save_gzip(self, filepath):
         """Speichert die Daten"""
         data = {
-            'cumulative_regret': self.cumulative_regret,
-            'cumulative_policy': self.cumulative_policy,
+            'regret_sum': self.regret_sum,
+            'strategy_sum': self.strategy_sum,
             'average_strategy': self.average_strategy,
             'iteration_count': self.iteration_count,
             'training_time': self.training_time
@@ -329,8 +431,8 @@ class ExternalSamplingCFRSolver:
         with gzip.open(filepath, 'rb') as f:
             data = pkl.load(f)
         
-        self.cumulative_regret = data['cumulative_regret']
-        self.cumulative_policy = data['cumulative_policy']
+        self.regret_sum = data['regret_sum']
+        self.strategy_sum = data['strategy_sum']
         self.average_strategy = data.get('average_strategy', {})
         self.iteration_count = data.get('iteration_count', 0)
         self.training_time = data.get('training_time', 0)

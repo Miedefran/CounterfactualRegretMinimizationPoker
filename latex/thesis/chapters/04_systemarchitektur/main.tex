@@ -1,18 +1,19 @@
-\chapter{Design und Architektur}
+\chapter{Architektur und Design}
+In diesem Kapitel wird die Architektur des Softwareprojekts beschrieben.
+Hierbei wird zuerst ein Überblick darüber gegeben, wie die einzelnen Bestandteile miteinander interagieren.
+Anschließend gehe ich auf die Struktur der einzelnen Komponenten ein und stelle die wichtigsten von ihnen mit UML Diagrammen dar.
+Ich erkläre wichtige Designentscheidungen und erwähne Probleme die dadurch entstanden sind.
+Die Probleme und deren Konsequenzen werden anschließend im Kapitel 5 Implementierung genauer erläutert.
 
-In diesem Kapitel wird die Architektur des Softwareprojekts beschrieben. 
-Es werden die Designentscheidungen erläutert und die Struktur der einzelnen Komponenten anhand von UML Diagrammen dargestellt.
+Eine zentrale Designentscheidung, welche schon zu Beginn getroffen wurde, ist eine explizite Trennung der Pokerspiellogik vom CFR Algorithmus.
+Die Logik der Pokerspiele, zukünftig Game Environment genannt, wird als separate Entität implementiert, welche das Spielverhalten und die Zustandsverwaltung übernimmt.
+Ziel dieser Unterteilung war es, das Projekt später einfach erweiterbar für neue Spiele und Algorithmen zu halten.
 
-Ein zentrales Designprinzip des Codes ist die Trennung der Game Engine vom CFR Algorithmus. 
-Die Game Engine wird als separate Entität implementiert, die die Spiellogik und Spielzustandsverwaltung übernimmt. 
-Der CFR Algorithmus nutzt die öffentlichen Methoden der Game Engine, ohne direkten Zugriff auf die interne Implementierung der Spiellogik zu haben.
-
-Diese Architektur ermöglicht es, das Projekt später ohne große Probleme um weitere Spielvarianten oder andere Algorithmen zu erweitern. 
-Neue Pokervarianten können implementiert werden, ohne den CFR Algorithmus zu ändern, und neue Algorithmen können hinzugefügt werden, ohne die Game Engine zu modifizieren. 
-Diese Trennung von Algorithmus und Spiellogik erhöht die Wartbarkeit und Erweiterbarkeit des Systems.
-
+Dieses Kapitel gliedert sich in drei Hauptkomponenten: Game Environment, CFR Solver und Evaluationsmethoden.
+\newpage
 \input{chapters/04_systemarchitektur/sections/01_game_environment/01_game_environment}
 \input{chapters/04_systemarchitektur/sections/02_cfr_solver/02_cfr_solver}
+\input{chapters/04_systemarchitektur/sections/03_evaluationsmethoden/03_evaluationsmethoden}
 
 \begin{comment}
 \chapter{Design und Architektur}

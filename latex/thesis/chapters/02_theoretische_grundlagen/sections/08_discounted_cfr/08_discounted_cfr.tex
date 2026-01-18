@@ -1,0 +1,49 @@
+\section{Discounted CFR}
+
+Discounted CFR (DCFR) wurde 2018 von Brown und Sandholm~\cite{brown2018discounted} als weitere Optimierung von CFR vorgestellt.
+Der Algorithmus übertrifft CFR+ in der Praxis häufig um einen Faktor von 2-3 und stellt damit den aktuellen Stand der Technik dar.
+DCFR basiert auf der Idee, frühere Iterationen zu \textit{discounten}, wodurch neuere Iterationen stärker gewichtet werden.
+Dies beschleunigt die Konvergenz insbesondere in Spielen mit stark suboptimalen Aktionen, bei denen frühe Fehler in Vanilla CFR und CFR+ lange Zeit im kumulativen Regret erhalten bleiben.
+
+\subsection{Motivation}
+
+Ein zentrales Problem von CFR und CFR+ liegt darin, dass alle Iterationen gleich gewichtet werden.
+Betrachtet man ein einfaches Beispiel mit drei Aktionen mit Auszahlungen von 0, 1 und -1.000.000, so wählt CFR auf der ersten Iteration jede Aktion mit gleicher Wahrscheinlichkeit.
+Dies führt zu einem hohen Regret für die schlechte Aktion, der über viele Iterationen hinweg erhalten bleibt.
+In diesem Beispiel benötigt CFR+ 471.407 Iterationen, um die optimale Aktion mit 100\% Wahrscheinlichkeit zu wählen.
+Durch das Discounting früher Iterationen kann DCFR dieses Problem adressieren und in derselben Situation bereits nach 970 Iterationen konvergieren~\cite{brown2018discounted}.
+
+\subsection{Formale Definition}
+
+DCFR wird durch drei Parameter charakterisiert: $\alpha$ für das Discounting positiver Regrets, $\beta$ für das Discounting negativer Regrets, und $\gamma$ für die Gewichtung der durchschnittlichen Strategie.
+Nach jeder Iteration $t$ werden die kumulativen Regrets wie folgt aktualisiert:
+
+\begin{align}
+    R_t^+(I, a) &= (R_{t-1}(I, a) + r_t(I, a)) \cdot \frac{t^\alpha}{t^\alpha + 1} \quad \text{falls } R_{t-1}(I, a) + r_t(I, a) \geq 0 \label{eq:dcfr_positive} \\
+    R_t^-(I, a) &= (R_{t-1}(I, a) + r_t(I, a)) \cdot \frac{t^\beta}{t^\beta + 1} \quad \text{falls } R_{t-1}(I, a) + r_t(I, a) < 0 \label{eq:dcfr_negative}
+\end{align}
+
+wobei $r_t(I, a)$ der instantane Regret für Aktion $a$ in Informationsset $I$ in Iteration $t$ ist.
+Für $\beta = 0$ wird der Faktor $\frac{t^0}{t^0 + 1} = \frac{1}{2}$ verwendet, was bedeutet, dass negative Regrets in jeder Iteration halbiert werden.
+
+Die durchschnittliche Strategie wird mit Gewichtung $t^\gamma$ akkumuliert:
+\begin{equation}
+    \Sigma_t(I, a) = \Sigma_{t-1}(I, a) + \pi_t(I) \cdot \sigma_t(I, a) \cdot t^\gamma \label{eq:dcfr_strategy}
+\end{equation}
+
+wobei $\pi_t(I)$ die Wahrscheinlichkeit ist, Informationsset $I$ in Iteration $t$ zu erreichen, und $\sigma_t(I, a)$ die Wahrscheinlichkeit, Aktion $a$ in Iteration $t$ zu wählen.
+
+\subsection{Parameterwahl}
+
+Die empfohlene Parameterkonfiguration ist DCFR$_{3/2,0,2}$ mit $\alpha = 1.5$, $\beta = 0$ und $\gamma = 2$.
+Diese Variante übertrifft CFR+ in allen getesteten Spielen, einschließlich großskaliger realistischer Szenarien wie Heads-up No-Limit Texas Hold'em Subgames~\cite{brown2018discounted}.
+
+Für $\beta = 0$ nähern sich negative Regrets einem konstanten Wert an, anstatt gegen $-\infty$ zu gehen.
+Dies kann die Kompatibilität mit Pruning-Algorithmen beeinträchtigen, die auf negativen Regrets basieren.
+Für solche Anwendungen kann DCFR$_{3/2,1/2,2}$ mit $\beta = 0.5$ verwendet werden, was negative Regrets gegen $-\infty$ konvergieren lässt und damit Pruning ermöglicht.
+
+\subsection{Theoretische Eigenschaften}
+
+DCFR behält die gleiche asymptotische Konvergenzrate wie CFR von $O(1/\sqrt{T})$, unterscheidet sich jedoch durch einen konstanten Faktor.
+Theorem 2 aus~\cite{brown2018discounted} zeigt, dass die gewichtete Durchschnittsstrategie nach $T$ Iterationen ein $6\Delta|I|(\sqrt{|A|} + 1/\sqrt{T})/\sqrt{T}$-Nash-Gleichgewicht bildet, wobei $\Delta$ der Payoff-Bereich, $|I|$ die Anzahl der Informationssets und $|A|$ die maximale Anzahl an Aktionen pro Informationsset ist.
+Trotz dieser theoretischen Garantie konvergiert DCFR in der Praxis deutlich schneller als CFR+.

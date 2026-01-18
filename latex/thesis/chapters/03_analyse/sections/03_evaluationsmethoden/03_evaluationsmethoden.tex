@@ -1,8 +1,10 @@
 \section{Evaluationsmethoden}
-
-Zur Evaluation der berechneten Strategien werden zwei Hauptmethoden verwendet: 
-Exploitability Tests mit einem Best Response Agent und die Berechnung des Erwartungswerts im Selfplay.
-
-Zusätzlich werden Konvergenzplots erstellt, um die Entwicklung der Strategiequalität über die Iterationen hinweg zu visualisieren.
-
-
+Ursprünglich war im Exposé die Evaluation mittels Exploitability Tests mit einem Best Response Agent geplant.
+Diese Methode ermöglicht es, die Qualität der trainierten Strategien zu bewerten, indem ein optimaler Gegner simuliert wird, welcher die Strategie maximal ausnutzt.
+Tatsächlich wurde in der Arbeit ein Accelerated Best Response Agent implementiert, welcher das gleiche Ziel verfolgt.
+Allerdings beinhaltet dieser einige Performance verbessernde Änderungen. 
+Um das Konvergenzverhalten eines Algorithmus einschätzen zu können, wird während des Trainings alle X Iterationen die Exploitability bestimmt.
+Nach dem Training wird diese dann im Vergleich zu der Anzahl der Iterationen oder der vergangenen Zeit in einem Diagramm dargestellt.\\
+Eine weitere Metrik ist der Erwartungswert einer Strategie im Self-Play.
+Hierbei spielt eine Strategie wiederholt gegen sich selbst, wodurch der Erwartungswert des Spiels berechnet wird.
+Bei Forschungsvarianten wie Leduc Hold'em ist dieser Wert bekannt und kann daher zur Verifikation der Implementierung genutzt werden.

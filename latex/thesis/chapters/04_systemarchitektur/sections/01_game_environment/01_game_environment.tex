@@ -1,20 +1,24 @@
 \section{Game Environment}
-In diesem Kapitel wird der Aufbau der Spielumgebung mithilfe von Klassendiagrammen beschrieben.
-Die Spielumgebung ist für die Logik des Pokerspiels zuständig, sowie dazu den Spielzustand zu verwalten.
+In diesem Abschnitt wird der Aufbau der Spielumgebung mithilfe eines Klassendiagramms beschrieben.
+Die Spielumgebung ist für die Logik des Pokerspiels sowie für die Verwaltung des Spielzustands zuständig.
+Eine Spielumgebung besteht aus den folgenden Komponenten: \texttt{Player} (repräsentiert die beiden Spieler), \texttt{Dealer} (verwaltet das Kartendeck), \texttt{Judger} (bestimmt den Gewinner) und \texttt{Game} (koordiniert die anderen Komponenten).
+Bei allen Varianten außer Kuhn Poker wird diese Architektur zusätzlich durch eine \texttt{Round} Klasse erweitert, welche den Übergang zwischen Setzrunden steuert.
+Diese Architektur wurde von RLCard übernommen \url{https://rlcard.org}.
+a
+\begin{comment}
+    
 
-Eine Spielumgebung ist unterteilt in die Klassen Player(2 Teilnehmer des Spiels), Dealer(Verwaltet Deck), Judger(bestimmt den Gewinner) und Game(Verwendet andere Komponenten).
-Dies wird bei allen Varianten ausser Kuhn Poker zusätzlich noch durch eine Round Klasse erweitert, welche den Übergang zwischen Setzrunden steuert.
-Diese Architektur wurde von RLCard übernommen.
+Die \texttt{Game} Klasse koordiniert die Interaktion zwischen den Komponenten.
+ Der \texttt{Dealer} verteilt die Karten, die \texttt{Player} erhalten ihre privaten Karten, und die \texttt{Round} Klasse (bei mehreren Setzrunden) verwaltet den Ablauf der einzelnen Setzrunden. 
+Am Ende eines Spiels bestimmt der \texttt{Judger} den Gewinner basierend auf den Karten und der Spielhistorie.
+\end{comment}
 
-
-Abbildung~\ref{fig:gameenv_class} zeigt das Klassendiagramm der Game Environment für verschiedene Pokervarianten. 
-Im Diagramm ist zu erkennen, dass die Game Environments voneinander erben, wodurch einige Bestandteile wiederverwendet werden können.
-
-
+Abbildung~\ref{fig:gameenv_class} zeigt das Klassendiagramm der Game Environment für die Pokervarianten Kuhn Poker und Leduc Hold'em.
+Alle weiteren Spielvarianten basieren auf Leduc Hold'em und fügen zusätzliche Funktionalitäten hinzu.
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\textwidth]{chapters/04_systemarchitektur/sections/01_game_environment/Klassendiagramm_gameenvs.pdf}
-\caption{Klassendiagramm der Game Environment für verschiedene Pokervarianten}
+\includegraphics[width=1.0\textwidth]{chapters/04_systemarchitektur/sections/01_game_environment/Klassendiagramm_gameenvs_simplified.pdf}
+\caption{Klassendiagramm der Game Environment für Kuhn Poker und Leduc Hold'em}
 \label{fig:gameenv_class}
 \end{figure}
 

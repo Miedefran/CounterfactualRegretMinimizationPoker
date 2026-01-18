@@ -39,17 +39,30 @@ class CFRSolverWithTree:
     - Klarere Struktur
     """
     
-    def __init__(self, game, combination_generator, game_name=None, load_tree=True, alternating_updates=True):
+    def __init__(
+        self,
+        game,
+        combination_generator,
+        game_name=None,
+        load_tree=True,
+        alternating_updates=True,
+        partial_pruning=False,
+    ):
         self.game = game
         self.combination_generator = combination_generator
         self.combinations = combination_generator.get_all_combinations()
         self.alternating_updates = alternating_updates
+        # Kleine Optimierung: wenn alle Reach-Probs 0 sind, breche die Rekursion ab
+        # (kann optional aktiviert werden, um „pruning an/aus“ vergleichen zu können)
+        self.partial_pruning = partial_pruning
         
         # CFR Datenstrukturen
-        self.cumulative_regret = {}  # {info_set_key: {action: float}}
-        self.cumulative_policy = {}  # {info_set_key: {action: float}}
+        self.regret_sum = {}  # {info_set_key: {action: float}}
+        self.strategy_sum = {}  # {info_set_key: {action: float}}
         self.iteration_count = 0
         self.training_time = 0
+        # 1-indexierte Iteration (hilfreich für CFR+ / DCFR Ableitungen)
+        self._current_iteration = 0
         
         # Cache für aktuelle Policy (wird nach jedem Update aktualisiert)
         self._policy_cache = {}  # {info_set_key: {action: prob}}
@@ -60,18 +73,23 @@ class CFRSolverWithTree:
         self.infoset_to_nodes = defaultdict(list)  # {infoset_key: [node_ids]}
         self.root_nodes = []  # Liste von root node IDs (eine pro Kombination)
         
+        # Bestimme ob Suit Abstraction verwendet wird (basierend auf Combination Generator Typ)
+        from utils.poker_utils import LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted
+        use_suit_abstraction = isinstance(combination_generator, 
+            (LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted))
+        
         # Versuche Tree zu laden, sonst baue ihn
         if load_tree and game_name:
             try:
                 print(f"Attempting to load game tree for {game_name}...")
-                game_tree = load_game_tree(game_name)
+                game_tree = load_game_tree(game_name, abstract_suits=use_suit_abstraction)
                 self._convert_game_tree_to_internal(game_tree)
                 print(f"Tree loaded: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
             except FileNotFoundError:
                 print(f"Tree file not found for {game_name}, building tree...")
-                game_tree = build_game_tree(self.game, self.combination_generator, game_name=game_name)
+                game_tree = build_game_tree(self.game, self.combination_generator, game_name=game_name, abstract_suits=use_suit_abstraction)
                 self._convert_game_tree_to_internal(game_tree)
-                save_game_tree(game_tree, game_name)
+                save_game_tree(game_tree, game_name, abstract_suits=use_suit_abstraction)
                 print(f"Tree built and saved: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
         else:
             print("Building game tree...")
@@ -105,11 +123,11 @@ class CFRSolverWithTree:
             self.next_node_id = 0
     
     def ensure_init(self, info_set_key, legal_actions):
-        """Initialisiert cumulative_regret und cumulative_policy für ein InfoSet"""
-        if info_set_key not in self.cumulative_regret:
-            self.cumulative_regret[info_set_key] = {a: 0.0 for a in legal_actions}
-        if info_set_key not in self.cumulative_policy:
-            self.cumulative_policy[info_set_key] = {a: 0.0 for a in legal_actions}
+        """Initialisiert regret_sum und strategy_sum für ein InfoSet"""
+        if info_set_key not in self.regret_sum:
+            self.regret_sum[info_set_key] = {a: 0.0 for a in legal_actions}
+        if info_set_key not in self.strategy_sum:
+            self.strategy_sum[info_set_key] = {a: 0.0 for a in legal_actions}
     
     def train(self, iterations, br_tracker=None, print_interval=100):
         """
@@ -175,6 +193,7 @@ class CFRSolverWithTree:
         1. Für alle Kombinationen: Beide Spieler gleichzeitig traversieren
         2. Policy aktualisieren
         """
+        self._current_iteration = self.iteration_count + 1
         if self.alternating_updates:
             # Alternierende Updates (Standard)
             # Zuerst Spieler 0 für alle Kombinationen
@@ -182,6 +201,9 @@ class CFRSolverWithTree:
                 reach_probs = np.array([1.0, 1.0], dtype=np.float64)
                 self._traverse_for_player(root_id, reach_probs, player=0)
             
+            # Hook für algorithmusspezifische Nachbearbeitung (z.B. CFR+ Clamp, DCFR Discounting)
+            self.after_player_traversal(player=0)
+
             # Policy Update nach Spieler 0
             self._update_all_policies()
             
@@ -190,6 +212,8 @@ class CFRSolverWithTree:
                 reach_probs = np.array([1.0, 1.0], dtype=np.float64)
                 self._traverse_for_player(root_id, reach_probs, player=1)
             
+            self.after_player_traversal(player=1)
+
             # Policy Update nach Spieler 1
             self._update_all_policies()
         else:
@@ -201,8 +225,28 @@ class CFRSolverWithTree:
                 self._traverse_for_player(root_id, reach_probs, player=0)
                 self._traverse_for_player(root_id, reach_probs, player=1)
             
+            self.after_simultaneous_traversal()
+
             # Policy Update nach beiden Spielern
             self._update_all_policies()
+
+    def after_player_traversal(self, player: int):
+        """
+        Hook: wird nach der Traversierung aller Root-Nodes für einen Spieler aufgerufen,
+        aber vor dem Policy-Update.
+
+        Ableitungen können hier z.B.:
+        - CFR+: negative Regrets clamped to 0
+        - DCFR: Discounting auf Regrets anwenden
+        """
+        return
+
+    def after_simultaneous_traversal(self):
+        """
+        Hook: wird nach simultanen Updates (beide Spieler traversiert) aufgerufen,
+        aber vor dem Policy-Update.
+        """
+        return
     
     def _traverse_for_player(self, node_id, reach_probabilities, player):
         """
@@ -227,7 +271,7 @@ class CFRSolverWithTree:
         info_state = node.infoset_key
         
         # Early exit wenn Reach Probabilities 0 sind
-        if np.all(reach_probabilities[:2] == 0):
+        if self.partial_pruning and np.all(reach_probabilities[:2] == 0):
             return 0.0
         
         self.ensure_init(info_state, node.legal_actions)
@@ -257,25 +301,24 @@ class CFRSolverWithTree:
         if current_player != player:
             return state_value
         
-        # Regret Updates für den aktuellen Spieler
+        # Spieler-Node: Regrets & Strategy-Sum updaten (über Hook-Methoden),
+        # analog zur dynamischen CFRSolver-Implementierung.
         reach_prob = reach_probabilities[current_player]
-        
-        # Counterfactual Reach Probability = Produkt aller anderen Spieler
-        counterfactual_reach = 1.0
-        for p in range(len(reach_probabilities)):
-            if p != current_player:
-                counterfactual_reach *= reach_probabilities[p]
-        
-        # Akkumuliere Regrets und Policy
-        for action, action_prob in policy.items():
-            # Instantaneous Regret
-            regret = counterfactual_reach * (action_utilities[action] - state_value)
-            
-            # Akkumuliere Regret (kann negativ sein bei Vanilla CFR)
-            self.cumulative_regret[info_state][action] += regret
-            
-            # Uniform averaging: reach_prob * action_prob
-            self.cumulative_policy[info_state][action] += reach_prob * action_prob
+        counterfactual_weight = reach_probabilities[1 - current_player]
+
+        self.update_regrets(
+            info_state,
+            node.legal_actions,
+            action_utilities,
+            state_value,
+            counterfactual_weight,
+        )
+        self.update_strategy_sum(
+            info_state,
+            node.legal_actions,
+            policy,
+            reach_prob,
+        )
         
         return state_value
     
@@ -286,7 +329,7 @@ class CFRSolverWithTree:
         Die Policy wird nach jedem Spieler-Update neu berechnet, damit alle Nodes
         in der nächsten Traversierung die aktualisierte Policy verwenden.
         """
-        for info_state in self.cumulative_regret:
+        for info_state in self.regret_sum:
             # Hole legal_actions
             node_ids = self.infoset_to_nodes.get(info_state, [])
             if not node_ids:
@@ -337,7 +380,7 @@ class CFRSolverWithTree:
         Returns:
             {action: prob} Dictionary
         """
-        regrets = self.cumulative_regret.get(info_state, {})
+        regrets = self.regret_sum.get(info_state, {})
         
         # Berechne positive Regrets
         positive_regrets = {}
@@ -372,29 +415,24 @@ class CFRSolverWithTree:
         return result
     
     def update_regrets(self, info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight):
-        """
-        Wird nicht verwendet in dieser Implementierung.
-        Behalten für Kompatibilität mit Basisklasse.
-        """
-        pass
+        for action in legal_actions:
+            instantaneous_regret = counterfactual_weight * (action_utilities[action] - current_utility)
+            self.regret_sum[info_set_key][action] += instantaneous_regret
     
     def update_strategy_sum(self, info_set_key, legal_actions, current_strategy, player_reach):
-        """
-        Wird nicht verwendet in dieser Implementierung.
-        Behalten für Kompatibilität mit Basisklasse.
-        """
-        pass
+        for action in legal_actions:
+            self.strategy_sum[info_set_key][action] += player_reach * current_strategy[action]
     
     def get_average_strategy(self):
         """
         Berechnet die durchschnittliche Strategie mit uniform averaging.
         
         Bei uniform averaging ist die durchschnittliche Strategie:
-        average_policy[info_state][action] = cumulative_policy[info_state][action] / sum(cumulative_policy[info_state].values())
+        average_policy[info_state][action] = strategy_sum[info_state][action] / sum(strategy_sum[info_state].values())
         """
         average_strategy = {}
         
-        for info_state, policy_dict in self.cumulative_policy.items():
+        for info_state, policy_dict in self.strategy_sum.items():
             total = sum(policy_dict.values())
             
             if total == 0:
@@ -419,8 +457,8 @@ class CFRSolverWithTree:
     def save_gzip(self, filepath):
         """Speichert CFR Daten"""
         data = {
-            'cumulative_regret': self.cumulative_regret,
-            'cumulative_policy': self.cumulative_policy,
+            'regret_sum': self.regret_sum,
+            'strategy_sum': self.strategy_sum,
             'average_strategy': self.average_strategy,
             'iteration_count': self.iteration_count,
             'training_time': self.training_time
@@ -436,15 +474,15 @@ class CFRSolverWithTree:
         with gzip.open(filepath, 'rb') as f:
             data = pkl.load(f)
         
-        self.cumulative_regret = data['cumulative_regret']
-        self.cumulative_policy = data['cumulative_policy']
+        self.regret_sum = data['regret_sum']
+        self.strategy_sum = data['strategy_sum']
         self.average_strategy = data.get('average_strategy', {})
         self.iteration_count = data.get('iteration_count', 0)
         self.training_time = data.get('training_time', 0)
         
         # Rebuild policy cache
         self._policy_cache = {}
-        for info_state in self.cumulative_regret.keys():
+        for info_state in self.regret_sum.keys():
             self._get_policy(info_state)
         
         print(f"Loaded from {filepath}")

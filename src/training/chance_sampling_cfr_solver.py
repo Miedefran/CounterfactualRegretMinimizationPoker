@@ -171,12 +171,12 @@ class ChanceSamplingCFRSolver(CFRSolverWithTree):
             # Instantaneous Regret
             instantaneous_regret = counterfactual_reach * (action_utilities[action] - state_value)
             # Gewichte den Regret mit der Sampling-Wahrscheinlichkeit
-            self.cumulative_regret[info_state][action] += sampling_weight * instantaneous_regret
+            self.regret_sum[info_state][action] += sampling_weight * instantaneous_regret
         
         # Akkumuliere Policy mit Sampling-Gewichtung
         for action, action_prob in policy.items():
             # Uniform averaging: reach_prob * action_prob, gewichtet mit sampling_weight
-            self.cumulative_policy[info_state][action] += sampling_weight * reach_prob * action_prob
+            self.strategy_sum[info_state][action] += sampling_weight * reach_prob * action_prob
         
         return state_value
     

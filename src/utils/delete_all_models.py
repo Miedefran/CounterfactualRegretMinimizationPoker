@@ -1,6 +1,6 @@
-import os
-import glob
 import argparse
+import os
+from pathlib import Path
 
 def main():
     parser = argparse.ArgumentParser(description="Delete trained model files.")
@@ -31,17 +31,34 @@ def main():
     if args.game and args.keep_game:
         raise SystemExit("Use only one of --game or --keep-game.")
 
-    if args.game:
-        pattern = f"data/models/{args.game}/**/*.pkl.gz"
-    elif args.keep_game:
-        pattern = "data/models/**/*.pkl.gz"
-    else:
-        pattern = "data/models/**/*.pkl.gz"
+    repo_root = Path(__file__).resolve().parents[2]
+    models_root = repo_root / "data" / "models"
 
-    model_files = glob.glob(pattern, recursive=True)
+    if not models_root.exists():
+        print(f"No models directory found: {models_root}")
+        return
+
+    # Sammle alle Modell-Artefakte (Model + Best-Response-Logs + Plot-Bilder)
+    # - *.pkl.gz: Modelle und *_best_response.pkl.gz
+    # - *.png: *_best_response.png
+    def is_model_artifact(p: Path) -> bool:
+        name = p.name
+        return name.endswith(".pkl.gz") or name.endswith(".png")
+
+    if args.game:
+        search_root = models_root / args.game
+    else:
+        search_root = models_root
+
+    if not search_root.exists():
+        print(f"No model files found (directory missing): {search_root}")
+        return
+
+    model_files = [p for p in search_root.rglob("*") if p.is_file() and is_model_artifact(p)]
+
     if args.keep_game:
-        keep_prefix = f"data/models/{args.keep_game}/"
-        model_files = [p for p in model_files if not p.startswith(keep_prefix)]
+        keep_root = models_root / args.keep_game
+        model_files = [p for p in model_files if not p.is_relative_to(keep_root)]
     
     if not model_files:
         print("No model files found.")
@@ -54,8 +71,13 @@ def main():
     else:
         scope = ""
     print(f"Found {len(model_files)} model files{scope}:")
-    for file in model_files:
-        print(f"  - {file}")
+    # Nicht unendlich viel spammen, falls extrem viele Artefakte existieren
+    model_files_sorted = sorted(model_files, key=lambda p: str(p))
+    max_print = 200
+    for p in model_files_sorted[:max_print]:
+        print(f"  - {p.relative_to(repo_root)}")
+    if len(model_files_sorted) > max_print:
+        print(f"  ... ({len(model_files_sorted) - max_print} more)")
 
     if args.dry_run:
         print("\nDry run: no files deleted.")
@@ -68,10 +90,10 @@ def main():
             return
     
     deleted_count = 0
-    for file in model_files:
+    for file in model_files_sorted:
         try:
             os.remove(file)
-            print(f"Deleted: {file}")
+            print(f"Deleted: {Path(file).relative_to(repo_root)}")
             deleted_count += 1
         except Exception as e:
             print(f"Error deleting {file}: {e}")

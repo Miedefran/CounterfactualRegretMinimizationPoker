@@ -39,12 +39,15 @@ def to_milliblinds_per_game(value, game_name):
     return (value / big_blind_equiv) * 1000.0
 
 
-def get_public_state_tree_path(game_name):
+def get_public_state_tree_path(game_name, abstract_suits=None):
     """
     Ermittelt den Pfad zum Public State Tree für ein gegebenes Spiel.
     
     Args:
         game_name: Name des Spiels (z.B. 'leduc', 'kuhn_case1', etc.)
+        abstract_suits: Wenn None, wird automatisch bestimmt (Standard: True für leduc/twelve_card_poker)
+                        Wenn True, wird der Standard-Name verwendet
+                        Wenn False, wird der Name mit "_NOT_abstracted" verwendet
     
     Returns:
         Pfad zur Public State Tree Datei
@@ -56,9 +59,20 @@ def get_public_state_tree_path(game_name):
     else:
         save_name = game_name
     
+    # Bestimme ob Suit Abstraction verwendet werden soll
+    # Standardmäßig für leduc und twelve_card_poker
+    if abstract_suits is None:
+        abstract_suits = (game_name in ['leduc', 'twelve_card_poker'])
+    
     script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     base_dir = os.path.join(script_dir, 'data', 'trees', 'public_state_trees')
-    filename = f"{save_name}_public_tree_v2.pkl.gz"
+    
+    # Wenn abstract_suits=False, füge "_NOT_abstracted" zum Namen hinzu
+    if abstract_suits:
+        filename = f"{save_name}_public_tree_v2.pkl.gz"
+    else:
+        filename = f"{save_name}_public_tree_v2_NOT_abstracted.pkl.gz"
+    
     path = os.path.join(base_dir, filename)
     
     return path
@@ -97,7 +111,7 @@ def evaluate_best_response(game_name, tree, average_strategy, iteration):
         br_value_p1_mb = to_milliblinds_per_game(br_value_p1, game_name)
         exploitability_mb = to_milliblinds_per_game(exploitability, game_name)
         
-        print(f"  Best Response @ Iteration {iteration}: P0={br_value_p0_mb:.2f} mb/g, P1={br_value_p1_mb:.2f} mb/g, Exploitability={exploitability_mb:.2f} mb/g (took {elapsed_time:.2f}s)")
+        print(f"  Best Response @ Iteration {iteration}: P0={br_value_p0_mb:.6f} mb/g, P1={br_value_p1_mb:.6f} mb/g, Exploitability={exploitability_mb:.6f} mb/g (took {elapsed_time:.2f}s)")
         
         return (br_value_p0, br_value_p1, elapsed_time)
         
@@ -148,12 +162,14 @@ class BestResponseTracker:
     Der Public State Tree wird einmal beim Initialisieren geladen und dann wiederverwendet.
     """
     
-    def __init__(self, game_name, schedule_config=None):
+    def __init__(self, game_name, schedule_config=None, use_suit_abstraction=None):
         """
         Args:
             game_name: Name des Spiels
             schedule_config: Schedule-Konfiguration (Dict, JSON-Pfad, oder Schedule-Name)
                            Falls None oder Integer, wird fester Intervall verwendet (Rückwärtskompatibilität)
+            use_suit_abstraction: Wenn None, wird automatisch bestimmt (Standard: True für leduc/twelve_card_poker)
+                                 Wenn True/False, wird dieser Wert verwendet
         """
         self.game_name = game_name
         self.values = []  # Liste von (iteration, exploitability_mb, br_value_p0, br_value_p1, cumulative_training_time)
@@ -187,6 +203,13 @@ class BestResponseTracker:
         else:
             raise ValueError(f"Unbekannter Schedule-Typ: {self.schedule_type}")
         
+        # Speichere use_suit_abstraction für später
+        if use_suit_abstraction is None:
+            # Automatisch bestimmen basierend auf Spiel
+            self.use_suit_abstraction = (self.game_name in ['leduc', 'twelve_card_poker'])
+        else:
+            self.use_suit_abstraction = use_suit_abstraction
+        
         # Lade Public State Tree einmal beim Initialisieren
         self.tree = None
         self._load_tree()
@@ -195,18 +218,72 @@ class BestResponseTracker:
         """Lädt den Public State Tree einmal beim Initialisieren."""
         try:
             from evaluation.best_response_agent_v2 import load_public_tree
+            from evaluation.build_public_state_tree_v2 import build_public_state_tree, save_public_state_tree
+            from envs.kuhn_poker.game import KuhnPokerGame
+            from envs.leduc_holdem.game import LeducHoldemGame
+            from envs.rhode_island.game import RhodeIslandGame
+            from envs.royal_holdem.game import RoyalHoldemGame
+            from envs.small_island_holdem.game import SmallIslandHoldemGame
+            from envs.limit_holdem.game import LimitHoldemGame
+            from envs.twelve_card_poker.game import TwelveCardPokerGame
+            from utils.poker_utils import GAME_CONFIGS
             
-            tree_path = get_public_state_tree_path(self.game_name)
+            # Verwende die gespeicherte use_suit_abstraction Einstellung
+            use_suit_abstraction = self.use_suit_abstraction
+            
+            # Versuche den Standard-Pfad zu laden (mit abstract_suits Parameter)
+            tree_path = get_public_state_tree_path(self.game_name, abstract_suits=use_suit_abstraction)
             if not os.path.exists(tree_path):
-                print(f"WARNING: Public State Tree nicht gefunden: {tree_path}")
-                print("Best Response Evaluation wird deaktiviert")
-                return
+                # Tree existiert nicht - baue ihn automatisch
+                print(f"Public State Tree nicht gefunden. Baue ihn automatisch...")
+                
+                # Bestimme Game-Klasse und Config
+                if self.game_name.startswith('kuhn'):
+                    game_class = KuhnPokerGame
+                    game_config = GAME_CONFIGS[self.game_name]
+                    save_name = 'kuhn'
+                elif self.game_name == 'leduc':
+                    game_class = LeducHoldemGame
+                    game_config = GAME_CONFIGS['leduc']
+                    save_name = 'leduc'
+                elif self.game_name == 'rhode_island':
+                    game_class = RhodeIslandGame
+                    game_config = GAME_CONFIGS['rhode_island']
+                    save_name = 'rhode_island'
+                elif self.game_name == 'royal_holdem':
+                    game_class = RoyalHoldemGame
+                    game_config = GAME_CONFIGS['royal_holdem']
+                    save_name = 'royal_holdem'
+                elif self.game_name == 'small_island_holdem':
+                    game_class = SmallIslandHoldemGame
+                    game_config = GAME_CONFIGS['small_island_holdem']
+                    save_name = 'small_island_holdem'
+                elif self.game_name == 'twelve_card_poker':
+                    game_class = TwelveCardPokerGame
+                    game_config = GAME_CONFIGS['twelve_card_poker']
+                    save_name = 'twelve_card_poker'
+                elif self.game_name == 'limit_holdem':
+                    game_class = LimitHoldemGame
+                    game_config = GAME_CONFIGS['limit_holdem']
+                    save_name = 'limit_holdem'
+                else:
+                    print(f"WARNING: Unbekanntes Spiel: {self.game_name}")
+                    print("Best Response Evaluation wird deaktiviert")
+                    return
+                
+                # Baue und speichere den Tree
+                tree = build_public_state_tree(game_class, game_config, use_cache=True, abstract_suits=use_suit_abstraction)
+                tree_path = save_public_state_tree(save_name, tree, abstract_suits=use_suit_abstraction)
+                print(f"Public State Tree erfolgreich gebaut und gespeichert.")
             
             self.tree = load_public_tree(tree_path)
-            print(f"Public State Tree geladen: {tree_path}")
+            abstraction_str = " (suit abstracted)" if use_suit_abstraction else ""
+            print(f"Public State Tree geladen{abstraction_str}: {tree_path}")
             
         except Exception as e:
             print(f"WARNING: Fehler beim Laden des Public State Trees: {e}")
+            import traceback
+            traceback.print_exc()
             print("Best Response Evaluation wird deaktiviert")
     
     def get_current_interval(self, iteration):

@@ -1,12 +1,20 @@
 import gzip
 import pickle as pkl
+import numpy as np
 from training.cfr_solver import CFRSolver
 
 class CFRPlusSolver(CFRSolver):
     
-    def __init__(self, game, combination_generator):
-        super().__init__(game, combination_generator)
+    def __init__(self, game, combination_generator, alternating_updates=True, partial_pruning=False):
+        super().__init__(
+            game,
+            combination_generator,
+            alternating_updates=alternating_updates,
+            partial_pruning=partial_pruning,
+        )
         self.Q = {}
+        # Aktuelle Iteration für linear averaging (1-indexiert)
+        self._current_iteration = 0
     
     def ensure_init(self, info_set_key, legal_actions):
         super().ensure_init(info_set_key, legal_actions)
@@ -17,29 +25,56 @@ class CFRPlusSolver(CFRSolver):
         """
         Eine CFR+ Iteration.
         
-        Bei alternierenden Updates werden BEIDE Spieler in einer Iteration aktualisiert,
-        aber separat (wie in OpenSpiel implementiert).
+        Macht alternierende Updates: erst Spieler 0, dann Spieler 1.
+        Nach jedem Spieler werden negative Regrets auf 0 gesetzt und
+        die Policy neu berechnet.
         """
-        for combination in self.combinations:
-            self.combination_generator.setup_game_with_combination(self.game, combination)
+        self._current_iteration = self.iteration_count + 1
+        
+        if self.alternating_updates:
+            # Spieler 0 für alle Kombinationen
+            for combination in self.combinations:
+                self.combination_generator.setup_game_with_combination(self.game, combination)
+                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+                self.traverse_game_tree(0, reach_probs)
             
-            reach_probs = [1.0, 1.0]
+            # Negative Regrets auf 0 setzen und Policy updaten
+            self._reset_negative_regrets()
+            self._update_all_policies()
             
-            # Bei alternierenden Updates: Beide Spieler in einer Iteration aktualisieren
-            # (wie in OpenSpiel implementiert)
-            self.traverse_game_tree(0, reach_probs)
-            self.traverse_game_tree(1, reach_probs)
+            # Spieler 1 für alle Kombinationen
+            for combination in self.combinations:
+                self.combination_generator.setup_game_with_combination(self.game, combination)
+                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+                self.traverse_game_tree(1, reach_probs)
+            
+            # Nochmal negative Regrets auf 0 setzen und Policy updaten
+            self._reset_negative_regrets()
+            self._update_all_policies()
+        else:
+            # Simultane Updates (wie original CFR Paper)
+            for combination in self.combinations:
+                self.combination_generator.setup_game_with_combination(self.game, combination)
+                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+                # Traverse für beide Spieler mit derselben Policy
+                self.traverse_game_tree(0, reach_probs)
+                self.traverse_game_tree(1, reach_probs)
+            
+            # Negative Regrets auf 0 setzen und Policy updaten
+            self._reset_negative_regrets()
+            self._update_all_policies()
     
     def update_regrets(self, info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight):
         """
-        Aktualisiert Q-Werte (positive Regrets) für CFR+.
+        Aktualisiert Q-Werte für CFR+.
         
-        CFR+ klappt negative Regrets auf 0, daher verwenden wir Q statt regret_sum.
+        Regrets werden akkumuliert (können negativ sein) und dann nach jedem
+        Spieler-Update mit _reset_negative_regrets() auf 0 gesetzt.
         """
         for action in legal_actions:
             instantaneous_regret = counterfactual_weight * (action_utilities[action] - current_utility)
-            # Klappe negative Werte auf 0 (CFR+ Eigenschaft)
-            self.Q[info_set_key][action] = max(self.Q[info_set_key][action] + instantaneous_regret, 0)
+            # Akkumuliere Regret (kann negativ sein, wird später auf 0 gesetzt)
+            self.Q[info_set_key][action] += instantaneous_regret
     
     def update_strategy_sum(self, info_set_key, legal_actions, current_strategy, player_reach):
         """
@@ -50,8 +85,8 @@ class CFRPlusSolver(CFRSolver):
         """
         for action in legal_actions:
             # CFR+ verwendet die Iterationsnummer t (1-indexiert) als Gewichtung
-            # iteration_count ist 0-indexiert, also +1 für 1-indexierung
-            weight = self.iteration_count + 1
+            # _current_iteration ist bereits 1-indexiert
+            weight = self._current_iteration
             self.strategy_sum[info_set_key][action] += weight * player_reach * current_strategy[action]
     
     def get_current_strategy(self, info_set_key, legal_actions):
@@ -60,15 +95,30 @@ class CFRPlusSolver(CFRSolver):
         
         CFR+ verwendet Q statt regret_sum für die Strategieberechnung.
         Gemäß Paper: σt(a) = Qt-1(a) / Σb∈A Qt-1(b)
+        
+        Gibt die aktuelle Strategie für ein InfoSet zurück.
+        Falls nicht im Cache, wird sie neu berechnet.
         """
+        if info_set_key in self._policy_cache:
+            policy = self._policy_cache[info_set_key]
+            # Stelle sicher, dass alle legal_actions enthalten sind
+            result = {}
+            for action in legal_actions:
+                result[action] = policy.get(action, 0.0)
+            return result
+        
         Q_values = {a: self.Q[info_set_key][a] for a in legal_actions}
         sum_Q = sum(Q_values.values())
         
         if sum_Q > 0:
-            return {a: Q_values[a] / sum_Q for a in legal_actions}
+            policy = {a: Q_values[a] / sum_Q for a in legal_actions}
         else:
             # Wenn keine positiven Q-Werte: Gleichverteilung
-            return {a: 1.0 / len(legal_actions) for a in legal_actions}
+            policy = {a: 1.0 / len(legal_actions) for a in legal_actions}
+        
+        # Cache für schnelleren Zugriff
+        self._policy_cache[info_set_key] = policy
+        return policy
     
     def get_average_strategy(self):
         """
@@ -95,6 +145,59 @@ class CFRPlusSolver(CFRSolver):
         
         print(f"Saved to {filepath}")
     
+    def _reset_negative_regrets(self):
+        """Setzt alle negativen Regrets auf 0 (Regret Matching+)"""
+        for info_state in self.Q:
+            for action in self.Q[info_state]:
+                if self.Q[info_state][action] < 0:
+                    self.Q[info_state][action] = 0.0
+    
+    def _update_all_policies(self):
+        """
+        Aktualisiert alle Policies basierend auf aktuellen Q-Werten.
+        
+        Wird nach jedem Spieler-Update gemacht, damit die nächste
+        Traversierung die neue Policy verwendet.
+        """
+        for info_set_key in self.Q:
+            if info_set_key not in self.strategy_sum:
+                continue
+            
+            legal_actions = list(self.strategy_sum[info_set_key].keys())
+            if not legal_actions:
+                continue
+            
+            # Berechne neue Policy mit Regret Matching
+            policy = self._regret_matching_plus(info_set_key, legal_actions)
+            
+            # Cache für schnelleren Zugriff
+            self._policy_cache[info_set_key] = policy
+    
+    def _regret_matching_plus(self, info_set_key, legal_actions):
+        """
+        Berechnet Policy mit Regret Matching basierend auf Q-Werten.
+        
+        Args:
+            info_set_key: InfoSet Key
+            legal_actions: Liste von legalen Aktionen
+        
+        Returns:
+            {action: prob} Dictionary
+        """
+        Q_values = self.Q.get(info_set_key, {})
+        
+        total_Q = 0.0
+        for action in legal_actions:
+            total_Q += Q_values.get(action, 0.0)
+        
+        if total_Q > 0:
+            return {action: Q_values.get(action, 0.0) / total_Q 
+                   for action in legal_actions}
+        else:
+            # Gleichverteilung wenn keine positiven Q-Werte
+            uniform_prob = 1.0 / len(legal_actions)
+            return {action: uniform_prob for action in legal_actions}
+    
     def load_gzip(self, filepath):
         with gzip.open(filepath, 'rb') as f:
             data = pkl.load(f)
@@ -104,5 +207,17 @@ class CFRPlusSolver(CFRSolver):
         self.average_strategy = data['average_strategy']
         self.iteration_count = data['iteration_count']
         self.training_time = data.get('training_time', 0)
+        
+        # _current_iteration ist 1-indexiert, iteration_count ist 0-indexiert
+        self._current_iteration = max(1, self.iteration_count + 1)
+        
+        # Rebuild policy cache
+        self._policy_cache = {}
+        for info_set_key in self.Q.keys():
+            if info_set_key in self.strategy_sum:
+                legal_actions = list(self.strategy_sum[info_set_key].keys())
+                if legal_actions:
+                    policy = self._regret_matching_plus(info_set_key, legal_actions)
+                    self._policy_cache[info_set_key] = policy
         
         print(f"Loaded from {filepath}")

@@ -37,6 +37,11 @@ GAME_CONFIGS = {
         'bet_sizes': [2, 4, 8, 8],
         'bet_limit': 3
     },
+    'small_island_holdem': {
+        'ante': 5,
+        'bet_sizes': [10, 20, 20],
+        'bet_limit': 2
+    },
     'limit_holdem': {
         'small_blind': 5,
         'big_blind': 10,
@@ -61,6 +66,8 @@ def get_model_path(game, iterations, algorithm='cfr'):
         path = os.path.join(base_dir, 'twelve_card_poker', algorithm, iterations_dir, filename)
     elif game == 'royal_holdem':
         path = os.path.join(base_dir, 'royal_holdem', algorithm, iterations_dir, filename)
+    elif game == 'small_island_holdem':
+        path = os.path.join(base_dir, 'small_island_holdem', algorithm, iterations_dir, filename)
     elif game == 'limit_holdem':
         path = os.path.join(base_dir, 'limit_holdem', algorithm, iterations_dir, filename)
     else:
@@ -276,6 +283,32 @@ class RoyalHoldemCombinations(PokerCombinationGenerator):
         game.players[0].set_private_cards(combination[0], combination[1])
         game.players[1].set_private_cards(combination[2], combination[3])
         game.dealer.deck = [combination[4], combination[5], combination[6], combination[7], combination[8]]
+
+
+class SmallIslandHoldemCombinations(PokerCombinationGenerator):
+    
+    def get_all_combinations(self):
+        ranks = ['T', 'J', 'Q', 'K', 'A']
+        suits = ['s', 'h', 'd', 'c']
+        deck = [rank + suit for rank in ranks for suit in suits]
+        combinations = []
+        
+        for i, card1 in enumerate(deck):
+            for j, card2 in enumerate(deck):
+                if i != j:
+                    for k, public1 in enumerate(deck):
+                        if k != i and k != j:
+                            for l, public2 in enumerate(deck):
+                                if l != i and l != j and l != k:
+                                    combinations.append((card1, card2, public1, public2))
+        
+        return combinations
+    
+    def setup_game_with_combination(self, game, combination):
+        game.reset(0)
+        game.players[0].private_card = combination[0]
+        game.players[1].private_card = combination[1]
+        game.dealer.deck = [combination[2], combination[3]]
 
 
 class LimitHoldemCombinations(PokerCombinationGenerator):

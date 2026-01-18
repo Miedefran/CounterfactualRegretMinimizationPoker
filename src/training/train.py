@@ -14,22 +14,27 @@ from training.chance_sampling_cfr_solver import ChanceSamplingCFRSolver
 from training.external_sampling_cfr_solver import ExternalSamplingCFRSolver
 from training.outcome_sampling_cfr_solver import OutcomeSamplingCFRSolver
 from training.cfr_plus_with_tree import CFRPlusWithTree
+from training.discounted_cfr_solver import DiscountedCFRSolver
+from training.discounted_cfr_solver_with_tree import DiscountedCFRWithTreeSolver
 
-# Optional: CFROptimized (falls die Datei existier
 from envs.kuhn_poker.game import KuhnPokerGame
 from envs.leduc_holdem.game import LeducHoldemGame
 from envs.rhode_island.game import RhodeIslandGame
 from envs.twelve_card_poker.game import TwelveCardPokerGame
 from envs.royal_holdem.game import RoyalHoldemGame
+from envs.small_island_holdem.game import SmallIslandHoldemGame
 from envs.limit_holdem.game import LimitHoldemGame
 
 from utils.poker_utils import (
     GAME_CONFIGS,
     KuhnPokerCombinations,
     LeducHoldemCombinations,
+    LeducHoldemCombinationsAbstracted,
     RhodeIslandCombinations,
     TwelveCardPokerCombinations,
+    TwelveCardPokerCombinationsAbstracted,
     RoyalHoldemCombinations,
+    SmallIslandHoldemCombinations,
     LimitHoldemCombinations,
     get_model_path
 )
@@ -60,49 +65,78 @@ def get_print_interval(iterations):
 def main():
     parser = argparse.ArgumentParser(description='Train CFR for Poker')
     parser.add_argument('game', type=str,
-                       choices=['kuhn_case1', 'kuhn_case2', 'kuhn_case3', 'kuhn_case4', 'leduc', 'rhode_island', 'twelve_card_poker', 'royal_holdem', 'limit_holdem'],
+                       choices=['kuhn_case1', 'kuhn_case2', 'kuhn_case3', 'kuhn_case4', 'leduc', 'rhode_island', 'twelve_card_poker', 'royal_holdem', 'small_island_holdem', 'limit_holdem'],
                        help='Poker variant to train on')
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
     parser.add_argument('algorithm', type=str,
-                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling', 'outcome_sampling', 'cfr_plus_with_tree', 'cfr_plus_optimized', 'cfr_optimized'],
+                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling', 'outcome_sampling', 'cfr_plus_with_tree', 'discounted_cfr', 'discounted_cfr_with_tree'],
                        nargs='?',
                        default='cfr',
                        help='Algorithm to use (default: cfr)')
     parser.add_argument('--br-eval-schedule', type=str, default=None,
                        help='Best Response Evaluierungs-Schedule: Integer (fester Intervall), JSON-Pfad, oder Schedule-Name aus config/br_eval_schedules.json (None = deaktiviert)')
-    parser.add_argument('--tensor-algorithm', type=str, choices=['cfr', 'cfr_plus'], default='cfr',
-                       help='Algorithmus für Tensor CFR: cfr (ohne CFR+) oder cfr_plus (mit CFR+). Standard: cfr')
+    parser.add_argument('--tensor-algorithm', type=str, choices=['cfr', 'cfr_plus'], default='cfr_plus',
+                       help='Algorithmus für Tensor CFR: cfr (ohne CFR+) oder cfr_plus (mit CFR+). Standard: cfr_plus')
     parser.add_argument('--alternating-updates', type=str, choices=['true', 'false'], default='true',
-                       help='Für cfr_optimized und cfr_with_tree: true für alternierende Updates (wie OpenSpiel), false für simultane Updates (wie original CFR). Standard: true')
+                       help='Für CFR-basierte Solver: true für alternierende Updates, false für simultane Updates. Standard: true')
+    parser.add_argument('--partial-pruning', type=str, choices=['true', 'false'], default='false',
+                       help='Kleines Early-Exit-Pruning wenn Reach-Probabilities 0 sind. true=aktiv, false=deaktiviert. Standard: false')
+    parser.add_argument('--no-suit-abstraction', action='store_true',
+                       help='Deaktiviert Suit Abstraction für leduc und twelve_card_poker (Standard: aktiviert)')
+    parser.add_argument('--dcfr-alpha', type=float, default=1.5,
+                       help='Alpha Parameter für Discounted CFR (Standard: 1.5)')
+    parser.add_argument('--dcfr-beta', type=float, default=0.0,
+                       help='Beta Parameter für Discounted CFR (Standard: 0.0)')
+    parser.add_argument('--dcfr-gamma', type=float, default=2.0,
+                       help='Gamma Parameter für Discounted CFR (Standard: 2.0)')
     args = parser.parse_args()
     config = GAME_CONFIGS[args.game]
+
+    alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
+    partial_pruning = getattr(args, 'partial_pruning', 'false').lower() == 'true'
     
-    print(f"Training {args.game} for {args.iterations} iterations")
+    # Bestimme ob Suit Abstraction verwendet werden soll
+    # Standardmäßig für leduc und twelve_card_poker, außer wenn --no-suit-abstraction gesetzt ist
+    use_suit_abstraction = False
+    if args.game in ['leduc', 'twelve_card_poker']:
+        use_suit_abstraction = not args.no_suit_abstraction
+    
+    abstraction_str = " (suit abstracted)" if use_suit_abstraction else ""
+    print(f"Training {args.game}{abstraction_str} for {args.iterations} iterations")
     
     if args.game.startswith('kuhn'):
         game = KuhnPokerGame(ante=config['ante'], bet_size=config['bet_size'])
         combo_gen = KuhnPokerCombinations()
     elif args.game.startswith('leduc'):
         game = LeducHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
-        combo_gen = LeducHoldemCombinations()
+        if use_suit_abstraction:
+            combo_gen = LeducHoldemCombinationsAbstracted()
+        else:
+            combo_gen = LeducHoldemCombinations()
     elif args.game.startswith('rhode'):
         game = RhodeIslandGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = RhodeIslandCombinations()
     elif args.game == 'twelve_card_poker':
         game = TwelveCardPokerGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
-        combo_gen = TwelveCardPokerCombinations()
+        if use_suit_abstraction:
+            combo_gen = TwelveCardPokerCombinationsAbstracted()
+        else:
+            combo_gen = TwelveCardPokerCombinations()
     elif args.game == 'royal_holdem':
         game = RoyalHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = RoyalHoldemCombinations()
+    elif args.game == 'small_island_holdem':
+        game = SmallIslandHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
+        combo_gen = SmallIslandHoldemCombinations()
     elif args.game == 'limit_holdem':
         game = LimitHoldemGame(small_blind=config['small_blind'], big_blind=config['big_blind'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = LimitHoldemCombinations()
     
     if args.algorithm == 'cfr':
-        solver = CFRSolver(game, combo_gen)
+        solver = CFRSolver(game, combo_gen, alternating_updates=alternating, partial_pruning=partial_pruning)
     elif args.algorithm == 'cfr_plus':
-        solver = CFRPlusSolver(game, combo_gen)
+        solver = CFRPlusSolver(game, combo_gen, alternating_updates=alternating, partial_pruning=partial_pruning)
     elif args.algorithm == 'mccfr':
         solver = MCCFRSolver(game, combo_gen)
     elif args.algorithm == 'fold':
@@ -113,12 +147,13 @@ def main():
         solver = TensorCFRSolver(game, combo_gen, algorithm=args.tensor_algorithm, game_name=args.game)
     elif args.algorithm == 'cfr_with_tree':
         # Übergebe game_name für automatisches Laden des Trees
-        alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
-        solver = CFRSolverWithTree(game, combo_gen, game_name=args.game, alternating_updates=alternating)
-        if alternating:
-            print("Verwende alternierende Updates (wie OpenSpiel)")
-        else:
-            print("Verwende simultane Updates (wie original CFR Paper)")
+        solver = CFRSolverWithTree(
+            game,
+            combo_gen,
+            game_name=args.game,
+            alternating_updates=alternating,
+            partial_pruning=partial_pruning,
+        )
     elif args.algorithm == 'chance_sampling':
         # Übergebe game_name für automatisches Laden des Trees
         solver = ChanceSamplingCFRSolver(game, combo_gen, game_name=args.game)
@@ -130,20 +165,34 @@ def main():
         solver = OutcomeSamplingCFRSolver(game, combo_gen, game_name=args.game)
     elif args.algorithm == 'cfr_plus_with_tree':
         # Übergebe game_name für automatisches Laden des Trees
-        solver = CFRPlusWithTree(game, combo_gen, game_name=args.game)
-    elif args.algorithm == 'cfr_plus_optimized':
-        # Optimierte CFR+ Implementierung basierend auf OpenSpiel
-        solver = CFRPlusOptimized(game, combo_gen, game_name=args.game)
-    elif args.algorithm == 'cfr_optimized':
-        if CFROptimized is None:
-            raise ImportError("cfr_optimized Modul nicht gefunden. Bitte erstelle src/training/cfr_optimized.py")
-        # Optimierte Vanilla CFR Implementierung basierend auf OpenSpiel
-        alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
-        solver = CFROptimized(game, combo_gen, game_name=args.game, alternating_updates=alternating)
-        if alternating:
-            print("Verwende alternierende Updates (wie OpenSpiel)")
-        else:
-            print("Verwende simultane Updates (wie original CFR Paper)")
+        solver = CFRPlusWithTree(
+            game,
+            combo_gen,
+            game_name=args.game,
+            alternating_updates=alternating,
+            partial_pruning=partial_pruning,
+        )
+    elif args.algorithm == 'discounted_cfr':
+        # Discounted CFR Solver (ohne Tree)
+        solver = DiscountedCFRSolver(
+            game, combo_gen,
+            alternating_updates=alternating,
+            partial_pruning=partial_pruning,
+            alpha=args.dcfr_alpha,
+            beta=args.dcfr_beta,
+            gamma=args.dcfr_gamma
+        )
+    elif args.algorithm == 'discounted_cfr_with_tree':
+        # Discounted CFR with Tree Solver
+        solver = DiscountedCFRWithTreeSolver(
+            game, combo_gen, 
+            game_name=args.game,
+            alpha=args.dcfr_alpha,
+            beta=args.dcfr_beta,
+            gamma=args.dcfr_gamma,
+            alternating_updates=alternating,
+            partial_pruning=partial_pruning,
+        )
     
     # Best Response Tracker initialisieren falls gewünscht
     br_tracker = None
@@ -151,10 +200,10 @@ def main():
         try:
             if args.br_eval_schedule.isdigit():
                 schedule_config = int(args.br_eval_schedule)
-                br_tracker = BestResponseTracker(args.game, schedule_config=schedule_config)
+                br_tracker = BestResponseTracker(args.game, schedule_config=schedule_config, use_suit_abstraction=use_suit_abstraction)
                 print(f"Best Response Evaluation aktiviert (fester Intervall: {schedule_config})")
             else:
-                br_tracker = BestResponseTracker(args.game, schedule_config=args.br_eval_schedule)
+                br_tracker = BestResponseTracker(args.game, schedule_config=args.br_eval_schedule, use_suit_abstraction=use_suit_abstraction)
                 schedule_type = br_tracker.schedule_type
                 if schedule_type == "fixed":
                     print(f"Best Response Evaluation aktiviert (fester Intervall: {br_tracker.interval})")
@@ -175,10 +224,32 @@ def main():
     algorithm_for_path = args.algorithm
     if args.algorithm == 'tensor_cfr' and args.tensor_algorithm == 'cfr_plus':
         algorithm_for_path = 'tensor_cfr_plus'
-    elif args.algorithm == 'cfr_with_tree':
-        alternating = getattr(args, 'alternating_updates', 'true').lower() == 'true'
-        if not alternating:
+
+    # Codierung von alternating/simultaneous in den Output-Pfad, damit Runs nicht überschreiben
+    if not alternating:
+        if args.algorithm == 'cfr':
+            algorithm_for_path = 'cfr_simultaneous'
+        elif args.algorithm == 'cfr_plus':
+            algorithm_for_path = 'cfr_plus_simultaneous'
+        elif args.algorithm == 'cfr_with_tree':
             algorithm_for_path = 'cfr_with_tree_simultaneous'
+        elif args.algorithm == 'cfr_plus_with_tree':
+            algorithm_for_path = 'cfr_plus_with_tree_simultaneous'
+        elif args.algorithm == 'discounted_cfr':
+            algorithm_for_path = 'discounted_cfr_simultaneous'
+        elif args.algorithm == 'discounted_cfr_with_tree':
+            algorithm_for_path = 'discounted_cfr_with_tree_simultaneous'
+
+    # Codierung von (partial) pruning in den Output-Pfad
+    if not partial_pruning and args.algorithm in {
+        'cfr',
+        'cfr_plus',
+        'cfr_with_tree',
+        'cfr_plus_with_tree',
+        'discounted_cfr',
+        'discounted_cfr_with_tree',
+    }:
+        algorithm_for_path = f"{algorithm_for_path}_no_pruning"
     
     filepath = get_model_path(args.game, args.iterations, algorithm_for_path)
     solver.save_gzip(filepath)

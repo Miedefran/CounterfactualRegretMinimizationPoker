@@ -1,58 +1,127 @@
 \section{CFR Solver}
+Dieses Kapitel ist unterteilt in 2 Abschnitte, aufgrund von verschiedenen Designs welche genutzt wurden um einen CFR Algorithmus zu implementieren.
+Das erste Design nutzt die öffentlichen Methoden der Game Environment um während des Trainings den Spielbaum dynamisch aufzubauen und gleichzeitig zu durchlaufen.
+Das zweite Design verwendet einen statischen Spielbaum, welcher im Voraus mithilfe der Game Environment gebaut und anschließend auf der Festplatte gespeichert wurde.
 
-Abbildung~\ref{fig:cfr_solver_class} zeigt das Klassendiagramm der CFR Solver Architektur. 
+\subsection{Dynamischer Spielbaum}
+Die dynamische Implementierung des CFR Solvers verzichtet auf die Speicherung eines expliziten Spielbaums.
+Stattdessen wird der Spielbaum bei jeder Iteration und für jede Kartenkombination neu durch wiederholte Aufrufe von \texttt{game.step()} und \texttt{game.step\_back()} traversiert.
+Dieser Ansatz benötigt weniger Arbeitsspeicher als die statische Variante, da nicht der gesamte Baum im Speicher gehalten werden muss.
+Allerdings ist er durch wiederholtes Aufrufen der Spielzustandsfunktionen deutlich langsamer.
+
+Abbildung~\ref{fig:cfr_solver_class} zeigt das Klassendiagramm der dynamischen CFR Solver Implementierung.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.9\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Klassendiagramm_cfr_solver.pdf}
-\caption{Klassendiagramm der CFR Solver Architektur}
+\includegraphics[width=0.8\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Klassendiagramm_cfr_solver.pdf}
+\caption{Klassendiagramm der dynamischen CFR Solver Architektur}
 \label{fig:cfr_solver_class}
 \end{figure}
 
-Das Diagramm zeigt die drei implementierten Solver Varianten CFRSolver, CFRPlusSolver und MCCFRSolver, wobei CFRPlusSolver und MCCFRSolver von CFRSolver erben.
-\newpage
-\subsection{CFR Training Ablauf}
+Der Trainingsprozess beginnt mit der Initialisierung der Objekte Game, Combination Generator und Solver.
+Anschließend erzeugt der Combination Generator alle möglichen Kartenkombinationen.\\
+Eine Iteration des CFR Algorithmus enthält dann folgende Schritte:\\
+Für jede Kartenkombination welche vom Combination Generator generiert wurde, wird der Spielbaum rekursiv durchlaufen.
+Hierbei werden alle möglichen Aktionssequenzen der beiden Spieler betrachtet.
+Auf die genaue Funktionsweise der rekursiven Traversierung gehe ich in der kommenden Seite ein.\\
+%Da der Ausgang der Zufallsereignisse schon vorher durch den Combination Generator bestimmt wurde, gibt es keine explizite Definition eines Chance Nodes.
+Nachdem der Spielbaum für alle Kartenkombinationen und Aktionen traversiert wurde, wird die Strategie für alle Informationssets mittels Regret Matching basierend auf den kumulierten Counterfactual Regrets aktualisiert.\\
+Hiermit endet eine Iteration.\\
+Optional kann während des Trainings eine Exploitability Berechnung durchgeführt werden.
+Hierfür wird die durchschnittliche Strategie berechnet und anschließend eine Best Response Evaluation durchgeführt.\\
+Dieser Prozess wird für die gewünschte Anzahl an Iterationen wiederholt und anschließend wird das Modell gespeichert.
 
-Abbildung~\ref{fig:cfr_training_activity} zeigt den Ablauf des CFR Trainings als Aktivitätsdiagramm.
+Wichtig zu erwähnen ist, dass die Best Response Evaluation nicht bei jeder Iteration durchgeführt wird, sondern in regelmäßigen Abständen gemäß einer konfigurierbaren Evaluationsfrequenz.
+Diese Abstände werden so gewählt, dass aus den gesammelten Werten anschließend ein aussagekräftiger Konvergenzplot erstellt werden kann.
+
+Auf der folgenden Seite wird der eben wörtlich beschriebende Ablauf mithilfe eines UML Aktivitätsdiagramms veranschaulicht.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.55\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_cfr_training.pdf}
-\caption{Aktivitätsdiagramm des CFR Trainings}
-\label{fig:cfr_training_activity}
-\end{figure} 
-Der Prozess beginnt mit dem Einlesen der Kommandozeilenargumente. Anschließend wird die Spielkonfiguration geladen. 
-Danach werden das Spiel, der Combination Generator und der Solver erstellt. 
-Der Combination Generator erzeugt alle möglichen Kartenkombinationen.
-Das Training besteht aus zwei verschachtelten Schleifen: einer äußeren Schleife über die Iterationen und einer inneren Schleife über alle Kombinationen. 
-Für jede Kombination wird das Spiel initialisiert, der Spielbaum durchlaufen und die Regrets aktualisiert.
-Nach Abschluss aller Iterationen wird die durchschnittliche Strategie berechnet und das trainierte Modell gespeichert.
+\includegraphics[width=1.0\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_cfr_dynamic_training.pdf}
+\caption{Aktivitätsdiagramm des Trainingsprozesses der dynamischen CFR Solver Implementierung}
+\label{fig:cfr_dynamic_training_activity}
+\end{figure}
 \newpage
 
-\subsection{Traverse Game Tree}
+Abbildung~\ref{fig:traverse_game_tree_dynamic} zeigt den Ablauf der rekursiven Spielbaumtraversierung im Detail.
 
+In diesem Abschnitt wird die Rekursive Spielbaumtraversierung genauer beschrieben.
+
+Die Traversierungsfunktion wird im Trainingsablauf für jede Kartenkombination aufgerufen, wobei für jeden Kartendeal der Spielbaum dynamisch durchlaufen wird.
+Die Funktion berechnet den erwarteten Nutzen für einen gegebenen Spieler und aktualisiert dabei die Counterfactual Regrets.
+Wichtig ist, dass die Regrets nur für den Spieler aktualisiert werden, für den traversiert wird, während die Strategie des Gegners lediglich zur Berechnung des erwarteten Nutzens verwendet wird.
+Als Parameter erhält die Funktion die Spieler-ID für den zu traversierenden Spieler und die Erreichbarkeitswahrscheinlichkeiten beider Spieler.
+Die Erreichbarkeitswahrscheinlichkeit beschreibt die Wahrscheinlichkeit, den aktuellen Knoten zu erreichen.
+Beim initialen Aufruf der Traversierungsfunktion werden für beide Spieler Erreichbarkeitswahrscheinlichkeiten von 1.0 übergeben, da beide Spieler den Root Node mit Sicherheit erreichen.
+
+Die Traversierung beginnt mit einer Prüfung, ob es sich um einen Terminal Node handelt.
+Falls dies der Fall ist, wird der Nutzen für den betrachteten Spieler berechnet und zurückgegeben.
+Falls die Erreichbarkeitswahrscheinlichkeit null ist, wird sofort null zurückgegeben.
+
+Handelt es sich um einen \textbf{Gegner-Knoten}, wird die aktuelle Strategie für das entsprechende Informationsset mittels Regret Matching bestimmt.
+Es wird zuerst eine legale Aktion ausgeführt und die Erreichbarkeitswahrscheinlichkeiten aktualisiert.
+Anschließend wird rekursiv die Traversierungsfunktion aufgerufen, welche den gesamten Teilbaum traversiert, bis Terminal Nodes erreicht werden, und den erwarteten Nutzen für diesen Teilbaum zurückgeben.
+Nachdem der rekursive Aufruf abgeschlossen ist und den erwarteten Nutzen zurückgegeben hat, wird die Aktion rückgängig gemacht und der Prozess wird für die nächste Aktion wiederholt.
+Nachdem alle Aktionen verarbeitet wurden, wird der erwartete Nutzen über alle Aktionen berechnet und zurückgegeben.
+
+%Das nochmal überarbeiten
+Handelt es sich um einen \textbf{Spieler-Knoten}, wird ebenfalls die aktuelle Strategie für das entsprechende Informationsset bestimmt.
+Analog zum Gegner-Knoten wird für jede mögliche Aktion die Aktion ausgeführt, die Erreichbarkeitswahrscheinlichkeiten werden aktualisiert, und rekursiv wird die Traversierungsfunktion aufgerufen.
+Nachdem der rekursive Aufruf abgeschlossen ist und den erwarteten Nutzen zurückgegeben hat, wird die Aktion rückgängig gemacht.
+Im Gegensatz zum Gegner-Knoten wird hier jedoch der Nutzen jeder Aktion gespeichert, da dieser für die anschließende Regret-Berechnung benötigt wird.
+Nachdem alle Aktionen verarbeitet wurden, wird der erwartete Nutzen über alle Aktionen berechnet.
+Anschließend wird für jede Aktion das Counterfactual Regret berechnet.
+Das kumulierte Regret und die kumulierte Strategie werden für das Informationsset aktualisiert und darauffolgend equivalent zum Gegner Knoten der erwartete Nutzen zurückgegeben.
+
+Auf der folgenden Seite wird der Ablauf der rekursiven Traversierung mit einem UML Aktivitätsdiagramm beschrieben
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=0.75\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_traverse_game_tree.pdf}
-    \caption{Aktivitätsdiagramm der Traversierung des Spielbaums}
-    \label{fig:traverse_game_tree_activity}
+    \includegraphics[width=1\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_traverse_game_tree_dynamic.pdf}
+    \caption{Aktivitätsdiagramm der Spielbaum-Traversierung der dynamischen Implementierung}
+    \label{fig:traverse_game_tree_dynamic}
 \end{figure}
-    
 
-Abbildung~\ref{fig:traverse_game_tree_activity} zeigt den Ablauf der rekursiven Traversierung des Spielbaums. 
-Der Algorithmus beginnt mit einer Prüfung, ob es sich um einen Terminalknoten handelt. 
-Falls ja, wird der Payoff berechnet und zurückgegeben.
-Handelt es sich um einen Spielerknoten, wird die aktuelle Strategie mittels Regret Matching bestimmt. 
-Für jede legale Aktion wird die Aktion ausgeführt, die Reach Wahrscheinlichkeiten aktualisiert und rekursiv der Spielbaum durchlaufen. 
-Nach dem rekursiven Aufruf wird der gewichtete Zustandswert akkumuliert und die Aktion rückgängig gemacht. 
-Handelt es sich um einen Gegnerknoten, wird die Gegnerstrategie verwendet, um die Aktionswahrscheinlichkeiten zu bestimmen und den Spielbaum entsprechend zu traversieren.
 
-\subsection{Strategy Agent und Logger}
 
-Nach dem Training des CFR Solvers wird die errechnete durchschnittliche Strategie von einem Strategy Agent ausgeführt. 
-Der Strategy Agent bestimmt das entsprechende Informationsset für den aktuellen Spielzustand und ermittelt die zugehörigen Aktionswahrscheinlichkeiten aus der Strategie.
-Anschließend wählt er basierend auf dieser Wahrscheinlichkeitsverteilung zufällig eine Aktion aus und führt sie aus.
-    
+
+\newpage
+\subsection{Statischer Spielbaum}
+Abbildung~\ref{fig:cfr_solver_with_tree_class} zeigt das Klassendiagramm der CFRSolverWithTree Klasse.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.9\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Klassendiagramm_cfr_solver_with_tree.pdf}
+\caption{Klassendiagramm der Tree-basierten CFR Solver Architektur}
+\label{fig:cfr_solver_with_tree_class}
+\end{figure}
+
+%Nochmal überarbeiten
+
+\texttt{CFRSolverWithTree} ist die Basisklasse für alle Implementierungen, die einen statischen Spielbaum nutzen.
+Im Gegensatz zur dynamischen Version wird der Spielbaum einmal vor dem Training aufgebaut und als \texttt{GameTree} Objekt im Speicher gehalten.
+Dieses Objekt beinhaltet ein Dictionary von \texttt{Node} Objekten (\texttt{nodes = \{node\_id: Node\}}), ein Mapping von Information Sets zu Node-IDs (\texttt{infoset\_to\_nodes}) und eine Liste von Root-Node-IDs (\texttt{root\_nodes}).
+Der Tree wird als gzip-komprimiertes Pickle-Format auf der Festplatte gespeichert und kann bei späteren Trainingsläufen geladen werden, um den initialen Aufbau zu vermeiden.
+
+Auf der folgenden Seite ist ein UML Aktivitätsdiagramm zu sehen, welches den Aufbau des Spielbaums beschreibt.
+\newpage
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_build_game_tree.pdf}
+\caption{Aktivitätsdiagramm des Game Tree Aufbaus}
+\label{fig:build_game_tree}
+\end{figure}
+
+Für jede Kartenkombination wird ein Subtree aufgebaut.
+Die Funktion \texttt{traverse\_and\_build()} erstellt für jeden Spielzustand einen Node, prüft ob es sich um einen Terminal Node handelt, und erstellt für jede legale Aktion rekursiv Child Nodes.
+Dabei werden \texttt{game.step()} und \texttt{game.step\_back()} verwendet, um den Spielzustand zu verändern.
+Nach dem Aufbau wird der Tree als gzip-komprimiertes Pickle-Format gespeichert.
+Der Trainingsablauf entspricht im Wesentlichen der dynamischen Version: Für jede Kartenkombination wird der Spielbaum traversiert, wobei alternierende oder simultane Updates durchgeführt werden können.
+Der entscheidende Unterschied liegt in der Traversierung: Statt bei jeder Iteration \texttt{game.step()} und \texttt{game.step\_back()} aufzurufen, navigiert die Traversierungsfunktion direkt durch die im Speicher vorhandene Tree-Struktur mittels Node-IDs.
+Die Logik der Traversierung (Gegner-Knoten vs. Spieler-Knoten, Regret-Updates) bleibt identisch zur dynamischen Version.
+Dieser Ansatz vermeidet wiederholte Spielzustands-Funktionsaufrufe und ist daher deutlich schneller, benötigt jedoch mehr Arbeitsspeicher, da der gesamte Tree im Speicher gehalten werden muss.
+\newpage
+
 \begin{comment}
 Um die Qualität der trainierten Modelle zu evaluieren und zu dokumentieren, wurde ein Logger implementiert. 
 Dieser speichert alle Testdaten und Evaluationsergebnisse über ein Modell in einer CSV Datei. 

@@ -115,6 +115,11 @@ def build_game_tree(game, combination_generator, game_name=None, game_config=Non
         
         node_id = next_node_id
         next_node_id += 1
+        
+        # Print Progress alle 1000 Nodes
+        if next_node_id % 1000 == 0:
+            print(f"  Building tree: {next_node_id} nodes created...")
+        
         node = Node(node_id)
         node.depth = depth
         tree.nodes[node_id] = node
@@ -144,7 +149,10 @@ def build_game_tree(game, combination_generator, game_name=None, game_config=Non
         return node_id
     
     # Für jede Kombination (Deal) einen Subtree bauen
-    for combo in combinations:
+    num_combinations = len(combinations)
+    for combo_idx, combo in enumerate(combinations):
+        if num_combinations > 10 and (combo_idx + 1) % max(1, num_combinations // 10) == 0:
+            print(f"  Processing combination {combo_idx + 1}/{num_combinations}...")
         combination_generator.setup_game_with_combination(game, combo)
         root_id = traverse_and_build(0)
         tree.root_nodes.append(root_id)
@@ -178,9 +186,13 @@ def save_game_tree(tree, game_name, output_dir=None, abstract_suits=False):
     filename = f"{game_name}_game_tree.pkl.gz"
     filepath = os.path.join(output_dir, filename)
     
+    print(f"Saving game tree ({len(tree.nodes)} nodes, {len(tree.infoset_to_nodes)} infosets)...")
     tree_dict = tree.to_dict()
     
+    # Print Progress beim Speichern
+    print(f"  Serializing tree to dictionary...")
     with gzip.open(filepath, 'wb') as f:
+        print(f"  Writing to file: {filepath}")
         pickle.dump(tree_dict, f)
     
     print(f"Saved game tree to: {filepath}")

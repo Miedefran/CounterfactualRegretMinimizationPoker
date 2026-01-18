@@ -74,6 +74,9 @@ def get_judger(game_name):
     elif 'royal' in game_name.lower():
         from envs.royal_holdem.judger import RoyalHoldemJudger
         judger = RoyalHoldemJudger()
+    elif 'small_island' in game_name.lower():
+        from envs.small_island_holdem.judger import SmallIslandHoldemJudger
+        judger = SmallIslandHoldemJudger()
     
     if judger:
         JUDGER_CACHE[game_name] = judger
@@ -345,11 +348,60 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
 
     result = [0.0] * len(our_infosets)
     
-    num_unknown_cards = len(children)
-    if num_unknown_cards > 2:
-        chance_prob = 1.0 / (num_unknown_cards - 2)
+    # Bestimme die Chance-Probability basierend auf der Anzahl der verbleibenden Karten
+    num_chance_outcomes = len(children)
+    
+    # Für Leduc: 6 physische Karten total, 2 bereits gedealt (private cards)
+    # Bei Suit Abstraction: Wir müssen die bereits gedealten Ranks berücksichtigen
+    if 'leduc' in game_name.lower():
+        # Prüfe ob Suit Abstraction verwendet wird
+        # Wenn Suit Abstraction: ALLE children sind Rank-only (einzelne Zeichen: 'J', 'Q', 'K')
+        # Wenn keine Suit Abstraction: ALLE children sind vollständige Karten (2 Zeichen: 'Js', 'Jh', etc.)
+        child_keys = [str(card) for card in children.keys() if isinstance(card, str)]
+        if child_keys:
+            # Prüfe ob ALLE children Rank-only sind (einzelne Zeichen)
+            is_abstracted = all(len(card) == 1 for card in child_keys)
+        else:
+            is_abstracted = False
+        
+        if is_abstracted:
+            # Suit Abstraction: Bestimme welche Ranks bereits gedealt sind (aus den InfoSets)
+            # Im Root Node haben wir alle möglichen Kombinationen, also alle 3 Ranks
+            # Aber wir müssen die tatsächlich gedealten Ranks bestimmen
+            # Bei Leduc: 2 private cards bereits gedealt, also 2 Ranks bereits gedealt
+            dealt_ranks = set()
+            for info in our_infosets + opp_infosets:
+                card = info[0]
+                rank = card[0] if len(card) > 1 else card
+                dealt_ranks.add(rank)
+            
+            # Anzahl der verbleibenden abstrahierten Ranks
+            # Bei Leduc: 3 Ranks total (J, Q, K)
+            total_ranks = 3
+            remaining_ranks = total_ranks - len(dealt_ranks)
+            
+            # Anzahl der verbleibenden physischen Karten
+            # Jeder Rank hat 2 physische Karten
+            cards_per_rank = 2
+            remaining_physical_cards = remaining_ranks * cards_per_rank
+            
+            # Die Chance-Probability für einen abstrahierten Rank
+            # = Anzahl der physischen Karten dieses Ranks / verbleibende physische Karten
+            if remaining_physical_cards > 0:
+                chance_prob = cards_per_rank / remaining_physical_cards
+            else:
+                chance_prob = 0.0
+        else:
+            # Keine Suit Abstraction: 6 physische Karten total, 2 bereits gedealt
+            # Anzahl der verbleibenden physischen Karten = 6 - 2 = 4
+            chance_prob = 1.0 / (6 - 2) if num_chance_outcomes > 0 else 0.0
     else:
-        chance_prob = 0.0
+        # Für andere Spiele: Standard-Berechnung
+        # Die Anzahl der Chance-Outcomes entspricht der Anzahl der verbleibenden Karten
+        if num_chance_outcomes > 0:
+            chance_prob = 1.0 / num_chance_outcomes
+        else:
+            chance_prob = 0.0
 
     parent_card_to_r_opp = {info[0]: r for info, r in zip(opp_infosets, r_opp)}
 

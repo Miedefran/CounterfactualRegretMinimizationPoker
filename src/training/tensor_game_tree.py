@@ -214,8 +214,11 @@ def build_tensor_tree(game, combination_generator):
     print(f"Tree built in {time.time() - start_time:.2f}s")
     return tree
 
-def get_tree_path(game_name):
+def get_tree_path(game_name, abstract_suits=False):
     script_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    output_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'tensor')
+    if abstract_suits:
+        output_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'tensor', 'abstracted')
+    else:
+        output_dir = os.path.join(script_dir, 'data', 'trees', 'game_trees', 'tensor', 'normal')
     os.makedirs(output_dir, exist_ok=True)
     return os.path.join(output_dir, f"{game_name}_tensor_tree.npz")

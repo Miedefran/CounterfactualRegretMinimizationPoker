@@ -31,8 +31,7 @@ ENV/
 *.log
 
 # Trained models
-data/models/
-data/trees
+data/
 
 # Development files
 PROMPT_CURSOR.md
@@ -70,9 +69,12 @@ test_data/TESTING_NOTES.md
 *.xdy
 *.ping
 # LaTeX output (keep main.pdf)
-# *.pdf
+*.pdf
+!latex/thesis/main.pdf
 *.md
 *.png
+*.svg
+*.puml
 
 # Reference projects and literature
 githubProjects/
