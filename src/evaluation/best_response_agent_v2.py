@@ -144,6 +144,11 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
         p1.private_card = p1_card
         p0.public_cards = list(p0_public)
         p1.public_cards = list(p1_public)
+    elif 'small_island' in game_name.lower():
+        p0.private_card = p0_card
+        p1.private_card = p1_card
+        p0.public_cards = list(p0_public)
+        p1.public_cards = list(p1_public)
     else:
         return 0.0
     
@@ -224,7 +229,12 @@ def get_hand_strength_for_info_set(game_name, info_set):
             p.public_card = None
         if hasattr(judger, 'evaluate_hand'):
             result = judger.evaluate_hand(p)
-    elif 'twelve' in game_name.lower() or 'rhode' in game_name.lower() or 'royal' in game_name.lower():
+    elif (
+        'twelve' in game_name.lower()
+        or 'rhode' in game_name.lower()
+        or 'royal' in game_name.lower()
+        or 'small_island' in game_name.lower()
+    ):
         p.private_card = our_card
         p.public_cards = list(our_public)
         if hasattr(judger, 'evaluate_hand'):
