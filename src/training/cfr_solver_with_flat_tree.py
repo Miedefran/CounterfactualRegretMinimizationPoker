@@ -188,7 +188,7 @@ def _load_flat_tree_cache(npz_path: str) -> "FlatTree":
     infoset_key_to_id = {k: i for i, k in enumerate(infoset_id_to_key)}
 
     # v1 stored floats as float64. We cast to float32 internally to match FLOAT_DTYPE.
-    return FlatTree(
+    ft = FlatTree(
         node_type=node_type,
         player=data["player"].astype(np.int8, copy=False),
         infoset_id=data["infoset_id"].astype(np.int32, copy=False),
@@ -209,6 +209,18 @@ def _load_flat_tree_cache(npz_path: str) -> "FlatTree":
         infoset_valid_actions=data["infoset_valid_actions"].astype(bool, copy=False),
         infoset_player=data["infoset_player"].astype(np.int8, copy=False),
     )
+
+    # Sanity check: if the root is a chance node, it must have outgoing chance edges.
+    # This catches corrupted caches from earlier buggy direct-flat-tree builds.
+    if int(ft.node_type[ft.root]) == 2:
+        s = int(ft.chance_offsets[ft.root])
+        e = int(ft.chance_offsets[ft.root + 1])
+        if e <= s:
+            raise ValueError(
+                f"Corrupted flat-tree cache: chance root has no edges (offsets {s}..{e}). Rebuild required."
+            )
+
+    return ft
 
 
 @dataclass
@@ -467,15 +479,23 @@ def _build_flat_tree_directly_from_game(game) -> FlatTree:
     payoffs_list: List[Tuple[FLOAT_DTYPE, FLOAT_DTYPE]] = []
     children_list: List[Tuple[int, int, int, int]] = []
 
-    chance_offsets_list: List[int] = []
-    chance_children_list: List[int] = []
-    chance_probs_list: List[FLOAT_DTYPE] = []
+    # IMPORTANT:
+    # We must NOT try to write `chance_offsets` incrementally while doing DFS.
+    # Node ids are pre-order, but a chance node's outgoing edge block is only fully known
+    # after *all* children were traversed. Earlier versions wrote offsets too early which
+    # could make the chance root appear to have 0 edges -> reach stays 0 -> no learning.
+    #
+    # Instead: collect per-node edge lists and concatenate once at the end.
+    chance_children_by_node: List[List[int]] = []
+    chance_probs_by_node: List[List[FLOAT_DTYPE]] = []
+    chance_edge_total = 0
 
     infoset_key_to_id: Dict[Tuple, int] = {}
     infoset_id_to_key: List[Tuple] = []
     infoset_player_list: List[int] = []
 
     def traverse(depth: int) -> int:
+        nonlocal chance_edge_total
         # Reserve node slot (critical, so child indices point to the correct node id)
         node_id = len(node_type_list)
         node_type_list.append(-1)
@@ -485,14 +505,15 @@ def _build_flat_tree_directly_from_game(game) -> FlatTree:
         payoffs_list.append((FLOAT_DTYPE(0.0), FLOAT_DTYPE(0.0)))
         children_list.append((-1, -1, -1, -1))
 
-        # Prefix-sum offset into ragged chance edge arrays
-        chance_offsets_list.append(len(chance_children_list))
+        # Per-node chance edge lists (only used if this becomes a chance node)
+        chance_children_by_node.append([])
+        chance_probs_by_node.append([])
 
         # Progress log for very large trees (keeps overhead negligible).
         if node_id > 0 and (node_id % 100_000 == 0):
             print(
                 f"[flat-tree build] touched {node_id:,} nodes "
-                f"(depth={depth}, chance_edges={len(chance_children_list):,}, infosets={len(infoset_id_to_key):,})"
+                f"(depth={depth}, chance_edges={chance_edge_total:,}, infosets={len(infoset_id_to_key):,})"
             )
 
         # Terminal
@@ -514,6 +535,8 @@ def _build_flat_tree_directly_from_game(game) -> FlatTree:
             # Deterministic ordering for cache stability
             outcomes = sorted(outcomes, key=lambda o: str(o))
 
+            edges_children = chance_children_by_node[node_id]
+            edges_probs = chance_probs_by_node[node_id]
             for outcome in outcomes:
                 prob = FLOAT_DTYPE(outcomes_with_probs.get(outcome, 0.0))
                 if prob == 0:
@@ -521,8 +544,9 @@ def _build_flat_tree_directly_from_game(game) -> FlatTree:
                 game.step(outcome)
                 child = traverse(depth + 1)
                 game.step_back()
-                chance_children_list.append(int(child))
-                chance_probs_list.append(prob)
+                edges_children.append(int(child))
+                edges_probs.append(prob)
+                chance_edge_total += 1
 
             return node_id
 
@@ -564,9 +588,6 @@ def _build_flat_tree_directly_from_game(game) -> FlatTree:
     game.reset(0)
     root = traverse(0)
 
-    # Finalize chance offsets (num_nodes+1)
-    chance_offsets_list.append(len(chance_children_list))
-
     # Convert to numpy arrays
     node_type = np.asarray(node_type_list, dtype=np.int8)
     player = np.asarray(player_list, dtype=np.int8)
@@ -575,9 +596,24 @@ def _build_flat_tree_directly_from_game(game) -> FlatTree:
     payoffs = np.asarray(payoffs_list, dtype=FLOAT_DTYPE).reshape(len(node_type_list), 2)
     children = np.asarray(children_list, dtype=np.int32).reshape(len(node_type_list), NUM_ACTIONS)
 
-    chance_offsets = np.asarray(chance_offsets_list, dtype=np.int64)
-    chance_children = np.asarray(chance_children_list, dtype=np.int32)
-    chance_probs = np.asarray(chance_probs_list, dtype=FLOAT_DTYPE)
+    # Finalize ragged chance edge arrays (prefix sums + concatenation)
+    num_nodes = len(node_type_list)
+    chance_offsets = np.zeros(num_nodes + 1, dtype=np.int64)
+    for nid in range(num_nodes):
+        chance_offsets[nid + 1] = chance_offsets[nid] + len(chance_children_by_node[nid])
+    total_edges = int(chance_offsets[-1])
+    chance_children = np.empty(total_edges, dtype=np.int32)
+    chance_probs = np.empty(total_edges, dtype=FLOAT_DTYPE)
+    w = 0
+    for nid in range(num_nodes):
+        kids = chance_children_by_node[nid]
+        probs = chance_probs_by_node[nid]
+        if not kids:
+            continue
+        k = len(kids)
+        chance_children[w : w + k] = np.asarray(kids, dtype=np.int32)
+        chance_probs[w : w + k] = np.asarray(probs, dtype=FLOAT_DTYPE)
+        w += k
 
     max_depth = int(depth_arr.max()) if len(depth_arr) > 0 else 0
     layer_indices: List[np.ndarray] = []
@@ -597,6 +633,13 @@ def _build_flat_tree_directly_from_game(game) -> FlatTree:
         iid = int(infoset_id[n])
         infoset_valid_actions[iid] |= (children[n] != -1)
     infoset_player = np.asarray(infoset_player_list, dtype=np.int8)
+
+    # Sanity check: if the root is a chance node, it must have outgoing edges.
+    if int(node_type[int(root)]) == 2:
+        s = int(chance_offsets[int(root)])
+        e = int(chance_offsets[int(root) + 1])
+        if e <= s:
+            raise ValueError("Direct flat-tree build produced a chance root without edges (bug).")
 
     return FlatTree(
         node_type=node_type,
@@ -800,12 +843,6 @@ class CFRSolverWithFlatTree:
             else:
                 self._forward_process_chance_nodes(ft.layer_chance_nodes[depth], prune=False)
                 self._forward_process_decision_nodes(ft.layer_decision_nodes[depth], sigma, prune=False)
-
-            # Optional pruning: skip nodes with zero reach (both players)
-            if self.partial_pruning:
-                layer = layer[(self._reach[layer, 0] + self._reach[layer, 1]) > 0]
-                if layer.size == 0:
-                    continue
 
     def _forward_process_chance_nodes(self, chance_nodes: np.ndarray, prune: bool) -> None:
         """
