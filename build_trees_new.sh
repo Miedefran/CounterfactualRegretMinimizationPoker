@@ -3,8 +3,9 @@ set -euo pipefail
 
 # Baut nacheinander alle relevanten Trees NEU:
 # - Game Trees:
-#   - kuhn_case2, small_island_holdem: NOT suit-abstracted
+#   - kuhn_case2: NOT suit-abstracted
 #   - leduc, twelve_card_poker: BOTH (suit-abstracted + NOT suit-abstracted)
+#   - small_island_holdem: wird NICHT als Object-GameTree gebaut (zu groß). Flat-Tree wird lazy beim Training gebaut.
 # - Public State Trees:
 #   - kuhn_case2, small_island_holdem: NOT suit-abstracted
 #   - leduc, twelve_card_poker: BOTH (suit-abstracted + NOT suit-abstracted)
@@ -44,13 +45,13 @@ echo
 echo "=== BUILD GAME TREES ==="
 if [[ "${SKIP_EXISTING}" == "true" ]]; then
   # NOT abstracted games
-  "${RUN_GAME_TREES[@]}" kuhn_case2 small_island_holdem --no-suit-abstraction
+  "${RUN_GAME_TREES[@]}" kuhn_case2 --no-suit-abstraction
   # Leduc / Twelve Card: build BOTH variants
   "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --suit-abstraction
   "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --no-suit-abstraction
 else
   # NOT abstracted games
-  "${RUN_GAME_TREES[@]}" kuhn_case2 small_island_holdem --no-suit-abstraction --force
+  "${RUN_GAME_TREES[@]}" kuhn_case2 --no-suit-abstraction --force
   # Leduc / Twelve Card: build BOTH variants
   "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --suit-abstraction --force
   "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --no-suit-abstraction --force
