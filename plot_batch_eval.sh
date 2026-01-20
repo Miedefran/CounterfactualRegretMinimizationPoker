@@ -8,11 +8,11 @@ set -euo pipefail
 # - Pro Run existieren Dateien:
 #   - data/models/<game>/<algo>/<iters>/<game>_<iters>_best_response.pkl.gz
 #
-# Dieses Script erzeugt Vergleichsplots:
-# - Leduc: Exploitability vs Zeit (alt=true, pruning=false) über alle Runs mit/ohne Tree
-# - Leduc: Exploitability vs Iteration (Tree-only vs Dynamic-only)
-# - Leduc: Ablationsplots (alternating vs simultaneous) und (pruning vs no-pruning) — jeweils für Tree-Varianten
-# - Twelve Card & Small Island: je Exploitability vs Iteration und vs Zeit (nur DCFR)
+# Dieses Script erzeugt Vergleichsplots passend zu `train_batch_eval.sh`:
+# - kuhn_case2 (50k): dynamic/tree/flat — CFR (alt+sim), CFR+, DCFR
+# - leduc (abstracted, 50k): dynamic/tree/flat — CFR (alt+sim), CFR+, DCFR
+# - twelve_card_poker (abstracted, 10k): tree/flat — CFR (alt), CFR+, DCFR
+# - small_island_holdem (1k): flat — DCFR
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
@@ -35,11 +35,11 @@ SECTION="${1:-all}"
 # Konfiguration (muss zu train_batch_eval.sh passen)
 # -----------------------------------------------------------------------------
 
-LEDUC_ITERS=10000
-TWELVE_ITERS=1000
-SMALL_ISLAND_ITERS=100
+LEDUC_ITERS=50000
+TWELVE_ITERS=10000
+SMALL_ISLAND_ITERS=1000
 KUHN_GAME="kuhn_case2"
-KUHN_ITERS=100000
+KUHN_ITERS=50000
 
 # -----------------------------------------------------------------------------
 # Helper: Best-Response-Dateipfad
@@ -77,163 +77,137 @@ should_plot () {
 }
 
 # -----------------------------------------------------------------------------
-# 1) Leduc
-# -----------------------------------------------------------------------------
-
-if should_plot "leduc"; then
-  # 1.1 Exploitability vs Zeit: alle Leduc Trainings (mit/ohne Tree), alt=true, pruning=false
-  LEDUC_TIME_ALL=(
-    "$(br_file leduc cfr_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc cfr_plus_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc discounted_cfr_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc cfr_plus_with_tree_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc discounted_cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-  )
-  plot_time \
-    "$OUT_DIR/leduc_time_all_alt_no_pruning.png" \
-    "Leduc: Exploitability vs Zeit (alt=true, pruning=false) — mit/ohne Tree" \
-    "${LEDUC_TIME_ALL[@]}"
-
-  # 1.2 Exploitability vs Iteration: Tree-Varianten (3 Kurven)
-  LEDUC_TREE_IT=(
-    "$(br_file leduc cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc cfr_plus_with_tree_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc discounted_cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-  )
-  plot_iter \
-    "$OUT_DIR/leduc_iter_tree_compare.png" \
-    "Leduc: Exploitability vs Iteration — Tree-Varianten (CFR/CFR+/DCFR), pruning=false" \
-    "${LEDUC_TREE_IT[@]}"
-
-  # 1.3 Exploitability vs Iteration: ohne Tree (3 Kurven)
-  LEDUC_DYNAMIC_IT=(
-    "$(br_file leduc cfr_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc cfr_plus_no_pruning "$LEDUC_ITERS")"
-    "$(br_file leduc discounted_cfr_no_pruning "$LEDUC_ITERS")"
-  )
-  plot_iter \
-    "$OUT_DIR/leduc_iter_dynamic_compare.png" \
-    "Leduc: Exploitability vs Iteration — ohne Tree (CFR/CFR+/DCFR), pruning=false" \
-    "${LEDUC_DYNAMIC_IT[@]}"
-
-  # 1.4 Ablation: alternating vs simultaneous (Tree-Varianten)
-  plot_iter \
-    "$OUT_DIR/leduc_iter_alt_vs_sim_tree_cfr.png" \
-    "Leduc (Tree): CFR alternating vs simultaneous (pruning=false)" \
-    "$(br_file leduc cfr_with_tree_no_pruning "$LEDUC_ITERS")" \
-    "$(br_file leduc cfr_with_tree_simultaneous_no_pruning "$LEDUC_ITERS")"
-
-  plot_iter \
-    "$OUT_DIR/leduc_iter_alt_vs_sim_tree_cfr_plus.png" \
-    "Leduc (Tree): CFR+ alternating vs simultaneous (pruning=false)" \
-    "$(br_file leduc cfr_plus_with_tree_no_pruning "$LEDUC_ITERS")" \
-    "$(br_file leduc cfr_plus_with_tree_simultaneous_no_pruning "$LEDUC_ITERS")"
-
-  plot_iter \
-    "$OUT_DIR/leduc_iter_alt_vs_sim_tree_dcfr.png" \
-    "Leduc (Tree): DCFR alternating vs simultaneous (pruning=false)" \
-    "$(br_file leduc discounted_cfr_with_tree_no_pruning "$LEDUC_ITERS")" \
-    "$(br_file leduc discounted_cfr_with_tree_simultaneous_no_pruning "$LEDUC_ITERS")"
-
-  # 1.5 Ablation: pruning vs no-pruning (Tree-Varianten)
-  plot_iter \
-    "$OUT_DIR/leduc_iter_pruning_vs_no_pruning_tree_cfr.png" \
-    "Leduc (Tree): CFR pruning=true vs pruning=false" \
-    "$(br_file leduc cfr_with_tree "$LEDUC_ITERS")" \
-    "$(br_file leduc cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-
-  plot_time \
-    "$OUT_DIR/leduc_time_pruning_vs_no_pruning_tree_cfr.png" \
-    "Leduc (Tree): CFR Exploitability vs Zeit — pruning=true vs pruning=false" \
-    "$(br_file leduc cfr_with_tree "$LEDUC_ITERS")" \
-    "$(br_file leduc cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-
-  plot_iter \
-    "$OUT_DIR/leduc_iter_pruning_vs_no_pruning_tree_cfr_plus.png" \
-    "Leduc (Tree): CFR+ pruning=true vs pruning=false" \
-    "$(br_file leduc cfr_plus_with_tree "$LEDUC_ITERS")" \
-    "$(br_file leduc cfr_plus_with_tree_no_pruning "$LEDUC_ITERS")"
-
-  plot_time \
-    "$OUT_DIR/leduc_time_pruning_vs_no_pruning_tree_cfr_plus.png" \
-    "Leduc (Tree): CFR+ Exploitability vs Zeit — pruning=true vs pruning=false" \
-    "$(br_file leduc cfr_plus_with_tree "$LEDUC_ITERS")" \
-    "$(br_file leduc cfr_plus_with_tree_no_pruning "$LEDUC_ITERS")"
-
-  plot_iter \
-    "$OUT_DIR/leduc_iter_pruning_vs_no_pruning_tree_dcfr.png" \
-    "Leduc (Tree): DCFR pruning=true vs pruning=false" \
-    "$(br_file leduc discounted_cfr_with_tree "$LEDUC_ITERS")" \
-    "$(br_file leduc discounted_cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-
-  plot_time \
-    "$OUT_DIR/leduc_time_pruning_vs_no_pruning_tree_dcfr.png" \
-    "Leduc (Tree): DCFR Exploitability vs Zeit — pruning=true vs pruning=false" \
-    "$(br_file leduc discounted_cfr_with_tree "$LEDUC_ITERS")" \
-    "$(br_file leduc discounted_cfr_with_tree_no_pruning "$LEDUC_ITERS")"
-fi
-
-# -----------------------------------------------------------------------------
-# 2) Twelve Card (Tree-Varianten)
-# -----------------------------------------------------------------------------
-
-if should_plot "twelve"; then
-  TWELVE_FILES=(
-    "$(br_file twelve_card_poker discounted_cfr_with_tree_no_pruning "$TWELVE_ITERS")"
-  )
-
-  plot_iter \
-    "$OUT_DIR/twelve_card_iter_tree_compare.png" \
-    "Twelve Card: Exploitability vs Iteration — DCFR with tree, pruning=false" \
-    "${TWELVE_FILES[@]}"
-
-  plot_time \
-    "$OUT_DIR/twelve_card_time_tree_compare.png" \
-    "Twelve Card: Exploitability vs Zeit — DCFR with tree, pruning=false" \
-    "${TWELVE_FILES[@]}"
-fi
-
-# -----------------------------------------------------------------------------
-# 3) Small Island Hold'em (ohne Tree; CFR+ vs DCFR)
-# -----------------------------------------------------------------------------
-
-if should_plot "small"; then
-  SMALL_FILES=(
-    "$(br_file small_island_holdem discounted_cfr_with_tree_no_pruning "$SMALL_ISLAND_ITERS")"
-  )
-
-  plot_iter \
-    "$OUT_DIR/small_island_iter_compare.png" \
-    "Small Island: Exploitability vs Iteration — DCFR with tree, pruning=false" \
-    "${SMALL_FILES[@]}"
-
-  plot_time \
-    "$OUT_DIR/small_island_time_compare.png" \
-    "Small Island: Exploitability vs Zeit — DCFR with tree, pruning=false" \
-    "${SMALL_FILES[@]}"
-fi
-
-# -----------------------------------------------------------------------------
-# 4) Kuhn Poker (Tree; 3 Varianten)
+# 1) Kuhn Case 2 (NOT abstracted)
 # -----------------------------------------------------------------------------
 
 if should_plot "kuhn"; then
-  KUHN_FILES=(
-    "$(br_file "$KUHN_GAME" cfr_with_tree_no_pruning "$KUHN_ITERS")"
-    "$(br_file "$KUHN_GAME" cfr_plus_with_tree_no_pruning "$KUHN_ITERS")"
-    "$(br_file "$KUHN_GAME" discounted_cfr_with_tree_no_pruning "$KUHN_ITERS")"
-  )
+  echo
+  echo "=== PLOT: kuhn_case2 ==="
 
+  # CFR alternating: dynamic vs tree vs flat
   plot_iter \
-    "$OUT_DIR/kuhn_iter_tree_compare.png" \
-    "Kuhn (Tree): Exploitability vs Iteration — CFR/CFR+/DCFR, pruning=false" \
-    "${KUHN_FILES[@]}"
+    "$OUT_DIR/kuhn_case2_iter_cfr_alt_compare.png" \
+    "Kuhn Case 2: CFR alternating — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file "$KUHN_GAME" cfr_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_with_tree_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_with_flat_tree_no_pruning "$KUHN_ITERS")"
 
   plot_time \
-    "$OUT_DIR/kuhn_time_tree_compare.png" \
-    "Kuhn (Tree): Exploitability vs Zeit — CFR/CFR+/DCFR, pruning=false" \
-    "${KUHN_FILES[@]}"
+    "$OUT_DIR/kuhn_case2_time_cfr_alt_compare.png" \
+    "Kuhn Case 2: CFR alternating — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file "$KUHN_GAME" cfr_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_with_tree_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_with_flat_tree_no_pruning "$KUHN_ITERS")"
+
+  # CFR simultaneous: dynamic vs tree vs flat
+  plot_iter \
+    "$OUT_DIR/kuhn_case2_iter_cfr_sim_compare.png" \
+    "Kuhn Case 2: CFR simultaneous — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file "$KUHN_GAME" cfr_simultaneous_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_with_tree_simultaneous_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_with_flat_tree_simultaneous_no_pruning "$KUHN_ITERS")"
+
+  # CFR+
+  plot_iter \
+    "$OUT_DIR/kuhn_case2_iter_cfr_plus_compare.png" \
+    "Kuhn Case 2: CFR+ — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file "$KUHN_GAME" cfr_plus_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_plus_with_tree_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" cfr_plus_with_flat_tree_no_pruning "$KUHN_ITERS")"
+
+  # DCFR
+  plot_iter \
+    "$OUT_DIR/kuhn_case2_iter_dcfr_compare.png" \
+    "Kuhn Case 2: DCFR — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file "$KUHN_GAME" discounted_cfr_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" discounted_cfr_with_tree_no_pruning "$KUHN_ITERS")" \
+    "$(br_file "$KUHN_GAME" discounted_cfr_with_flat_tree_no_pruning "$KUHN_ITERS")"
+fi
+
+# -----------------------------------------------------------------------------
+# 2) Leduc (abstracted)
+# -----------------------------------------------------------------------------
+
+if should_plot "leduc"; then
+  echo
+  echo "=== PLOT: leduc (abstracted) ==="
+
+  # CFR alternating: dynamic vs tree vs flat
+  plot_iter \
+    "$OUT_DIR/leduc_abs_iter_cfr_alt_compare.png" \
+    "Leduc (abstracted): CFR alternating — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file leduc cfr_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc cfr_with_tree_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc cfr_with_flat_tree_no_pruning_abstracted "$LEDUC_ITERS")"
+
+  # CFR simultaneous: dynamic vs tree vs flat
+  plot_iter \
+    "$OUT_DIR/leduc_abs_iter_cfr_sim_compare.png" \
+    "Leduc (abstracted): CFR simultaneous — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file leduc cfr_simultaneous_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc cfr_with_tree_simultaneous_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc cfr_with_flat_tree_simultaneous_no_pruning_abstracted "$LEDUC_ITERS")"
+
+  # CFR+
+  plot_iter \
+    "$OUT_DIR/leduc_abs_iter_cfr_plus_compare.png" \
+    "Leduc (abstracted): CFR+ — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file leduc cfr_plus_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc cfr_plus_with_tree_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc cfr_plus_with_flat_tree_no_pruning_abstracted "$LEDUC_ITERS")"
+
+  # DCFR
+  plot_iter \
+    "$OUT_DIR/leduc_abs_iter_dcfr_compare.png" \
+    "Leduc (abstracted): DCFR — dynamic vs tree vs flat (pruning=false)" \
+    "$(br_file leduc discounted_cfr_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc discounted_cfr_with_tree_no_pruning_abstracted "$LEDUC_ITERS")" \
+    "$(br_file leduc discounted_cfr_with_flat_tree_no_pruning_abstracted "$LEDUC_ITERS")"
+fi
+
+# -----------------------------------------------------------------------------
+# 3) Twelve Card Poker (abstracted)
+# -----------------------------------------------------------------------------
+
+if should_plot "twelve"; then
+  echo
+  echo "=== PLOT: twelve_card_poker (abstracted) ==="
+
+  plot_iter \
+    "$OUT_DIR/twelve_abs_iter_cfr_tree_vs_flat.png" \
+    "Twelve Card (abstracted): CFR alternating — tree vs flat (pruning=false)" \
+    "$(br_file twelve_card_poker cfr_with_tree_no_pruning_abstracted "$TWELVE_ITERS")" \
+    "$(br_file twelve_card_poker cfr_with_flat_tree_no_pruning_abstracted "$TWELVE_ITERS")"
+
+  plot_iter \
+    "$OUT_DIR/twelve_abs_iter_cfr_plus_tree_vs_flat.png" \
+    "Twelve Card (abstracted): CFR+ — tree vs flat (pruning=false)" \
+    "$(br_file twelve_card_poker cfr_plus_with_tree_no_pruning_abstracted "$TWELVE_ITERS")" \
+    "$(br_file twelve_card_poker cfr_plus_with_flat_tree_no_pruning_abstracted "$TWELVE_ITERS")"
+
+  plot_iter \
+    "$OUT_DIR/twelve_abs_iter_dcfr_tree_vs_flat.png" \
+    "Twelve Card (abstracted): DCFR — tree vs flat (pruning=false)" \
+    "$(br_file twelve_card_poker discounted_cfr_with_tree_no_pruning_abstracted "$TWELVE_ITERS")" \
+    "$(br_file twelve_card_poker discounted_cfr_with_flat_tree_no_pruning_abstracted "$TWELVE_ITERS")"
+fi
+
+# -----------------------------------------------------------------------------
+# 4) Small Island Hold'em (NOT abstracted)
+# -----------------------------------------------------------------------------
+
+if should_plot "small"; then
+  echo
+  echo "=== PLOT: small_island_holdem ==="
+  plot_iter \
+    "$OUT_DIR/small_island_iter_dcfr_flat.png" \
+    "Small Island: DCFR flat-tree (pruning=false)" \
+    "$(br_file small_island_holdem discounted_cfr_with_flat_tree_no_pruning "$SMALL_ISLAND_ITERS")"
+
+  plot_time \
+    "$OUT_DIR/small_island_time_dcfr_flat.png" \
+    "Small Island: DCFR flat-tree (pruning=false)" \
+    "$(br_file small_island_holdem discounted_cfr_with_flat_tree_no_pruning "$SMALL_ISLAND_ITERS")"
 fi
 
 echo
