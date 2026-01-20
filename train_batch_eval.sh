@@ -24,13 +24,13 @@ RUN=(uv run python src/training/train.py)
 LEDUC_ITERS=50000
 LEDUC_SCHEDULE="custom_v2"
 
-# Twelve Card (Anhang; BR teuer)
+# Twelve Card
 TWELVE_ITERS=10000
-TWELVE_SCHEDULE="very_very_large_games"
+TWELVE_SCHEDULE="custom_v2"
 
 # Small Island Hold'em (Demonstrator)
 SMALL_ISLAND_ITERS=1000
-SMALL_ISLAND_SCHEDULE="small_island_schedule"
+SMALL_ISLAND_SCHEDULE="very_very_large_games"
 
 # Kuhn Poker
 KUHN_GAME="kuhn_case2"
@@ -134,4 +134,5 @@ train_one "small_island_holdem" "$SMALL_ISLAND_ITERS" discounted_cfr_with_flat_t
 
 echo
 echo "DONE. Modelle liegen unter data/models/<game>/<algorithm>/<iters>/"
+
 
