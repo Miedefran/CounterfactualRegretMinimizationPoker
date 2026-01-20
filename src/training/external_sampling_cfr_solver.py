@@ -22,11 +22,12 @@ class Node:
     """Ein Node im Game Tree"""
     def __init__(self, node_id):
         self.node_id = node_id
-        self.type = None  # 'terminal' oder 'decision'
-        self.player = None  # 0 oder 1
+        self.type = None  # 'terminal', 'decision', 'chance'
+        self.player = None  # 0/1, -1 for chance
         self.infoset_key = None
         self.legal_actions = []
         self.children = {}  # {action: child_node_id}
+        self.chance_probs = None  # {outcome: prob} for chance nodes
         self.payoffs = None  # [payoff_p0, payoff_p1]
         self.depth = 0
 
@@ -45,8 +46,9 @@ class ExternalSamplingCFRSolver:
     def __init__(self, game, combination_generator, game_name=None, load_tree=True):
         self.game = game
         self.combination_generator = combination_generator
-        self.combinations = combination_generator.get_all_combinations()
-        self.num_combinations = len(self.combinations)  # Für Sampling-Gewichtung
+        # With explicit chance nodes, we do not enumerate combinations up front.
+        self.combinations = []
+        self.num_combinations = 0
         
         # CFR Datenstrukturen
         self.regret_sum = {}
@@ -73,6 +75,9 @@ class ExternalSamplingCFRSolver:
             try:
                 print(f"Attempting to load game tree for {game_name}...")
                 game_tree = load_game_tree(game_name, abstract_suits=use_suit_abstraction)
+                has_chance = any(getattr(n, "type", None) == "chance" for n in game_tree.nodes.values())
+                if not has_chance:
+                    raise FileNotFoundError("Legacy tree format detected (no chance nodes); rebuilding.")
                 self._convert_game_tree_to_internal(game_tree)
                 print(f"Tree loaded: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
             except FileNotFoundError:
@@ -106,6 +111,7 @@ class ExternalSamplingCFRSolver:
             node.infoset_key = node_data.infoset_key
             node.legal_actions = node_data.legal_actions
             node.children = node_data.children
+            node.chance_probs = getattr(node_data, "chance_probs", None)
             node.payoffs = node_data.payoffs
             node.depth = node_data.depth
             self.nodes[node_id] = node
@@ -192,7 +198,7 @@ class ExternalSamplingCFRSolver:
         # KRITISCH: Kombination EINMAL pro Iteration sampeln (für beide Spieler gleich)
         # Bei External Sampling ist Chance ein "externer" Faktor, der für beide Spieler
         # gleich sein muss. Die Kombination entspricht einem Chance-Node-Outcome.
-        sampled_root_id = random.choice(self.root_nodes)
+        sampled_root_id = self.root_nodes[0]
         
         # Policy-Cache für diese Iteration (wird pro InfoSet einmal berechnet)
         # WICHTIG: Die Policy ändert sich während einer Iteration nicht, da Regrets
@@ -239,6 +245,22 @@ class ExternalSamplingCFRSolver:
         
         if node.type == 'terminal':
             return node.payoffs[player]
+
+        if node.type == 'chance':
+            # Sample chance outcome according to chance_probs (true chance distribution)
+            probs = node.chance_probs or {}
+            outcomes = list(node.legal_actions)
+            if not outcomes:
+                return 0.0
+            weights = np.array([probs.get(o, 0.0) for o in outcomes], dtype=np.float64)
+            s = weights.sum()
+            if s <= 0:
+                outcome = random.choice(outcomes)
+            else:
+                weights = weights / s
+                outcome = outcomes[int(np.random.choice(len(outcomes), p=weights))]
+            child_id = node.children[outcome]
+            return self._update_regrets(child_id, player, opponent_reach=opponent_reach)
         
         current_player = node.player
         info_set_key = node.infoset_key

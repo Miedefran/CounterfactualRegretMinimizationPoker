@@ -7,3 +7,7 @@ class RhodeIslandPlayer(KuhnPokerPlayer):
         self.private_card = None
         self.public_cards = []
 
+    def reset(self):
+        super().reset()
+        self.public_cards = []
+

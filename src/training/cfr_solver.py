@@ -1,3 +1,4 @@
+from functools import partial
 import pickle as pkl
 import gzip
 import time
@@ -10,7 +11,9 @@ class CFRSolver:
     def __init__(self, game, combination_generator, alternating_updates=True, partial_pruning=False):
         self.game = game
         self.combination_generator = combination_generator
-        self.combinations = combination_generator.get_all_combinations()
+        # With explicit chance nodes, we do not enumerate combinations upfront.
+        # (Old code enumerated all private/public runouts, which can be enormous.)
+        self.combinations = []
         self.regret_sum = {}
         self.strategy_sum = {}
         self.iteration_count = 0
@@ -93,39 +96,29 @@ class CFRSolver:
         1. Für alle Kombinationen: Beide Spieler gleichzeitig traversieren
         2. Policy aktualisieren
         """
+        # With explicit Chance Nodes in the environment, we traverse from a single root state.
+        # Private and public deals are handled inside the game as chance nodes (current_player == -1).
         if self.alternating_updates:
-            # Alternierende Updates (Standard)
-            # Zuerst Spieler 0 für alle Kombinationen
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                self.traverse_game_tree(0, reach_probs)
-            
-            # Policy Update nach Spieler 0
+            # Spieler 0
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(0, reach_probs)
             self._update_all_policies()
-            
-            # Dann Spieler 1 für alle Kombinationen (mit aktualisierter Policy von Spieler 0)
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                self.traverse_game_tree(1, reach_probs)
-            
-            # Policy Update nach Spieler 1
+
+            # Spieler 1 (mit aktualisierter Policy)
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(1, reach_probs)
             self._update_all_policies()
         else:
-            # Simultane Updates (wie original CFR Paper)
-            # Beide Spieler gleichzeitig für alle Kombinationen
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                # Traverse für beide Spieler mit derselben Policy
-                self.traverse_game_tree(0, reach_probs)
-                self.traverse_game_tree(1, reach_probs)
-            
-            # Policy Update nach beiden Spielern
+            # Simultane Updates
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(0, reach_probs)
+            self.traverse_game_tree(1, reach_probs)
             self._update_all_policies()
     
-    def traverse_game_tree(self, player_id, reach_probabilities):
+    def traverse_game_tree(self, player_id, reach_probabilities, chance_reach: float = 1.0):
         """
         Traversiert den Game Tree und berechnet Counterfactual Regret für einen Spieler.
         
@@ -139,11 +132,23 @@ class CFRSolver:
         if self.game.done:
             return self.game.get_payoff(player_id)
         
+        # Chance node: expectation over chance outcomes (no regret updates)
+        if hasattr(self.game, 'is_chance_node') and self.game.is_chance_node():
+            outcomes_with_probs = self.game.get_chance_outcomes_with_probs()
+            if not outcomes_with_probs:
+                return 0.0
+            value = 0.0
+            for outcome, prob in outcomes_with_probs.items():
+                if prob == 0:
+                    continue
+                self.game.step(outcome)
+                # IMPORTANT: chance_reach must be propagated into updates below.
+                # The return value is still the conditional expectation from this node.
+                value += prob * self.traverse_game_tree(player_id, reach_probabilities, chance_reach * prob)
+                self.game.step_back()
+            return value
+
         current_player = self.game.current_player
-        
-        # Early exit wenn Reach Probabilities 0 sind
-        if self.partial_pruning and np.all(reach_probabilities[:2] == 0):
-            return 0.0
         
         #Opponent's node, don't update regrets
         if current_player != player_id:
@@ -161,7 +166,7 @@ class CFRSolver:
                 new_reach_probs = reach_probabilities.copy()
                 new_reach_probs[opponent] *= action_prob
                 
-                state_value += action_prob * self.traverse_game_tree(player_id, new_reach_probs)
+                state_value += action_prob * self.traverse_game_tree(player_id, new_reach_probs, chance_reach)
                 self.game.step_back()
             
             return state_value
@@ -179,13 +184,14 @@ class CFRSolver:
             new_reach_probs = reach_probabilities.copy()
             new_reach_probs[player_id] *= current_strategy[action]
             
-            action_utilities[action] = self.traverse_game_tree(player_id, new_reach_probs)
+            action_utilities[action] = self.traverse_game_tree(player_id, new_reach_probs, chance_reach)
             self.game.step_back()
         
         current_utility = sum(current_strategy[action] * action_utilities[action] for action in legal_actions)
         
-        counterfactual_weight = reach_probabilities[1 - player_id]
-        player_reach = reach_probabilities[player_id]
+        # CFR update weights must include chance reach probability.
+        counterfactual_weight = reach_probabilities[1 - player_id] * chance_reach
+        player_reach = reach_probabilities[player_id] * chance_reach
         
         self.update_regrets(info_set_key, legal_actions, action_utilities, current_utility, counterfactual_weight)
         self.update_strategy_sum(info_set_key, legal_actions, current_strategy, player_reach)

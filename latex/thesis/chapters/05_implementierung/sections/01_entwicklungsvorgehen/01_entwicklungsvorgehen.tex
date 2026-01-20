@@ -1,0 +1,54 @@
+\section{Entwicklungsvorgehen}
+
+Dieses Kapitel beschreibt meinen praktischen Entwicklungsweg von der ersten lauffähigen Implementierung bis zu dem Stand, der in Kapitel~6 evaluiert wird.
+Ich wiederhole dabei bewusst keine theoretischen Definitionen aus Kapitel~2 und keine Architekturdiagramme aus Kapitel~4.
+Stattdessen erkläre ich, welche Entscheidungen ich im Projektverlauf getroffen habe und warum diese Entscheidungen notwendig wurden.
+Der rote Faden des Projekts ist, dass Korrektheit in der Praxis erst mit einer belastbaren Evaluation sichtbar wird.
+
+\subsection{Iteratives Vorgehen statt „Big Design Up Front“}
+Ich habe das System schrittweise aufgebaut und dabei jeweils die nächste Engstelle adressiert, die sich im praktischen Betrieb gezeigt hat.
+Dabei war mein Ziel nicht, sofort eine optimale oder elegante Endarchitektur zu entwerfen, sondern schnell eine durchgängige Pipeline aus Training und Auswertung zu erhalten.
+Rückblickend war dieses Vorgehen sinnvoll, weil viele Probleme erst dann sichtbar wurden, als ein konkretes Evaluationssignal verfügbar war.
+Gleichzeitig führte das iterative Vorgehen dazu, dass frühe Architekturentscheidungen später sehr teuer zu ändern waren.
+
+\subsection{Phase 1: Grundgerüst und erste Solver}
+Am Anfang habe ich die Game Environment implementiert, sodass verschiedene Pokervarianten mit derselben Grundstruktur simuliert werden können.
+Auf dieser Basis habe ich zunächst einen CFR-Solver implementiert, der den Spielbaum dynamisch über \texttt{step()} und \texttt{step\_back()} traversiert.
+Diese Version war für kleine Spiele schnell genug, um Korrektheitsprobleme prinzipiell untersuchen zu können.
+Anschließend habe ich Sampling-Varianten (z.B.\ External Sampling und Outcome Sampling) ergänzt, weil diese in der Literatur als skalierende Alternativen zu vollständigen Traversierungen beschrieben werden.
+
+\subsection{Phase 2: Evaluation als Diagnosetool (Public State Tree und Best Response)}
+Relativ früh war klar, dass eine aussagekräftige Evaluation zentral ist, weil Self-Play oder reine Trainingsmetriken die tatsächliche Spielstärke nur unzuverlässig abbilden.
+Ich habe daher einen Best-Response-basierten Ansatz implementiert, der die Exploitability einer gemittelten Strategie berechnet.
+Die technische Grundlage dafür ist ein Public State Tree, der öffentliche Zustände gruppiert und Wiederverwendung von Berechnungen ermöglicht.
+Der Aufbau dieses Public State Trees und die dazugehörige Best-Response-Berechnung haben im Projekt deutlich mehr Zeit beansprucht als erwartet.
+
+\subsection{Phase 3: Das zentrale Architekturproblem mit Chance Nodes}
+Im Verlauf der Implementierung des Public State Trees habe ich festgestellt, dass meine Game Environment öffentliche Karten implizit und automatisch am Rundenende dealt.
+Für den Public State Tree und die Best-Response-Berechnung sind jedoch explizite public chance nodes entscheidend, weil Chance-Ereignisse sonst nicht sauber modelliert und aggregiert werden können.
+Aus diesem Grund musste ich umfangreichen Workaround-Code schreiben, um die fehlenden expliziten Chance Nodes beim Replay der Public History zu kompensieren.
+Diese Workarounds haben die Evaluation schließlich funktionsfähig gemacht, aber gleichzeitig die Möglichkeit eingeschränkt, das System später „sauber“ umzubauen.
+
+\subsection{Phase 4: Späte Fehlererkennung und Konsequenzen}
+Nachdem der Best Response Agent zuverlässig lief, wurde sichtbar, dass die Solver nicht in allen Fällen wie erwartet konvergieren.
+Insbesondere zeigte die Exploitability, dass Fehler in der Implementierung nicht durch „optisch plausible“ Strategien im Self-Play verdeckt werden dürfen.
+Zusätzlich wurde deutlich, dass die Sampling-Solver in der vorliegenden Architektur nicht zuverlässig funktionieren, obwohl ihre Kurven teilweise zunächst „in die richtige Richtung“ gehen.
+Ein wesentlicher Grund dafür ist, dass die Architektur Kartendeals nicht als einzelne Chance-Events sampelt, sondern für Kombinationen separate Subtrees aufbaut.
+Damit wurde im Projektverlauf eine klare Priorität gesetzt, nämlich funktionierende CFR-basierte Volltraversierung als Referenz zu stabilisieren und Sampling nicht weiter zu forcieren.
+
+\subsection{Phase 5: Wechsel zur Tree-basierten Implementierung}
+Nachdem die Evaluation funktionsfähig war und ich belastbare Laufzeitmessungen hatte, ist mir aufgefallen, dass die wiederholten Zustandsübergänge in der Game Environment einen relevanten Laufzeitanteil verursachen.
+Zusätzlich wurde mir durch externes Feedback klar, dass das wiederholte „Neu-Durchlaufen“ des Baums pro Iteration vermeidbar sein müsste.
+Ich habe deshalb eine zweite Solver-Familie implementiert, die vor dem Training einmal einen expliziten \emph{Game Tree} baut und diesen anschließend direkt traversiert.
+Das Ziel dieses Schritts war eine bessere Laufzeit pro Iteration durch weniger Overhead in den Zustandsfunktionen.
+Dabei wurde aber ebenfalls sichtbar, dass ein vorgebauter Baum zwar schnell sein kann, jedoch mit zunehmender Spielgröße sehr schnell an Speichergrenzen stößt.
+
+\subsection{Phase 6: Pragmatische Entscheidungen und Erweiterungen}
+Als klar wurde, dass ein fundamentaler Fix der Chance-Node-Problematik ein Redesign der Game Environment und gleichzeitig ein Rewrite der Workarounds im Public State Tree erfordern würde, habe ich die Sampling-Solver aus dem Kernumfang der Arbeit herausgenommen.
+Um dennoch drei sinnvolle Vergleichsvarianten in der Evaluation zu haben, habe ich als dritte Methode Discounted CFR (DCFR) ergänzt, weil es strukturell nahe an CFR/CFR+ liegt und sich ohne kompletten Umbau integrieren ließ.
+In späteren Schritten habe ich außerdem Engineering-Arbeit investiert, um die Evaluation reproduzierbar zu machen, etwa durch eindeutige Output-Pfade für Ablationen und durch Batch-Skripte für Training, Plotting und Profiling.
+
+\subsection{Einordnung für die folgenden Abschnitte}
+Der restliche Kapitelteil beschreibt anschließend die wichtigsten Probleme und deren Ursachen sowie die daraus abgeleiteten Lessons Learned.
+Die konkreten Messergebnisse dieser Entscheidungen werden erst in Kapitel~6 anhand der Exploitability-Kurven und Laufzeitplots diskutiert.
+

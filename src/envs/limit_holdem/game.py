@@ -30,9 +30,7 @@ class LimitHoldemGame(RoyalHoldemGame):
         self.total_bets[sb] = self.small_blind
         self.total_bets[bb] = self.big_blind
         self.pot = self.small_blind + self.big_blind
-
-        # Let the round logic initialize round_bets/current_player correctly.
-        self.round.start_new_round(self, starting_player, self.betting_round)
+        # Round init happens after private deal chance resolves (via _after_private_deal)
     
     def get_info_set_key(self, player_id):
         return (

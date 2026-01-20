@@ -3,6 +3,7 @@ from envs.kuhn_poker.player import KuhnPokerPlayer
 from envs.kuhn_poker.judger import KuhnPokerJudger
 
 class KuhnPokerGame:
+    CHANCE_PLAYER = -1
     
     def __init__(self, ante, bet_size):
         self.ante = ante
@@ -14,6 +15,12 @@ class KuhnPokerGame:
         self.judger = KuhnPokerJudger()
         self.history = []
         self.state_stack = []
+        self.starting_player = 0
+        # Chance state (deals)
+        # - _chance_targets: list[tuple[kind:str, player_id:int|None]]
+        # - _chance_context: dict with at least {'type': 'after_private'|'after_public', ...}
+        self._chance_targets = []
+        self._chance_context = None
         self.reset(0)
         
     
@@ -24,15 +31,21 @@ class KuhnPokerGame:
         self.dealer.shuffle()
         self.players[0].reset()
         self.players[1].reset()
-        self.current_player = starting_player
+        self.starting_player = starting_player
         self.done = False
         self.pot = 2 * self.ante
         self.player_bets = [self.ante, self.ante]
+        # Start in private-deal chance node (private deals are not public)
+        self._setup_private_deal_chance()
         
         
     def step(self, action):
-            
         self.state_stack.append(self.save_state())
+        # Chance node: deal without writing to history
+        if self.is_chance_node():
+            self._apply_chance_action(action)
+            return None
+        
         self.history.append(action)
         
         if action == 'bet':
@@ -53,6 +66,8 @@ class KuhnPokerGame:
             return None
 
     def get_legal_actions(self):
+        if self.is_chance_node():
+            return list(self.get_chance_outcomes_with_probs().keys())
         if not self.history:
             return ['check', 'bet']
         last_action = self.history[-1]
@@ -61,6 +76,76 @@ class KuhnPokerGame:
         elif last_action == 'bet':
             return ['call', 'fold']
         return [] 
+    
+    def is_chance_node(self) -> bool:
+        return self.current_player == self.CHANCE_PLAYER
+    
+    def get_chance_outcomes_with_probs(self):
+        """
+        Returns a dict {outcome: prob} for the current chance node.
+        Outcomes are card symbols; probabilities account for multiplicities in the deck.
+        """
+        if not self.is_chance_node():
+            return {}
+        deck = list(self.dealer.deck)
+        if not deck:
+            return {}
+        counts = {}
+        for c in deck:
+            counts[c] = counts.get(c, 0) + 1
+        total = len(deck)
+        return {c: cnt / total for c, cnt in counts.items()}
+    
+    def _setup_private_deal_chance(self):
+        # Default: one private card each (Kuhn/Leduc/Rhode style)
+        self._chance_targets = [('private', 0), ('private', 1)]
+        self._chance_context = {'type': 'after_private'}
+        self.current_player = self.CHANCE_PLAYER
+    
+    def _after_private_deal(self):
+        # Default: first decision after private deal
+        self.current_player = self.starting_player
+    
+    def _after_public_deal(self, _context: dict):
+        # No public deals in plain Kuhn
+        self.current_player = self.starting_player
+    
+    def _apply_private_card_to_player(self, player_id: int, card: str):
+        self.players[player_id].set_private_card(card)
+    
+    def _apply_public_card(self, card: str):
+        # Plain Kuhn has no public card, but keep a default implementation
+        self.players[0].set_public_card(card)
+        self.players[1].set_public_card(card)
+    
+    def _apply_chance_action(self, action):
+        if not self._chance_targets:
+            raise ValueError("Chance node has no pending targets")
+        if action not in self.dealer.deck:
+            raise ValueError(f"Invalid chance action {action}: not in deck")
+        
+        # Remove one instance (supports multiplicities)
+        idx = self.dealer.deck.index(action)
+        self.dealer.deck.pop(idx)
+        
+        kind, player_id = self._chance_targets.pop(0)
+        if kind == 'private':
+            self._apply_private_card_to_player(player_id, action)
+        elif kind == 'public':
+            # Should not happen for Kuhn
+            self._apply_public_card(action)
+        else:
+            raise ValueError(f"Unknown chance target kind: {kind}")
+        
+        if not self._chance_targets:
+            ctx = self._chance_context or {}
+            if ctx.get('type') == 'after_private':
+                self._after_private_deal()
+            elif ctx.get('type') == 'after_public':
+                self._after_public_deal(ctx)
+            else:
+                # Fallback: continue with starting player
+                self.current_player = self.starting_player
 
     """Game Tree Traversal Methods"""
     
@@ -82,7 +167,11 @@ class KuhnPokerGame:
             'current_player': self.current_player,
             'done': self.done,
             'pot': self.pot,
-            'player_bets': self.player_bets.copy()
+            'player_bets': self.player_bets.copy(),
+            'dealer_deck': list(self.dealer.deck),
+            'starting_player': self.starting_player,
+            'chance_targets': list(self._chance_targets),
+            'chance_context': dict(self._chance_context) if self._chance_context is not None else None,
         }
     
     def restore_state(self, saved_state):
@@ -93,6 +182,11 @@ class KuhnPokerGame:
         self.done = saved_state['done']
         self.pot = saved_state['pot']
         self.player_bets = saved_state['player_bets'].copy()
+        if 'dealer_deck' in saved_state:
+            self.dealer.deck = list(saved_state['dealer_deck'])
+        self.starting_player = saved_state.get('starting_player', 0)
+        self._chance_targets = list(saved_state.get('chance_targets', []))
+        self._chance_context = saved_state.get('chance_context', None)
     
     def step_back(self):
         if self.state_stack:

@@ -23,10 +23,16 @@ class TensorCFRSolver:
 
         print(f"Initializing TensorCFRSolver on {self.device}...")
 
-        # Bestimme ob Suit Abstraction verwendet wird (basierend auf Combination Generator Typ)
-        from utils.poker_utils import LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted
-        use_suit_abstraction = isinstance(combination_generator, 
-            (LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted))
+        # Bestimme ob Suit Abstraction verwendet wird.
+        # Primär über das Game-Flag (robust, auch wenn ein falscher combo_gen übergeben wird),
+        # fallback über CombinationGenerator-Typen.
+        use_suit_abstraction = bool(getattr(game, "abstract_suits", False))
+        if not use_suit_abstraction:
+            from utils.poker_utils import LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted
+            use_suit_abstraction = isinstance(
+                combination_generator,
+                (LeducHoldemCombinationsAbstracted, TwelveCardPokerCombinationsAbstracted),
+            )
 
         self.tree = None
         
@@ -35,8 +41,21 @@ class TensorCFRSolver:
             if os.path.exists(tree_path):
                 try:
                     self.tree = TensorizedGameTree.load(tree_path)
+                    # Legacy/invalid detection
                     if self.tree.infoset_keys_map is None:
                         print("Tree loaded but missing infoset_keys_map, rebuilding...")
+                        self.tree = None
+                    elif not hasattr(self.tree, 'chance_offsets') or not hasattr(self.tree, 'chance_children'):
+                        print("Tree loaded but missing chance arrays (legacy), rebuilding...")
+                        self.tree = None
+                    elif len(self.tree.roots) != 1:
+                        print(f"Tree loaded but has {len(self.tree.roots)} roots (expected 1), rebuilding...")
+                        self.tree = None
+                    elif int(np.max(self.tree.node_types)) < 2:
+                        print("Tree loaded but has no chance nodes, rebuilding...")
+                        self.tree = None
+                    elif not self._quick_tree_sanity_check(self.tree):
+                        print("Tree loaded but failed sanity check (likely built with old tensor builder), rebuilding...")
                         self.tree = None
                 except Exception as e:
                     print(f"Failed to load tree: {e}")
@@ -52,6 +71,69 @@ class TensorCFRSolver:
         self._move_tree_to_device()
         self._init_tensors()
 
+    @staticmethod
+    def _quick_tree_sanity_check(tree) -> bool:
+        """
+        Very cheap structural validation to invalidate previously cached buggy tensor trees.
+        We only sample a limited number of nodes/edges.
+        """
+        try:
+            num_nodes = int(len(tree.node_types))
+            if int(len(tree.depths)) != num_nodes:
+                return False
+            if int(len(tree.chance_offsets)) != num_nodes + 1:
+                return False
+            total_edges = int(tree.chance_offsets[-1])
+            if total_edges < 0:
+                return False
+            if int(len(tree.chance_children)) != total_edges:
+                return False
+            if int(len(tree.chance_probs)) != total_edges:
+                return False
+
+            # Root must exist and be in bounds
+            if int(len(tree.roots)) != 1:
+                return False
+            root = int(tree.roots[0])
+            if root < 0 or root >= num_nodes:
+                return False
+
+            depths = tree.depths
+
+            # Sample chance edges: require depth(child) == depth(parent)+1
+            chance_nodes = np.where(tree.node_types == 2)[0]
+            for n in chance_nodes[:1000]:
+                s = int(tree.chance_offsets[n])
+                e = int(tree.chance_offsets[n + 1])
+                if e <= s:
+                    continue
+                parent_depth = int(depths[n])
+                # check first and last edge for this node
+                for ei in (s, e - 1):
+                    c = int(tree.chance_children[ei])
+                    if c < 0 or c >= num_nodes:
+                        return False
+                    if int(depths[c]) != parent_depth + 1:
+                        return False
+
+            # Sample decision edges similarly
+            decision_nodes = np.where(tree.node_types == 1)[0]
+            for n in decision_nodes[:2000]:
+                parent_depth = int(depths[n])
+                kids = tree.children[n]
+                for c in kids:
+                    c = int(c)
+                    if c == -1:
+                        continue
+                    if c < 0 or c >= num_nodes:
+                        return False
+                    if int(depths[c]) != parent_depth + 1:
+                        return False
+
+            return True
+        except Exception:
+            return False
+
     def _move_tree_to_device(self):
         print("Moving tree tensors to device...")
         t0 = time.time()
@@ -60,12 +142,16 @@ class TensorCFRSolver:
         self.players = torch.tensor(self.tree.players, device=self.device, dtype=torch.long)
         self.infosets = torch.tensor(self.tree.infosets, device=self.device, dtype=torch.long)
         self.children = torch.tensor(self.tree.children, device=self.device, dtype=torch.long)
+        self.chance_offsets = torch.tensor(self.tree.chance_offsets, device=self.device, dtype=torch.long)
+        self.chance_outcomes = torch.tensor(self.tree.chance_outcomes, device=self.device, dtype=torch.long)
+        self.chance_children = torch.tensor(self.tree.chance_children, device=self.device, dtype=torch.long)
+        self.chance_probs = torch.tensor(self.tree.chance_probs, device=self.device, dtype=torch.float32)
         self.payoffs = torch.tensor(self.tree.payoffs, device=self.device, dtype=torch.float32)
         self.roots_tensor = torch.tensor(self.tree.roots, device=self.device, dtype=torch.long)
         
         self.max_depth = int(np.max(self.tree.depths))
         self.layer_indices = []
-        for d in range(1, self.max_depth + 1):
+        for d in range(0, self.max_depth + 1):
             indices = np.where(self.tree.depths == d)[0]
             if len(indices) > 0:
                 self.layer_indices.append(torch.tensor(indices, device=self.device, dtype=torch.long))
@@ -78,7 +164,7 @@ class TensorCFRSolver:
         valid_actions_per_node = (self.children != -1)
         valid_float = valid_actions_per_node.float()
         
-        dec_mask = (self.infosets != -1)
+        dec_mask = (self.node_types == 1) & (self.infosets != -1)
         dec_infosets = self.infosets[dec_mask]
         dec_valid = valid_float[dec_mask]
         
@@ -96,9 +182,36 @@ class TensorCFRSolver:
         self.player0_nodes = (self.players == 0)
         self.player1_nodes = (self.players == 1)
         
-        self.root_prob = 1.0 / len(self.tree.roots)
+        # New design: exactly one root, explicit chance nodes handle dealing
+        self.root_prob = 1.0
         
         print(f"Tree moved to device in {time.time() - t0:.2f}s")
+
+    def _expand_chance_edges_for_nodes(self, chance_nodes: torch.Tensor):
+        """
+        Returns flat (edge_indices, parent_nodes) for the ragged chance edges of the given nodes.
+        """
+        if chance_nodes.numel() == 0:
+            return None, None
+
+        starts = self.chance_offsets[chance_nodes]
+        ends = self.chance_offsets[chance_nodes + 1]
+        counts = (ends - starts).to(torch.long)
+        total = int(counts.sum().item())
+        if total == 0:
+            return None, None
+
+        # parent node id per edge
+        parent_nodes = chance_nodes.repeat_interleave(counts)
+
+        # build edge indices: start + within-node offset
+        within_global = torch.arange(total, device=self.device, dtype=torch.long)
+        block_starts = torch.cumsum(counts, dim=0) - counts
+        block_starts_rep = block_starts.repeat_interleave(counts)
+        within_local = within_global - block_starts_rep
+        starts_rep = starts.repeat_interleave(counts)
+        edge_indices = starts_rep + within_local
+        return edge_indices, parent_nodes
 
     def _init_tensors(self):
         self.regret_sum = torch.zeros((self.num_infosets, self.num_actions), 
@@ -202,8 +315,8 @@ class TensorCFRSolver:
         self.delta_regret.zero_()
         
         # Initialize roots
-        self.nodes_reach[self.roots_tensor, 0] = self.root_prob
-        self.nodes_reach[self.roots_tensor, 1] = self.root_prob
+        self.nodes_reach[self.roots_tensor, 0] = 1.0
+        self.nodes_reach[self.roots_tensor, 1] = 1.0
         
         # Forward pass: compute reach probabilities
         for layer_idx in self.layer_indices:
@@ -211,6 +324,19 @@ class TensorCFRSolver:
                 continue
             
             node_types_layer = self.node_types[layer_idx]
+
+            # Chance nodes: propagate reach with chance probabilities
+            chance_mask = (node_types_layer == 2)
+            chance_nodes = layer_idx[chance_mask]
+            if len(chance_nodes) > 0:
+                edge_indices, parent_nodes = self._expand_chance_edges_for_nodes(chance_nodes)
+                if edge_indices is not None:
+                    child_ids = self.chance_children[edge_indices]
+                    probs = self.chance_probs[edge_indices]
+                    parent_reach = self.nodes_reach[parent_nodes]
+                    child_reach_vals = parent_reach * probs.unsqueeze(1)
+                    self.nodes_reach.index_add_(0, child_ids, child_reach_vals)
+
             decision_mask = (node_types_layer == 1)
             decision_nodes = layer_idx[decision_mask]
             
@@ -223,10 +349,17 @@ class TensorCFRSolver:
             
             node_strat = current_strategy[inf_ids]
             
-            # Strategy sum accumulation (linear weighting for CFR+)
-            reach_p = self.nodes_reach[decision_nodes].gather(1, p_ids.unsqueeze(1)).squeeze(1)
-            contrib = node_strat * reach_p.unsqueeze(1) * self.t
-            self.strategy_sum.index_add_(0, inf_ids, contrib)
+            # Strategy sum accumulation (CFR+ linear averaging):
+            # In alternating updates, only accumulate for infosets of the currently updating player.
+            mask_update_player = (p_ids == updating_player)
+            if mask_update_player.any():
+                inf_ids_u = inf_ids[mask_update_player]
+                node_strat_u = node_strat[mask_update_player]
+                reach_p_u = self.nodes_reach[decision_nodes[mask_update_player]].gather(
+                    1, p_ids[mask_update_player].unsqueeze(1)
+                ).squeeze(1)
+                contrib = node_strat_u * reach_p_u.unsqueeze(1) * self.t
+                self.strategy_sum.index_add_(0, inf_ids_u, contrib)
             
             # Propagate reach to children
             multipliers = torch.ones((len(decision_nodes), self.num_actions, 2), device=self.device)
@@ -257,6 +390,20 @@ class TensorCFRSolver:
             term_nodes = layer_idx[term_mask]
             if len(term_nodes) > 0:
                 self.nodes_values[term_nodes] = self.payoffs[term_nodes]
+
+            # Chance nodes: expected value over outcomes
+            chance_mask = (node_types_layer == 2)
+            chance_nodes = layer_idx[chance_mask]
+            if len(chance_nodes) > 0:
+                edge_indices, parent_nodes = self._expand_chance_edges_for_nodes(chance_nodes)
+                if edge_indices is not None:
+                    child_ids = self.chance_children[edge_indices]
+                    probs = self.chance_probs[edge_indices]
+                    child_vals = self.nodes_values[child_ids]
+                    weighted = child_vals * probs.unsqueeze(1)
+                    # overwrite with summed expectation
+                    self.nodes_values[chance_nodes].zero_()
+                    self.nodes_values.index_add_(0, parent_nodes, weighted)
             
             # Decision nodes
             dec_mask = (node_types_layer == 1)
@@ -327,8 +474,8 @@ class TensorCFRSolver:
         self.nodes_values.zero_()
         self.delta_regret.zero_()
         
-        self.nodes_reach[self.roots_tensor, 0] = self.root_prob
-        self.nodes_reach[self.roots_tensor, 1] = self.root_prob
+        self.nodes_reach[self.roots_tensor, 0] = 1.0
+        self.nodes_reach[self.roots_tensor, 1] = 1.0
         
         # Forward pass
         for layer_idx in self.layer_indices:
@@ -336,6 +483,19 @@ class TensorCFRSolver:
                 continue
             
             node_types_layer = self.node_types[layer_idx]
+
+            # Chance nodes
+            chance_mask = (node_types_layer == 2)
+            chance_nodes = layer_idx[chance_mask]
+            if len(chance_nodes) > 0:
+                edge_indices, parent_nodes = self._expand_chance_edges_for_nodes(chance_nodes)
+                if edge_indices is not None:
+                    child_ids = self.chance_children[edge_indices]
+                    probs = self.chance_probs[edge_indices]
+                    parent_reach = self.nodes_reach[parent_nodes]
+                    child_reach_vals = parent_reach * probs.unsqueeze(1)
+                    self.nodes_reach.index_add_(0, child_ids, child_reach_vals)
+
             decision_mask = (node_types_layer == 1)
             decision_nodes = layer_idx[decision_mask]
             
@@ -377,6 +537,19 @@ class TensorCFRSolver:
             term_nodes = layer_idx[term_mask]
             if len(term_nodes) > 0:
                 self.nodes_values[term_nodes] = self.payoffs[term_nodes]
+
+            # Chance nodes
+            chance_mask = (node_types_layer == 2)
+            chance_nodes = layer_idx[chance_mask]
+            if len(chance_nodes) > 0:
+                edge_indices, parent_nodes = self._expand_chance_edges_for_nodes(chance_nodes)
+                if edge_indices is not None:
+                    child_ids = self.chance_children[edge_indices]
+                    probs = self.chance_probs[edge_indices]
+                    child_vals = self.nodes_values[child_ids]
+                    weighted = child_vals * probs.unsqueeze(1)
+                    self.nodes_values[chance_nodes].zero_()
+                    self.nodes_values.index_add_(0, parent_nodes, weighted)
             
             dec_mask = (node_types_layer == 1)
             dec_nodes = layer_idx[dec_mask]

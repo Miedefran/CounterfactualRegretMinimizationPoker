@@ -16,22 +16,39 @@ class TensorizedGameTree:
                  players: np.ndarray,
                  infosets: np.ndarray,
                  children: np.ndarray,
+                 chance_offsets: np.ndarray,
+                 chance_outcomes: np.ndarray,
+                 chance_children: np.ndarray,
+                 chance_probs: np.ndarray,
+                 outcome_id_to_outcome: np.ndarray,
                  payoffs: np.ndarray,
                  depths: np.ndarray,
                  roots: np.ndarray,
                  num_actions: int,
                  infoset_counts: int,
+                 num_outcomes: int,
                  infoset_keys_map: dict = None):
         
-        self.node_types = node_types # 0: Terminal, 1: Decision
+        # Node types:
+        # 0 = Terminal
+        # 1 = Decision
+        # 2 = Chance
+        self.node_types = node_types
         self.players = players
         self.infosets = infosets
         self.children = children
+        # Ragged chance edges stored via prefix-sum offsets into flat edge arrays
+        self.chance_offsets = chance_offsets
+        self.chance_outcomes = chance_outcomes
+        self.chance_children = chance_children
+        self.chance_probs = chance_probs
+        self.outcome_id_to_outcome = outcome_id_to_outcome
         self.payoffs = payoffs
         self.depths = depths
         self.roots = roots
         self.num_actions = num_actions
         self.infoset_counts = infoset_counts
+        self.num_outcomes = num_outcomes
         self.infoset_keys_map = infoset_keys_map  # {key: infoset_id}
 
     def save(self, filepath):
@@ -42,10 +59,15 @@ class TensorizedGameTree:
             players=self.players,
             infosets=self.infosets,
             children=self.children,
+            chance_offsets=self.chance_offsets,
+            chance_outcomes=self.chance_outcomes,
+            chance_children=self.chance_children,
+            chance_probs=self.chance_probs,
+            outcome_id_to_outcome=self.outcome_id_to_outcome,
             payoffs=self.payoffs,
             depths=self.depths,
             roots=self.roots,
-            meta=np.array([self.num_actions, self.infoset_counts])
+            meta=np.array([self.num_actions, self.infoset_counts, self.num_outcomes])
         )
         
         if self.infoset_keys_map is not None:
@@ -75,16 +97,31 @@ class TensorizedGameTree:
         else:
             print(f"Warning: No infoset keys map found at {keys_path} (tree may be old format)")
         
+        # Legacy detection: old trees do not contain chance arrays / meta[2].
+        if 'chance_offsets' not in data.files or 'chance_children' not in data.files:
+            raise ValueError("Legacy tensor tree detected (no chance arrays). Rebuild required.")
+
+        meta = data['meta']
+        num_actions = int(meta[0]) if len(meta) > 0 else 4
+        infoset_counts = int(meta[1]) if len(meta) > 1 else -1
+        num_outcomes = int(meta[2]) if len(meta) > 2 else int(len(data['outcome_id_to_outcome']))
+
         tree = cls(
             node_types=data['node_types'],
             players=data['players'],
             infosets=data['infosets'],
             children=data['children'],
+            chance_offsets=data['chance_offsets'],
+            chance_outcomes=data['chance_outcomes'],
+            chance_children=data['chance_children'],
+            chance_probs=data['chance_probs'],
+            outcome_id_to_outcome=data['outcome_id_to_outcome'],
             payoffs=data['payoffs'],
             depths=data['depths'],
             roots=data['roots'],
-            num_actions=int(data['meta'][0]),
-            infoset_counts=int(data['meta'][1]),
+            num_actions=num_actions,
+            infoset_counts=infoset_counts,
+            num_outcomes=num_outcomes,
             infoset_keys_map=infoset_keys_map
         )
         print(f"Tree loaded in {time.time() - t0:.4f}s")
@@ -95,7 +132,7 @@ def build_tensor_tree(game, combination_generator):
     Builds the flat tensor tree from the game rules.
     This replaces the slow object-based GameTree builder.
     """
-    print("Building tensor game tree...")
+    print("Building tensor game tree (explicit chance nodes)...")
     start_time = time.time()
     
     actions = ['check', 'bet', 'call', 'fold']
@@ -104,97 +141,158 @@ def build_tensor_tree(game, combination_generator):
     
     infoset_map = {}
     next_infoset_id = 0
+
+    # Global mapping for chance outcomes (cards) -> integer ids for stable storage
+    # Deterministic order: sorted by string representation
+    game.reset(0)
+    initial_deck = list(getattr(game.dealer, 'deck', []))
+    unique_outcomes = sorted(list(set(initial_deck)), key=lambda x: str(x))
+    outcome_to_id = {o: i for i, o in enumerate(unique_outcomes)}
+    outcome_id_to_outcome = np.array(unique_outcomes)
     
     # Temporary lists to hold node data (will convert to numpy at the end)
     # We use lists of lists/tuples which is faster than list of dicts
     # Structure: [type, player, infoset_id, depth, payoff0, payoff1, child0, child1, child2, child3]
     # Children will be indices.
     
-    flat_nodes = [] # List of tuples
-    
-    # We need to traverse for EVERY combination (deal)
-    combinations = combination_generator.get_all_combinations()
+    # We store node arrays in lists (append-only) and convert to numpy at the end.
+    node_types_list = []
+    players_list = []
+    infosets_list = []
+    depths_list = []
+    payoffs_list = []
+    children_list = []
+
+    # Ragged chance edges via prefix sum offsets.
+    chance_offsets_list = []  # length num_nodes+1 after final append
+    chance_outcomes_list = []
+    chance_children_list = []
+    chance_probs_list = []
+    total_chance_edges = 0
     
     # Helper to traverse recursively
     # We use a stack to avoid recursion limit issues and for slight speedup, 
     # but for clarity recursion is fine if depth is low (poker is usually low depth).
     # Using the existing recursive structure from TensorCFRSolver as it works.
     
-    def traverse(depth):
-        current_idx = len(flat_nodes)
-        flat_nodes.append(None) # Placeholder
-        
+    def traverse(depth: int) -> int:
+        nonlocal next_infoset_id, total_chance_edges
+
+        current_idx = len(node_types_list)
+
+        # Allocate a stable node slot up-front (like the legacy placeholder approach).
+        # This is crucial so that child indices created during recursion refer to the correct parent index.
+        node_types_list.append(-1)
+        players_list.append(-1)
+        infosets_list.append(-1)
+        depths_list.append(depth)
+        payoffs_list.append((0.0, 0.0))
+        children_list.append((-1, -1, -1, -1))
+        # chance_offsets[i] is the start offset for node i in the flat chance arrays
+        chance_offsets_list.append(total_chance_edges)
+
+        # Terminal?
         if game.done:
-            # Terminal
-            p0 = game.get_payoff(0)
-            p1 = game.get_payoff(1)
-            # type=0, player=-1, infoset=-1, depth=depth, payoffs=(p0, p1), children=(-1, -1...)
-            flat_nodes[current_idx] = (0, -1, -1, depth, p0, p1, -1, -1, -1, -1)
+            node_types_list[current_idx] = 0
+            players_list[current_idx] = -1
+            infosets_list[current_idx] = -1
+            payoffs_list[current_idx] = (float(game.get_payoff(0)), float(game.get_payoff(1)))
+            children_list[current_idx] = (-1, -1, -1, -1)
             return current_idx
-        
-        player = game.current_player
+
+        # Chance?
+        if hasattr(game, 'is_chance_node') and game.is_chance_node():
+            outcomes_with_probs = game.get_chance_outcomes_with_probs()
+            outcomes = list(outcomes_with_probs.keys())
+            # Ensure outcomes are in the global mapping; deterministic insertion order via sorted
+            for o in sorted(outcomes, key=lambda x: str(x)):
+                if o not in outcome_to_id:
+                    outcome_to_id[o] = len(outcome_to_id)
+            # Stable order: sort by outcome id
+            outcomes_sorted = sorted(outcomes, key=lambda o: int(outcome_to_id[o]))
+
+            node_types_list[current_idx] = 2
+            players_list[current_idx] = -1
+            infosets_list[current_idx] = -1
+            payoffs_list[current_idx] = (0.0, 0.0)
+            children_list[current_idx] = (-1, -1, -1, -1)
+
+            # Reserve space for chance edges for this node (so chance_offsets remains prefix-sum by node index)
+            start = total_chance_edges
+            m = len(outcomes_sorted)
+            total_chance_edges += m
+            chance_outcomes_list.extend([0] * m)
+            chance_children_list.extend([-1] * m)
+            chance_probs_list.extend([0.0] * m)
+
+            for j, outcome in enumerate(outcomes_sorted):
+                prob = float(outcomes_with_probs.get(outcome, 0.0))
+                # Traverse child
+                game.step(outcome)
+                child_idx = traverse(depth + 1)
+                game.step_back()
+                chance_outcomes_list[start + j] = int(outcome_to_id[outcome])
+                chance_children_list[start + j] = int(child_idx)
+                chance_probs_list[start + j] = prob
+
+            return current_idx
+
+        # Decision node
+        player = int(game.current_player)
         legal_actions = game.get_legal_actions()
-        
-        # InfoSet
-        nonlocal next_infoset_id
+
         key = KeyGenerator.get_info_set_key(game, player)
         if key not in infoset_map:
             infoset_map[key] = next_infoset_id
             next_infoset_id += 1
         infoset_id = infoset_map[key]
-        
+
         child_indices = [-1] * num_actions
-        
         for action in legal_actions:
-            if action not in action_to_idx: continue
+            if action not in action_to_idx:
+                continue
             a_idx = action_to_idx[action]
-            
             game.step(action)
             child_idx = traverse(depth + 1)
             game.step_back()
-            
             child_indices[a_idx] = child_idx
-            
-        # Decision
-        # type=1, player=player, infoset=infoset, depth=depth, payoffs=(0,0), children=...
-        c = child_indices
-        flat_nodes[current_idx] = (1, player, infoset_id, depth, 0.0, 0.0, c[0], c[1], c[2], c[3])
+
+        node_types_list[current_idx] = 1
+        players_list[current_idx] = player
+        infosets_list[current_idx] = int(infoset_id)
+        payoffs_list[current_idx] = (0.0, 0.0)
+        children_list[current_idx] = tuple(int(x) for x in child_indices)
         return current_idx
 
-    root_indices = []
-    
-    for combo in combinations:
-        combination_generator.setup_game_with_combination(game, combo)
-        # Depth 1 because Root is virtual chance
-        r_idx = traverse(1)
-        root_indices.append(r_idx)
+    # Build from a single root state; private/public deals are explicit chance nodes in the environment.
+    game.reset(0)
+    root_idx = traverse(0)
+    root_indices = [root_idx]
+
+    # Finalize chance offsets
+    chance_offsets_list.append(total_chance_edges)
         
     # Convert to Numpy Arrays
-    num_nodes = len(flat_nodes)
+    num_nodes = len(node_types_list)
     print(f"Converting {num_nodes} nodes to tensors...")
-    
-    # Unzip the list of tuples
-    # (type, player, infoset, depth, p0, p1, c0, c1, c2, c3)
-    
-    # It is faster to pre-allocate numpy arrays and fill them
-    node_types = np.zeros(num_nodes, dtype=np.int8)
-    players = np.zeros(num_nodes, dtype=np.int8)
-    infosets = np.full(num_nodes, -1, dtype=np.int32)
-    depths = np.zeros(num_nodes, dtype=np.int32)
-    payoffs = np.zeros((num_nodes, 2), dtype=np.float32)
-    children = np.full((num_nodes, num_actions), -1, dtype=np.int32)
-    
-    for i, data in enumerate(flat_nodes):
-        node_types[i] = data[0]
-        players[i] = data[1]
-        infosets[i] = data[2]
-        depths[i] = data[3]
-        payoffs[i, 0] = data[4]
-        payoffs[i, 1] = data[5]
-        children[i, 0] = data[6]
-        children[i, 1] = data[7]
-        children[i, 2] = data[8]
-        children[i, 3] = data[9]
+
+    node_types = np.array(node_types_list, dtype=np.int8)
+    players = np.array(players_list, dtype=np.int8)
+    infosets = np.array(infosets_list, dtype=np.int32)
+    depths = np.array(depths_list, dtype=np.int32)
+    payoffs = np.array(payoffs_list, dtype=np.float32).reshape(num_nodes, 2)
+    children = np.array(children_list, dtype=np.int32).reshape(num_nodes, num_actions)
+
+    chance_offsets = np.array(chance_offsets_list, dtype=np.int64)
+    chance_outcomes = np.array(chance_outcomes_list, dtype=np.int32)
+    chance_children = np.array(chance_children_list, dtype=np.int32)
+    chance_probs = np.array(chance_probs_list, dtype=np.float32)
+
+    # Update outcome_id_to_outcome in case we discovered new outcomes
+    outcome_id_to_outcome = np.array(
+        [o for o, _ in sorted(outcome_to_id.items(), key=lambda kv: kv[1])],
+        dtype=str,
+    )
         
     roots = np.array(root_indices, dtype=np.int32)
     
@@ -203,11 +301,17 @@ def build_tensor_tree(game, combination_generator):
         players=players,
         infosets=infosets,
         children=children,
+        chance_offsets=chance_offsets,
+        chance_outcomes=chance_outcomes,
+        chance_children=chance_children,
+        chance_probs=chance_probs,
+        outcome_id_to_outcome=outcome_id_to_outcome,
         payoffs=payoffs,
         depths=depths,
         roots=roots,
         num_actions=num_actions,
         infoset_counts=next_infoset_id,
+        num_outcomes=len(outcome_id_to_outcome),
         infoset_keys_map=infoset_map
     )
     

@@ -29,11 +29,12 @@ class Node:
     """Ein Node im Game Tree"""
     def __init__(self, node_id):
         self.node_id = node_id
-        self.type = None  # 'terminal' oder 'decision'
-        self.player = None  # 0 oder 1
+        self.type = None  # 'terminal', 'decision', 'chance'
+        self.player = None  # 0/1, -1 for chance
         self.infoset_key = None
         self.legal_actions = []
         self.children = {}  # {action: child_node_id}
+        self.chance_probs = None  # {outcome: prob} for chance nodes
         self.payoffs = None  # [payoff_p0, payoff_p1]
         self.depth = 0
 
@@ -58,7 +59,8 @@ class OutcomeSamplingCFRSolver:
         """
         self.game = game
         self.combination_generator = combination_generator
-        self.combinations = combination_generator.get_all_combinations()
+        # With explicit chance nodes, we do not enumerate combinations up front.
+        self.combinations = []
         self.epsilon = epsilon
         
         # CFR Datenstrukturen
@@ -83,6 +85,9 @@ class OutcomeSamplingCFRSolver:
             try:
                 print(f"Attempting to load game tree for {game_name}...")
                 game_tree = load_game_tree(game_name, abstract_suits=use_suit_abstraction)
+                has_chance = any(getattr(n, "type", None) == "chance" for n in game_tree.nodes.values())
+                if not has_chance:
+                    raise FileNotFoundError("Legacy tree format detected (no chance nodes); rebuilding.")
                 self._convert_game_tree_to_internal(game_tree)
                 print(f"Tree loaded: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
             except FileNotFoundError:
@@ -116,6 +121,7 @@ class OutcomeSamplingCFRSolver:
             node.infoset_key = node_data.infoset_key
             node.legal_actions = node_data.legal_actions
             node.children = node_data.children
+            node.chance_probs = getattr(node_data, "chance_probs", None)
             node.payoffs = node_data.payoffs
             node.depth = node_data.depth
             self.nodes[node_id] = node
@@ -191,15 +197,10 @@ class OutcomeSamplingCFRSolver:
         """
         # Für jeden Spieler
         for player in range(2):
-            # Eine zufällige Kombination sampeln (Chance Node)
-            sampled_root_id = random.choice(self.root_nodes)
-            num_roots = len(self.root_nodes)
-            root_prob = 1.0 / num_roots if num_roots > 0 else 1.0
-            
-            # Starte mit my_reach=1.0, opp_reach=root_prob, sample_reach=root_prob
-            # (Root Node ist bereits gesampelt)
-            self._episode(sampled_root_id, player, my_reach=1.0, 
-                         opp_reach=root_prob, sample_reach=root_prob)
+            root_id = self.root_nodes[0]
+            # Start with my_reach=1, opp_reach=1 (includes chance inside the episode),
+            # and sample_reach=1 for the behavior policy.
+            self._episode(root_id, player, my_reach=1.0, opp_reach=1.0, sample_reach=1.0)
     
     def _baseline(self, node_id, info_set_key, aidx):
         """Baseline für baseline-corrected outcome sampling (Standard: 0)"""
@@ -238,6 +239,24 @@ class OutcomeSamplingCFRSolver:
         if node.type == 'terminal':
             # Terminal Node: Return payoff
             return node.payoffs[update_player]
+
+        if node.type == 'chance':
+            probs = node.chance_probs or {}
+            outcomes = list(node.legal_actions)
+            if not outcomes:
+                return 0.0
+            weights = np.array([probs.get(o, 0.0) for o in outcomes], dtype=np.float64)
+            s = weights.sum()
+            if s <= 0:
+                aidx = np.random.choice(len(outcomes))
+                p = 1.0 / len(outcomes)
+            else:
+                weights = weights / s
+                aidx = int(np.random.choice(len(outcomes), p=weights))
+                p = float(weights[aidx])
+            outcome = outcomes[aidx]
+            child_id = node.children[outcome]
+            return self._episode(child_id, update_player, my_reach, opp_reach * p, sample_reach * p)
         
         current_player = node.player
         info_set_key = node.infoset_key

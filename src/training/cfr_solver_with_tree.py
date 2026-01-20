@@ -37,7 +37,8 @@ class CFRSolverWithTree:
     ):
         self.game = game
         self.combination_generator = combination_generator
-        self.combinations = combination_generator.get_all_combinations()
+        # With explicit chance nodes, we do not enumerate combinations upfront.
+        self.combinations = []
         self.alternating_updates = alternating_updates
         # Kleine Optimierung: wenn alle Reach-Probs 0 sind, breche die Rekursion ab
         # (kann optional aktiviert werden, um „pruning an/aus“ vergleichen zu können)
@@ -71,6 +72,10 @@ class CFRSolverWithTree:
             try:
                 print(f"Attempting to load game tree for {game_name}...")
                 game_tree = load_game_tree(game_name, abstract_suits=use_suit_abstraction)
+                # Detect legacy trees (built from enumerated combinations, no explicit chance nodes)
+                has_chance = any(getattr(n, 'type', None) == 'chance' for n in game_tree.nodes.values())
+                if not has_chance:
+                    raise FileNotFoundError("Legacy tree format detected (no chance nodes); rebuilding.")
                 self._convert_game_tree_to_internal(game_tree)
                 print(f"Tree loaded: {len(self.nodes)} nodes, {len(self.infoset_to_nodes)} unique infosets")
             except FileNotFoundError:
@@ -228,7 +233,7 @@ class CFRSolverWithTree:
         """
         return
     
-    def _traverse_for_player(self, node_id, reach_probabilities, player):
+    def _traverse_for_player(self, node_id, reach_probabilities, player, chance_reach: float = 1.0):
         """
         Traversiert den Tree und berechnet Counterfactual Regret für einen Spieler.
         
@@ -245,6 +250,21 @@ class CFRSolverWithTree:
         # Terminal Node: Payoff zurückgeben
         if node.type == 'terminal':
             return node.payoffs[player]
+
+        # Chance Node: Erwartungswert über Outcomes (keine Updates)
+        if node.type == 'chance':
+            if not node.legal_actions:
+                return 0.0
+            probs = node.chance_probs or {}
+            value = 0.0
+            for outcome in node.legal_actions:
+                prob = probs.get(outcome, 0.0)
+                if prob == 0.0:
+                    continue
+                child_id = node.children[outcome]
+                # IMPORTANT: propagate chance reach into updates below.
+                value += prob * self._traverse_for_player(child_id, reach_probabilities, player, chance_reach * prob)
+            return value
         
         # Decision Node
         current_player = node.player
@@ -272,7 +292,7 @@ class CFRSolverWithTree:
             new_reach_probs[current_player] *= action_prob
             
             # Rekursiv traversieren
-            child_utility = self._traverse_for_player(child_id, new_reach_probs, player)
+            child_utility = self._traverse_for_player(child_id, new_reach_probs, player, chance_reach)
             
             action_utilities[action] = child_utility
             state_value += action_prob * child_utility
@@ -283,8 +303,9 @@ class CFRSolverWithTree:
         
         # Spieler-Node: Regrets & Strategy-Sum updaten (über Hook-Methoden),
         # analog zur dynamischen CFRSolver-Implementierung.
-        reach_prob = reach_probabilities[current_player]
-        counterfactual_weight = reach_probabilities[1 - current_player]
+        # CFR update weights must include chance reach probability.
+        reach_prob = reach_probabilities[current_player] * chance_reach
+        counterfactual_weight = reach_probabilities[1 - current_player] * chance_reach
 
         self.update_regrets(
             info_state,

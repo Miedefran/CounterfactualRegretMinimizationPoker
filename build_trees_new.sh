@@ -2,8 +2,12 @@
 set -euo pipefail
 
 # Baut nacheinander alle relevanten Trees NEU:
-# - Game Trees (kuhn_case2, leduc, twelve_card_poker, small_island_holdem; NOT suit-abstracted)
-# - Public State Trees (kuhn_case2, leduc, twelve_card_poker, small_island_holdem; NOT suit-abstracted)
+# - Game Trees:
+#   - kuhn_case2, small_island_holdem: NOT suit-abstracted
+#   - leduc, twelve_card_poker: BOTH (suit-abstracted + NOT suit-abstracted)
+# - Public State Trees:
+#   - kuhn_case2, small_island_holdem: NOT suit-abstracted
+#   - leduc, twelve_card_poker: BOTH (suit-abstracted + NOT suit-abstracted)
 #
 # Default: alles neu bauen (auch wenn Dateien existieren), um alte/falsche Trees zu vermeiden.
 #
@@ -26,20 +30,30 @@ SKIP_EXISTING="${SKIP_EXISTING:-false}"
 # Cache im Public-Tree-Builder aktiv lassen (default). Setze USE_CACHE=false um --no-cache zu nutzen.
 USE_CACHE="${USE_CACHE:-true}"
 
-EXTRA_ARGS=(--no-suit-abstraction)
+EXTRA_ARGS_NOT_ABSTRACTED=(--no-suit-abstraction)
+EXTRA_ARGS_ABSTRACTED=(--abstract-suits)
 if [[ "${USE_CACHE}" != "true" ]]; then
-  EXTRA_ARGS+=(--no-cache)
+  EXTRA_ARGS_NOT_ABSTRACTED+=(--no-cache)
+  EXTRA_ARGS_ABSTRACTED+=(--no-cache)
 fi
 
 # -----------------------------------------------------------------------------
-# 0) Game Trees neu bauen (kuhn_case2, leduc, twelve_card_poker, small_island_holdem; NOT abstracted)
+# 0) Game Trees neu bauen
 # -----------------------------------------------------------------------------
 echo
-echo "=== BUILD GAME TREES (kuhn_case2, leduc, twelve_card_poker, small_island_holdem) ==="
+echo "=== BUILD GAME TREES ==="
 if [[ "${SKIP_EXISTING}" == "true" ]]; then
-  "${RUN_GAME_TREES[@]}" kuhn_case2 leduc twelve_card_poker small_island_holdem --no-suit-abstraction
+  # NOT abstracted games
+  "${RUN_GAME_TREES[@]}" kuhn_case2 small_island_holdem --no-suit-abstraction
+  # Leduc / Twelve Card: build BOTH variants
+  "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --suit-abstraction
+  "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --no-suit-abstraction
 else
-  "${RUN_GAME_TREES[@]}" kuhn_case2 leduc twelve_card_poker small_island_holdem --no-suit-abstraction --force
+  # NOT abstracted games
+  "${RUN_GAME_TREES[@]}" kuhn_case2 small_island_holdem --no-suit-abstraction --force
+  # Leduc / Twelve Card: build BOTH variants
+  "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --suit-abstraction --force
+  "${RUN_GAME_TREES[@]}" leduc twelve_card_poker --no-suit-abstraction --force
 fi
 
 # -----------------------------------------------------------------------------
@@ -63,36 +77,55 @@ GAMES=(
 
 public_tree_path () {
   local game="$1"
+  local abstract="$2" # "true" | "false"
   local save_name="$game"
   if [[ "$game" == kuhn_* ]]; then
     save_name="kuhn"
   fi
-  echo "data/trees/public_state_trees/${save_name}_public_tree_v2_NOT_abstracted.pkl.gz"
+  if [[ "$abstract" == "true" ]]; then
+    echo "data/trees/public_state_trees/${save_name}_public_tree_v2.pkl.gz"
+  else
+    echo "data/trees/public_state_trees/${save_name}_public_tree_v2_NOT_abstracted.pkl.gz"
+  fi
 }
 
 build_one () {
   local game="$1"
+  local abstract="$2" # "true" | "false"
+
   local out
-  out="$(public_tree_path "$game")"
+  out="$(public_tree_path "$game" "$abstract")"
 
   if [[ "${SKIP_EXISTING}" == "true" && -f "$out" ]]; then
-    echo "SKIP: $game (exists: $out)"
+    echo "SKIP: $game abstract=${abstract} (exists: $out)"
     return 0
   fi
 
   echo
-  echo "=== BUILD PUBLIC TREE: $game ==="
+  echo "=== BUILD PUBLIC TREE: $game (abstract=${abstract}) ==="
   echo "Output: $out"
-  echo "Args: ${EXTRA_ARGS[*]}"
-  "${RUN_PUBLIC_TREES[@]}" "$game" "${EXTRA_ARGS[@]}"
+  if [[ "$abstract" == "true" ]]; then
+    echo "Args: ${EXTRA_ARGS_ABSTRACTED[*]}"
+    "${RUN_PUBLIC_TREES[@]}" "$game" "${EXTRA_ARGS_ABSTRACTED[@]}"
+  else
+    echo "Args: ${EXTRA_ARGS_NOT_ABSTRACTED[*]}"
+    "${RUN_PUBLIC_TREES[@]}" "$game" "${EXTRA_ARGS_NOT_ABSTRACTED[@]}"
+  fi
 }
 
 for game in "${GAMES[@]}"; do
-  build_one "$game"
+  if [[ "$game" == "leduc" || "$game" == "twelve_card_poker" ]]; then
+    # Build BOTH variants
+    build_one "$game" "true"
+    build_one "$game" "false"
+  else
+    # Default: NOT abstracted
+    build_one "$game" "false"
+  fi
 done
 
 echo
 echo "DONE."
-echo "- Game Trees:  data/trees/game_trees/normal/"
+echo "- Game Trees:  data/trees/game_trees/{normal,abstracted}/"
 echo "- Public Trees: data/trees/public_state_trees/"
 

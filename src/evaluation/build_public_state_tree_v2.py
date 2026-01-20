@@ -15,6 +15,7 @@ from envs.limit_holdem.game import LimitHoldemGame
 from envs.twelve_card_poker.game import TwelveCardPokerGame
 from utils.poker_utils import GAME_CONFIGS
 from utils.data_models import KeyGenerator
+from utils.tree_registry import record_tree_stats
 
 def build_public_state_tree(game_class, game_config, progress_interval=10000, use_cache=False, abstract_suits=False):
     """
@@ -30,421 +31,235 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
     public_states = {}
     states_visited = 0
     stats = {'chance': 0, 'choice': 0, 'terminal': 0}
-    
+
     # Cache für Game States: public_hist -> saved_state
     # Nutzt die native save_state/restore_state Funktion der Game-Klassen
     game_state_cache = {} if use_cache else None
-    
+
+    VALID_ACTIONS = {'bet', 'check', 'call', 'fold'}
+
+    def new_game():
+        # Pass abstract_suits into games that support it (Leduc/Twelve).
+        try:
+            return game_class(**game_config, abstract_suits=abstract_suits)
+        except TypeError:
+            return game_class(**game_config)
+
     def get_all_cards_for_game(game):
         dealer_class = game.dealer.__class__
         dealer = dealer_class()
         dealer.reset()
         all_cards = list(dealer.deck)
-        
-        # Bei Suit Abstraction: Nur eindeutige Ranks zurückgeben
+
         if abstract_suits:
             unique_ranks = set()
             for card in all_cards:
-                # Entferne Suit, behalte nur Rank
                 rank = card[0] if len(card) > 1 else card
                 unique_ranks.add(rank)
             return sorted(list(unique_ranks))
-        
+
         return all_cards
-    
-    "Get all Infosets for a public state"
+
+    def get_current_public_cards(game):
+        if hasattr(game, 'public_cards'):
+            return list(game.public_cards) if game.public_cards else []
+        if hasattr(game, 'public_card') and game.public_card is not None and game.public_card != 'None':
+            return [game.public_card]
+        return []
+
     def get_info_sets_simulated(game, player_id):
         all_cards = get_all_cards_for_game(game)
-        
-        # Determine public cards from the game state to filter availability
-        current_public = []
-        if hasattr(game, 'public_cards') and game.public_cards:
-            current_public = list(game.public_cards)
-        elif hasattr(game, 'public_card') and game.public_card and game.public_card != 'None':
-            current_public = [game.public_card]
-        
-        # Bei Suit Abstraction: Entferne Suits aus public cards für Vergleich
+        current_public = get_current_public_cards(game)
+
         if abstract_suits:
-            current_public = [c[0] if len(c) > 1 else c for c in current_public]
-        
-        #Get all available cards except public card
-        available_cards = [c for c in all_cards if c not in current_public]
-        
-        # Save original state with dummy card 
-        original_card = game.players[player_id].private_card
-        
-        #Generate Infosets for all available private cards
+            # IMPORTANT:
+            # In suit-abstracted variants, ranks can have multiplicities (e.g. Leduc has 2 copies
+            # per rank). Therefore, observing a public rank does NOT generally make that rank
+            # impossible as a private card. The correct constraint is based on remaining *counts*,
+            # not on rank equality.
+            #
+            # We approximate the set of possible private ranks using the current dealer deck
+            # (which has had public cards removed via game.step(outcome) during replay).
+            # This avoids erroneously excluding e.g. private 'J' when public is 'J'.
+            try:
+                available_cards = sorted(list(set(game.dealer.deck)), key=lambda x: str(x))
+            except Exception:
+                available_cards = list(all_cards)
+        else:
+            # Non-abstracted: exact physical cards cannot be both public and private
+            available_cards = [c for c in all_cards if c not in current_public]
+
+        original = None
+        if hasattr(game.players[player_id], 'private_cards'):
+            original = list(game.players[player_id].private_cards)
+        else:
+            original = game.players[player_id].private_card
+
         info_sets = []
-        seen_keys = set()  # Für Suit Abstraction: Filtere Duplikate nach InfoSet Key
-        
+        seen_keys = set()
         for card in available_cards:
-            game.players[player_id].private_card = card
-            
-            # Generate key via authoritative source
+            if hasattr(game.players[player_id], 'private_cards'):
+                # Keep list length stable (2 cards) if applicable
+                if len(game.players[player_id].private_cards) >= 2:
+                    game.players[player_id].private_cards = [card, card]
+                else:
+                    game.players[player_id].private_cards = [card]
+                game.players[player_id].private_card = game.players[player_id].private_cards[0]
+            else:
+                game.players[player_id].private_card = card
+
             key = KeyGenerator.get_info_set_key(game, player_id)
-            
-            # Bei Suit Abstraction: Nur eindeutige Keys hinzufügen
             if abstract_suits:
                 if key not in seen_keys:
                     seen_keys.add(key)
                     info_sets.append(key)
             else:
                 info_sets.append(key)
-            
-        # Restore state with dummy card
-        game.players[player_id].private_card = original_card
-        
+
+        # restore
+        if hasattr(game.players[player_id], 'private_cards'):
+            game.players[player_id].private_cards = list(original)
+            game.players[player_id].private_card = game.players[player_id].private_cards[0] if game.players[player_id].private_cards else None
+        else:
+            game.players[player_id].private_card = original
         return info_sets
 
-    def set_dummy_cards(game):
-        game_name = game.__class__.__name__
+    def prepare_public_root_state(game):
+        """
+        Public Tree root: AFTER private deals (unobserved), BEFORE first player action.
+        We set deterministic dummy private cards WITHOUT removing them from the deck,
+        so public chance outcomes remain independent of private cards (public abstraction).
+        """
+        game.reset(0)
+
         all_cards = get_all_cards_for_game(game)
-        if all_cards:
+        if not all_cards:
+            return
+
+        # Assign dummy private cards (do NOT remove from deck)
+        needs_two = hasattr(game.players[0], 'private_cards')
+        if needs_two:
+            c0, c1, c2, c3 = all_cards[0], all_cards[1], all_cards[2], all_cards[3]
+            game.players[0].private_cards = [c0, c1]
+            game.players[1].private_cards = [c2, c3]
+            game.players[0].private_card = c0
+            game.players[1].private_card = c2
+        else:
             game.players[0].private_card = all_cards[0]
             game.players[1].private_card = all_cards[1] if len(all_cards) > 1 else all_cards[0]
-            # Ensure no crash on get_info_set_key before we swap cards in simulation
-    
-    "Construct Game state from public history"
+
+        # Skip private chance node for public-tree simulation
+        if hasattr(game, '_chance_targets'):
+            game._chance_targets = []
+        if hasattr(game, '_chance_context'):
+            game._chance_context = None
+
+        # Move to first decision node using the game's own hook
+        if hasattr(game, '_after_private_deal'):
+            game._after_private_deal()
+
     def replay_public_history(game, public_hist):
         public_hist_key = tuple(public_hist)
-        
-        # Prüfe Cache: Wenn wir diesen State schon mal hatten, restore ihn
+
         if use_cache and game_state_cache is not None and public_hist_key in game_state_cache:
-            if hasattr(game, 'restore_state'):
-                game.restore_state(game_state_cache[public_hist_key])
-                # Stelle sicher, dass Dummy-Cards gesetzt sind (für Info-Set-Generierung)
-                set_dummy_cards(game)
-                return
-            # Fallback falls restore_state nicht verfügbar
-            # (sollte nicht passieren, aber sicherheitshalber)
-        
-        # State nicht im Cache: Replay die History
-        valid_actions = {'bet', 'check', 'call', 'fold'}
-        game_name = game.__class__.__name__
-        
+            game.restore_state(game_state_cache[public_hist_key])
+            return
+
+        prepare_public_root_state(game)
+
         for item in public_hist:
-            if item in valid_actions:
-                # Capture state to detect auto-dealing
-                len_before = 0
-                # Spiele mit (potenziell) implizitem Auto-Deal von Public Cards nach Rundenende.
-                # Wir entfernen auto-dealt Karten wieder, weil der Public State Tree die Chance-Outcomes
-                # explizit über die public history modelliert.
-                is_target_game = (
-                    'Rhode' in game_name
-                    or 'Twelve' in game_name
-                    or 'Royal' in game_name
-                    or 'SmallIsland' in game_name
-                    or 'Limit' in game_name
-                )
-                if is_target_game and hasattr(game, 'public_cards'):
-                    len_before = len(game.public_cards)
-
+            if item in VALID_ACTIONS:
+                if hasattr(game, 'is_chance_node') and game.is_chance_node():
+                    raise ValueError(f"Replay desync: expected decision, got chance before action {item}")
                 game.step(item)
-                
-                # Remove auto-dealt cards to ensure determinism (we rely on history for cards)
-                if is_target_game and hasattr(game, 'public_cards'):
-                     if len(game.public_cards) > len_before:
-                         # Remove the random card
-                         game.public_cards.pop()
-                         if hasattr(game.players[0], 'public_cards'):
-                             game.players[0].public_cards.pop()
-                             game.players[1].public_cards.pop()
-
             else:
-                # It is a chance outcome (public card)
-                if 'Leduc' in game_name:
-                    if hasattr(game, 'public_card'):
-                        game.public_card = item
-                        game.players[0].set_public_card(item)
-                        game.players[1].set_public_card(item)
-                
-                elif (
-                    'Rhode' in game_name
-                    or 'Twelve' in game_name
-                    or 'Royal' in game_name
-                    or 'SmallIsland' in game_name
-                    or 'Limit' in game_name
-                ):
-                    
-                    if hasattr(game, 'public_cards'):
-                        # If step added card, we already popped it. So just append the correct one.
-                        # Unless it's already there (shouldn't happen with pop logic but good for safety)
-                        if item not in game.public_cards:
-                            game.public_cards.append(item)
-                            if hasattr(game.players[0], 'public_cards'):
-                                game.players[0].public_cards.append(item)
-                                game.players[1].public_cards.append(item)
-        
-        # Speichere den State im Cache für zukünftige Verwendung
-        # WICHTIG: Speichere NACH set_dummy_cards, damit die Dummy-Cards im Cache sind
-        if use_cache and game_state_cache is not None and hasattr(game, 'save_state'):
+                # public chance outcome (card)
+                if not (hasattr(game, 'is_chance_node') and game.is_chance_node()):
+                    raise ValueError(f"Replay desync: expected chance, got decision before card {item}")
+                game.step(item)
+
+        if use_cache and game_state_cache is not None:
             game_state_cache[public_hist_key] = game.save_state()
 
-    def traverse(game, public_hist):
+    def traverse(public_hist):
         nonlocal states_visited, stats
-        
         public_key = tuple(public_hist)
-        
         if public_key in public_states:
             return
-        
+
         states_visited += 1
         if states_visited % progress_interval == 0:
-            print(f"  Progress: {states_visited} states visited | "
-                  f"Chance: {stats['chance']}, Choice: {stats['choice']}, Terminal: {stats['terminal']}")
-        
-        game_name = game.__class__.__name__
-        # Bei Suit Abstraction: Erkenne auch einzelne Ranks (z.B. 'J', 'Q', 'K')
-        if abstract_suits:
-            public_cards_in_history = [item for item in public_hist if isinstance(item, str) and 
-                                     ((len(item) == 2 and item[1] in ['s', 'h', 'd', 'c']) or 
-                                      (len(item) == 1 and item in ['J', 'Q', 'K', 'A', '2', '3', '4', '5', '6', '7', '8', '9', 'T']))]
-        else:
-            public_cards_in_history = [item for item in public_hist if isinstance(item, str) and len(item) == 2 and item[1] in ['s', 'h', 'd', 'c']]
-        has_marker = '|' in public_hist
-        
-        is_chance = False
-        chance_outcomes = []
-        
-        # Chance Node Detection Logic (Game-Specific)
-        if hasattr(game, 'round') and hasattr(game.round, 'is_round_complete'):
-            if 'Leduc' in game_name:
-                if not has_marker and len(public_cards_in_history) == 0:
-                    temp_check = game_class(**game_config)
-                    temp_check.reset(0)
-                    set_dummy_cards(temp_check)
-                    betting_round_at_start = temp_check.betting_round
-                    
-                    replay_public_history(temp_check, public_hist)
-                    
-                    if betting_round_at_start == 0 and temp_check.betting_round == 1:
-                        is_chance = True
-                        if abstract_suits:
-                            # Bei Suit Abstraction: Nur eindeutige Ranks
-                            chance_outcomes = ['J', 'Q', 'K']
-                        else:
-                            chance_outcomes = ['Js', 'Jh', 'Qs', 'Qh', 'Ks', 'Kh']
-            elif 'Rhode' in game_name or 'Twelve' in game_name or 'Royal' in game_name or 'SmallIsland' in game_name:
-                if not has_marker:
-                    # Bestimme betting_round BEVOR wir die letzte Action replayen
-                    # Dazu replayen wir die History bis zur vorletzten Action
-                    temp_check_before = game_class(**game_config)
-                    temp_check_before.reset(0)
-                    set_dummy_cards(temp_check_before)
-                    
-                    betting_round_before_last_action = 0
-                    if len(public_hist) > 0:
-                        # Replay alle Actions außer der letzten
-                        replay_public_history(temp_check_before, public_hist[:-1])
-                        betting_round_before_last_action = temp_check_before.betting_round
-                    
-                    # Jetzt replayen wir die komplette History
-                    temp_check = game_class(**game_config)
-                    temp_check.reset(0)
-                    set_dummy_cards(temp_check)
-                    replay_public_history(temp_check, public_hist)
-                    
-                    betting_round_after = temp_check.betting_round
-                    betting_round_changed = betting_round_before_last_action != betting_round_after
-                    
-                    # Spielspezifisch hardcoded:
-                    # Rhode Island, Twelve Card Poker und Small Island Hold'em: 2 Betting-Runden
-                    #   Chance-Node nach Round 0: betting_round 0 → 1
-                    #   Chance-Node nach Round 1: betting_round 1 → 2
-                    # Royal Hold'em: 3 Betting-Runden
-                    #   Chance-Node nach Round 0: betting_round 0 → 1 (3 Public Cards)
-                    #   Chance-Node nach Round 1: betting_round 1 → 2 (1 Public Card)
-                    #   Chance-Node nach Round 2: betting_round 2 → 3 (1 Public Card)
-                    
-                    if 'Royal' in game_name:
-                        is_first_chance = (betting_round_before_last_action == 0 and betting_round_after == 1)
-                        is_second_chance = (betting_round_before_last_action == 1 and betting_round_after == 2)
-                        is_third_chance = (betting_round_before_last_action == 2 and betting_round_after == 3)
-                        is_valid_chance = is_first_chance or is_second_chance or is_third_chance
-                    else:  # Rhode Island, Twelve Card Poker oder Small Island Hold'em
-                        is_first_chance = (betting_round_before_last_action == 0 and betting_round_after == 1)
-                        is_second_chance = (betting_round_before_last_action == 1 and betting_round_after == 2)
-                        is_valid_chance = is_first_chance or is_second_chance
-                    
-                    if betting_round_changed and is_valid_chance and not temp_check.done:
-                        is_chance = True
-                        if abstract_suits:
-                            # Bei Suit Abstraction: Nur eindeutige Ranks
-                            if 'Twelve' in game_name:
-                                ranks = ['J', 'Q', 'K', 'A']
-                            elif 'Rhode' in game_name:
-                                ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
-                            elif 'SmallIsland' in game_name:
-                                ranks = ['T', 'J', 'Q', 'K', 'A']
-                            else:  # Royal Hold'em
-                                ranks = ['T', 'J', 'Q', 'K', 'A']
-                            
-                            # Entferne bereits gedealte public cards (nach Rank)
-                            public_ranks = [c[0] if len(c) > 1 else c for c in public_cards_in_history]
-                            chance_outcomes = [rank for rank in ranks if rank not in public_ranks]
-                        else:
-                            if 'Rhode' in game_name:
-                                ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A']
-                                suits = ['s', 'h', 'd', 'c']
-                                all_cards = [rank + suit for rank in ranks for suit in suits]
-                            elif 'Twelve' in game_name:
-                                ranks = ['J', 'Q', 'K', 'A']
-                                suits = ['s', 'h', 'd']
-                                all_cards = [rank + suit for rank in ranks for suit in suits]
-                            elif 'SmallIsland' in game_name:
-                                ranks = ['T', 'J', 'Q', 'K', 'A']
-                                suits = ['s', 'h', 'd', 'c']
-                                all_cards = [rank + suit for rank in ranks for suit in suits]
-                            else:  # Royal Hold'em
-                                ranks = ['T', 'J', 'Q', 'K', 'A']
-                                suits = ['s', 'h', 'd', 'c']
-                                all_cards = [rank + suit for rank in ranks for suit in suits]
-                            
-                            # Deck reduction: Remove already dealt public cards
-                            # Note: Private cards are NOT part of the public state tree
-                            chance_outcomes = [card for card in all_cards if card not in public_cards_in_history]
-        
-        if is_chance:
+            print(
+                f"  Progress: {states_visited} states visited | "
+                f"Chance: {stats['chance']}, Choice: {stats['choice']}, Terminal: {stats['terminal']}"
+            )
+
+        game = new_game()
+        replay_public_history(game, public_hist)
+
+        player0_info_sets = get_info_sets_simulated(game, 0)
+        player1_info_sets = get_info_sets_simulated(game, 1)
+        player_bets = game.total_bets if hasattr(game, 'total_bets') else game.player_bets
+
+        # Terminal
+        if game.done:
+            last_actor = 1 - game.current_player
+            public_states[public_key] = {
+                'type': 'terminal',
+                'pot': game.pot,
+                'player_bets': list(player_bets),
+                'last_actor': last_actor,
+                'player0_info_sets': player0_info_sets,
+                'player1_info_sets': player1_info_sets,
+            }
+            stats['terminal'] += 1
+            return
+
+        # Public chance node (cards)
+        if hasattr(game, 'is_chance_node') and game.is_chance_node():
+            outcomes_with_probs = game.get_chance_outcomes_with_probs()
+            outcomes = sorted(list(outcomes_with_probs.keys()), key=lambda x: str(x))
             children = {}
-            for outcome in chance_outcomes:
+            for outcome in outcomes:
                 child_hist = list(public_hist) + [outcome]
                 child_key = tuple(child_hist)
-
-                game_new = game_class(**game_config)
-                game_new.reset(0)
-                set_dummy_cards(game_new)
-                replay_public_history(game_new, public_hist)
-                
-                # Removed: game_new.step('|')
-                # The game state is already at the end of the round (due to replay of actions like 'call').
-                # Manually calling step('|') triggers proceed_round('|') -> default case -> flips player -> Wrong!
-                
-                # Apply chance outcome
-                if 'Leduc' in game_name:
-                    game_new.public_card = outcome
-                    if hasattr(game_new.players[0], 'set_public_card'):
-                        game_new.players[0].set_public_card(outcome)
-                        game_new.players[1].set_public_card(outcome)
-                elif (
-                    'Rhode' in game_name
-                    or 'Twelve' in game_name
-                    or 'Royal' in game_name
-                    or 'SmallIsland' in game_name
-                    or 'Limit' in game_name
-                ):
-                    if not hasattr(game_new, 'public_cards'):
-                        game_new.public_cards = []
-                    game_new.public_cards.append(outcome)
-                    game_new.players[0].public_cards.append(outcome)
-                    game_new.players[1].public_cards.append(outcome)
-                
                 children[outcome] = child_key
-                traverse(game_new, child_hist)
-            
-            # For the chance node itself, we need info sets (though usually not used for value lookup, good for debug)
-            # We recreate the state BEFORE the chance event
-            temp_for_info_sets = game_class(**game_config)
-            temp_for_info_sets.reset(0)
-            set_dummy_cards(temp_for_info_sets)
-            replay_public_history(temp_for_info_sets, public_hist)
-            
-            # Fix: The game engine might have eagerly dealt a card upon completing the round.
-            # But this Chance Node represents the state *before* the card is revealed.
-            # We must force the game state to appear as if no card is public yet.
-            if 'Leduc' in game_name:
-                temp_for_info_sets.public_card = None
-                temp_for_info_sets.players[0].set_public_card(None)
-                temp_for_info_sets.players[1].set_public_card(None)
-            elif (
-                'Rhode' in game_name
-                or 'Twelve' in game_name
-                or 'Royal' in game_name
-                or 'SmallIsland' in game_name
-                or 'Limit' in game_name
-            ):
-                temp_for_info_sets.public_cards = list(public_cards_in_history)
-                temp_for_info_sets.players[0].public_cards = list(public_cards_in_history)
-                temp_for_info_sets.players[1].public_cards = list(public_cards_in_history)
-            
-            player0_info_sets = get_info_sets_simulated(temp_for_info_sets, 0)
-            player1_info_sets = get_info_sets_simulated(temp_for_info_sets, 1)
-            player_bets = temp_for_info_sets.total_bets if hasattr(temp_for_info_sets, 'total_bets') else temp_for_info_sets.player_bets
-            
+                traverse(child_hist)
+
             public_states[public_key] = {
                 'type': 'chance',
-                'pot': temp_for_info_sets.pot,
+                'pot': game.pot,
                 'player_bets': list(player_bets),
                 'children': children,
+                'chance_probs': dict(outcomes_with_probs),
                 'player0_info_sets': player0_info_sets,
-                'player1_info_sets': player1_info_sets
+                'player1_info_sets': player1_info_sets,
             }
             stats['chance'] += 1
             return
-        
-        set_dummy_cards(game)
-        
-        # Check Terminal
-        if game.done:
-            player0_info_sets = get_info_sets_simulated(game, 0)
-            player1_info_sets = get_info_sets_simulated(game, 1)
-            player_bets = game.total_bets if hasattr(game, 'total_bets') else game.player_bets
-            
-            # Identify who acted last. 
-            # In Kuhn/Leduc, step() flips current_player. So last actor is 1 - current.
-            # We store this so BestResponseAgent doesn't have to guess based on history length.
-            last_actor = 1 - game.current_player
-            
-            public_states[public_key] = {
-                'type': 'terminal',
-                'pot': game.pot,
-                'player_bets': list(player_bets),
-                'last_actor': last_actor,
-                'player0_info_sets': player0_info_sets,
-                'player1_info_sets': player1_info_sets
-            }
-            stats['terminal'] += 1
-            return
-        
-        
+
+        # Choice node
         legal_actions = game.get_legal_actions()
-        
         if not legal_actions:
-            # Should be terminal if no actions
-            player0_info_sets = get_info_sets_simulated(game, 0)
-            player1_info_sets = get_info_sets_simulated(game, 1)
-            player_bets = game.total_bets if hasattr(game, 'total_bets') else game.player_bets
-            
             last_actor = 1 - game.current_player
-            
             public_states[public_key] = {
                 'type': 'terminal',
                 'pot': game.pot,
                 'player_bets': list(player_bets),
                 'last_actor': last_actor,
                 'player0_info_sets': player0_info_sets,
-                'player1_info_sets': player1_info_sets
+                'player1_info_sets': player1_info_sets,
             }
             stats['terminal'] += 1
             return
-        
+
         children = {}
         for action in legal_actions:
             child_hist = list(public_hist) + [action]
             child_key = tuple(child_hist)
-            
-            game_new = game_class(**game_config)
-            game_new.reset(0)
-            set_dummy_cards(game_new)
-            # Replay
-            replay_public_history(game_new, child_hist)
-            
             children[action] = child_key
-            traverse(game_new, child_hist)
-        
-        player0_info_sets = get_info_sets_simulated(game, 0)
-        player1_info_sets = get_info_sets_simulated(game, 1)
-        player_bets = game.total_bets if hasattr(game, 'total_bets') else game.player_bets
-        
+            traverse(child_hist)
+
         public_states[public_key] = {
             'type': 'choice',
             'player': game.current_player,
@@ -452,7 +267,7 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
             'player_bets': list(player_bets),
             'children': children,
             'player0_info_sets': player0_info_sets,
-            'player1_info_sets': player1_info_sets
+            'player1_info_sets': player1_info_sets,
         }
         stats['choice'] += 1
     
@@ -461,10 +276,7 @@ def build_public_state_tree(game_class, game_config, progress_interval=10000, us
     print(f"Building public state tree for {game_class.__name__}{abstraction_str}... (Cache: {cache_status})")
     start_time = time.time()
     
-    game = game_class(**game_config)
-    game.reset(0)
-    set_dummy_cards(game)
-    traverse(game, [])
+    traverse([])
     
     end_time = time.time()
     elapsed_time = end_time - start_time
@@ -540,6 +352,39 @@ def save_public_state_tree(game_name, tree, output_dir=None, abstract_suits=Fals
     with gzip.open(path, 'wb') as f:
         pickle.dump(tree, f)
     print(f"Saved: {path}")
+
+    # Registry-Logging (Public State Tree Save): Größen + Node-Typen + Infosets.
+    try:
+        states = tree.get("public_states", {}) if isinstance(tree, dict) else {}
+        type_counts = {"chance": 0, "choice": 0, "terminal": 0}
+        p0_infosets = set()
+        p1_infosets = set()
+        for node in states.values():
+            t = node.get("type")
+            if t in type_counts:
+                type_counts[t] += 1
+            # Infosets, falls vorhanden (werden im PST an den Nodes mitgeführt)
+            for k in node.get("player0_info_sets", []) or []:
+                p0_infosets.add(k)
+            for k in node.get("player1_info_sets", []) or []:
+                p1_infosets.add(k)
+        record_tree_stats(
+            {
+                "schema_version": 1,
+                "tree_kind": "public_state_tree_v2",
+                "game": str(game_name),
+                "abstract_suits": bool(abstract_suits),
+                "num_states": int(len(states)),
+                "num_infosets_p0": int(len(p0_infosets)),
+                "num_infosets_p1": int(len(p1_infosets)),
+                "node_type_counts": type_counts,
+                "tree_path": path,
+            }
+        )
+    except Exception:
+        # Registry ist optional; Saving darf nie scheitern.
+        pass
+
     return path
 
 

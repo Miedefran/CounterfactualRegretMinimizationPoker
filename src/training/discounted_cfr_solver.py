@@ -88,45 +88,28 @@ class DiscountedCFRSolver(CFRSolver):
         """
         self._current_iteration = self.iteration_count + 1
         
+        # With explicit chance nodes, traverse from a single root (deals are chance nodes).
         if self.alternating_updates:
-            # Alternierende Updates (Standard)
-            # Zuerst Spieler 0 für alle Kombinationen
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                self.traverse_game_tree(0, reach_probs)
-            
-            # Discounting auf Regrets von Spieler 0 anwenden
+            # Spieler 0
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(0, reach_probs)
             self._apply_regret_discounting(player=0)
-            
-            # Policy Update nach Spieler 0
             self._update_all_policies()
-            
-            # Dann Spieler 1 für alle Kombinationen (mit aktualisierter Policy von Spieler 0)
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                self.traverse_game_tree(1, reach_probs)
-            
-            # Discounting auf Regrets von Spieler 1 anwenden
+
+            # Spieler 1
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(1, reach_probs)
             self._apply_regret_discounting(player=1)
-            
-            # Policy Update nach Spieler 1
             self._update_all_policies()
         else:
-            # Simultane Updates (wie original CFR Paper)
-            # Beide Spieler gleichzeitig für alle Kombinationen
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                # Traverse für beide Spieler mit derselben Policy
-                self.traverse_game_tree(0, reach_probs)
-                self.traverse_game_tree(1, reach_probs)
-            
-            # Discounting auf Regrets beider Spieler anwenden
+            # Simultane Updates
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(0, reach_probs)
+            self.traverse_game_tree(1, reach_probs)
             self._apply_regret_discounting(player=None)
-            
-            # Policy Update nach beiden Spielern
             self._update_all_policies()
     
     def update_strategy_sum(self, info_set_key, legal_actions, current_strategy, player_reach):

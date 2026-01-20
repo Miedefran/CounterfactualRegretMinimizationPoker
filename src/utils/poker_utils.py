@@ -141,7 +141,6 @@ class LeducHoldemCombinationsAbstracted(PokerCombinationGenerator):
         # WICHTIG: Reihenfolge der private cards ist wichtig (p0, p1)
         for r1 in ranks:
             for r2 in ranks:
-                if r1 != r2:  # Verschiedene private cards
                     for r3 in ranks:
                         # Kombination: (p0_card, p1_card, public_card)
                         # NICHT sortieren, da Reihenfolge wichtig ist!

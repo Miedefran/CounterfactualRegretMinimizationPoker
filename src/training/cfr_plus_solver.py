@@ -31,36 +31,27 @@ class CFRPlusSolver(CFRSolver):
         """
         self._current_iteration = self.iteration_count + 1
         
+        # With explicit chance nodes, traverse from a single root (deals are chance nodes).
         if self.alternating_updates:
-            # Spieler 0 für alle Kombinationen
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                self.traverse_game_tree(0, reach_probs)
-            
-            # Negative Regrets auf 0 setzen und Policy updaten
+            # Spieler 0
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(0, reach_probs)
             self._reset_negative_regrets()
             self._update_all_policies()
-            
-            # Spieler 1 für alle Kombinationen
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                self.traverse_game_tree(1, reach_probs)
-            
-            # Nochmal negative Regrets auf 0 setzen und Policy updaten
+
+            # Spieler 1
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(1, reach_probs)
             self._reset_negative_regrets()
             self._update_all_policies()
         else:
-            # Simultane Updates (wie original CFR Paper)
-            for combination in self.combinations:
-                self.combination_generator.setup_game_with_combination(self.game, combination)
-                reach_probs = np.array([1.0, 1.0], dtype=np.float64)
-                # Traverse für beide Spieler mit derselben Policy
-                self.traverse_game_tree(0, reach_probs)
-                self.traverse_game_tree(1, reach_probs)
-            
-            # Negative Regrets auf 0 setzen und Policy updaten
+            # Simultane Updates
+            self.game.reset(0)
+            reach_probs = np.array([1.0, 1.0], dtype=np.float64)
+            self.traverse_game_tree(0, reach_probs)
+            self.traverse_game_tree(1, reach_probs)
             self._reset_negative_regrets()
             self._update_all_policies()
     

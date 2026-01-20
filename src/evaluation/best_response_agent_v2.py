@@ -32,17 +32,37 @@ def load_average_strategy(path):
 
 
 def get_action_probability(info_set_key, action, avg_strategy, legal_actions):
-    # Direct Lookup Only - Relying on Canonical Key Format
-    strategy = avg_strategy.get(info_set_key)
+    """
+    Return π(a|I) from avg_strategy for a specific infoset/action.
     
+    IMPORTANT: If an infoset is missing from avg_strategy (e.g. never visited during training,
+    pruned away, or simply not present in the saved model), we must still define a policy.
+    OpenSpiel's tabular policies fall back to UNIFORM in that case.
+    
+    We also defensively normalize in case the provided dict is incomplete or not normalized.
+    """
+    strategy = avg_strategy.get(info_set_key)
     if not strategy:
-        # Fallback to check if it's 0 probability for this action (or if missing completely)
-        # If missing completely, it might be an unreachable state in training but reachable in tree?
-        # Or simply unexplored. Return 0.
-        print(f"WARNING: undefined key {info_set_key}")
-        return 0.0
+        # Uniform fallback if undefined
+        if not legal_actions:
+            return 0.0
+        return 1.0 / len(legal_actions)
 
-    return strategy.get(action, 0.0)
+    total = 0.0
+    for a in legal_actions:
+        try:
+            total += max(float(strategy.get(a, 0.0)), 0.0)
+        except Exception:
+            # Non-numeric -> treat as 0
+            total += 0.0
+
+    if total <= 0.0:
+        # Degenerate / all-zero: fall back to uniform to keep BR well-defined
+        if not legal_actions:
+            return 0.0
+        return 1.0 / len(legal_actions)
+
+    return max(float(strategy.get(action, 0.0)), 0.0) / total
 
 
 # Global cache for judgers
@@ -357,61 +377,21 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
     children = node['children']
 
     result = [0.0] * len(our_infosets)
-    
-    # Bestimme die Chance-Probability basierend auf der Anzahl der verbleibenden Karten
     num_chance_outcomes = len(children)
-    
-    # Für Leduc: 6 physische Karten total, 2 bereits gedealt (private cards)
-    # Bei Suit Abstraction: Wir müssen die bereits gedealten Ranks berücksichtigen
+
+    # IMPORTANT:
+    # For public-tree BR, chance probabilities are generally *conditional on private cards*.
+    # Example Leduc (6-card deck): after private deal (2 cards removed), public card is uniform
+    # on remaining 4 cards => p = 1/(6-2) = 1/4 for each physical outcome that is not blocked.
+    #
+    # Therefore, using node['chance_probs'] (which sums to 1 over all 6 outcomes) is NOT correct.
+    # We compute the effective conditional chance probability here.
+
     if 'leduc' in game_name.lower():
-        # Prüfe ob Suit Abstraction verwendet wird
-        # Wenn Suit Abstraction: ALLE children sind Rank-only (einzelne Zeichen: 'J', 'Q', 'K')
-        # Wenn keine Suit Abstraction: ALLE children sind vollständige Karten (2 Zeichen: 'Js', 'Jh', etc.)
-        child_keys = [str(card) for card in children.keys() if isinstance(card, str)]
-        if child_keys:
-            # Prüfe ob ALLE children Rank-only sind (einzelne Zeichen)
-            is_abstracted = all(len(card) == 1 for card in child_keys)
-        else:
-            is_abstracted = False
-        
-        if is_abstracted:
-            # Suit Abstraction: Bestimme welche Ranks bereits gedealt sind (aus den InfoSets)
-            # Im Root Node haben wir alle möglichen Kombinationen, also alle 3 Ranks
-            # Aber wir müssen die tatsächlich gedealten Ranks bestimmen
-            # Bei Leduc: 2 private cards bereits gedealt, also 2 Ranks bereits gedealt
-            dealt_ranks = set()
-            for info in our_infosets + opp_infosets:
-                card = info[0]
-                rank = card[0] if len(card) > 1 else card
-                dealt_ranks.add(rank)
-            
-            # Anzahl der verbleibenden abstrahierten Ranks
-            # Bei Leduc: 3 Ranks total (J, Q, K)
-            total_ranks = 3
-            remaining_ranks = total_ranks - len(dealt_ranks)
-            
-            # Anzahl der verbleibenden physischen Karten
-            # Jeder Rank hat 2 physische Karten
-            cards_per_rank = 2
-            remaining_physical_cards = remaining_ranks * cards_per_rank
-            
-            # Die Chance-Probability für einen abstrahierten Rank
-            # = Anzahl der physischen Karten dieses Ranks / verbleibende physische Karten
-            if remaining_physical_cards > 0:
-                chance_prob = cards_per_rank / remaining_physical_cards
-            else:
-                chance_prob = 0.0
-        else:
-            # Keine Suit Abstraction: 6 physische Karten total, 2 bereits gedealt
-            # Anzahl der verbleibenden physischen Karten = 6 - 2 = 4
-            chance_prob = 1.0 / (6 - 2) if num_chance_outcomes > 0 else 0.0
+        # Leduc deck has 6 physical cards; 2 are private
+        chance_prob = 1.0 / (6 - 2) if num_chance_outcomes > 0 else 0.0
     else:
-        # Für andere Spiele: Standard-Berechnung
-        # Die Anzahl der Chance-Outcomes entspricht der Anzahl der verbleibenden Karten
-        if num_chance_outcomes > 0:
-            chance_prob = 1.0 / num_chance_outcomes
-        else:
-            chance_prob = 0.0
+        chance_prob = 1.0 / num_chance_outcomes if num_chance_outcomes > 0 else 0.0
 
     parent_card_to_r_opp = {info[0]: r for info, r in zip(opp_infosets, r_opp)}
 
@@ -600,6 +580,19 @@ def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_h
     
     our_infosets = root_node[f'player{player_id}_info_sets']
     opp_infosets = root_node[f'player{1-player_id}_info_sets']
+
+    # Detect suit-abstraction (rank-only cards) from infoset format.
+    # In Leduc/Twelve abstracted runs, private cards are ranks like 'J'/'Q'/'K'/'A'.
+    def _is_rank_only(card) -> bool:
+        return isinstance(card, str) and len(card) == 1
+
+    is_suit_abstracted = False
+    if our_infosets:
+        sample_card = our_infosets[0][0]
+        is_suit_abstracted = _is_rank_only(sample_card)
+
+    if is_suit_abstracted and ('leduc' in game_name.lower() or 'twelve' in game_name.lower()):
+        return _compute_best_response_value_suit_abstracted(game_name, player_id, tree, avg_strategy, root_hist=root_hist)
     
     total_value = 0.0
     
@@ -633,6 +626,205 @@ def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_h
         print(f"  Traverse Routing: {TIME_STATS['traverse_routing']:.2f}s ({TIME_STATS['traverse_routing']/t_total*100:.1f}%)")
         print(f"  Summe gemessen: {total_measured:.2f}s ({total_measured/t_total*100:.1f}%)")
     
+    return total_value
+
+
+def _deck_counts_for_game(game_name: str):
+    g = game_name.lower()
+    if 'leduc' in g:
+        return {'J': 2, 'Q': 2, 'K': 2}
+    if 'twelve' in g:
+        return {'J': 3, 'Q': 3, 'K': 3, 'A': 3}
+    return None
+
+
+def _is_feasible_assignment_counts(counts: dict, our_card: str, opp_card: str, public_cards: tuple) -> bool:
+    if counts is None:
+        return True
+    need = {}
+    if our_card is not None:
+        need[our_card] = need.get(our_card, 0) + 1
+    if opp_card is not None:
+        need[opp_card] = need.get(opp_card, 0) + 1
+    for c in public_cards or ():
+        need[c] = need.get(c, 0) + 1
+    for k, v in need.items():
+        if v > int(counts.get(k, 0)):
+            return False
+    return True
+
+
+def _chance_prob_given_private(counts: dict, outcome: str, our_card: str, opp_card: str, public_cards: tuple) -> float:
+    """
+    Conditional chance probability for drawing `outcome` given private cards and already dealt public cards,
+    under a deck with multiplicities described by `counts`.
+    """
+    if counts is None:
+        return 0.0
+    used = {}
+    used[our_card] = used.get(our_card, 0) + 1
+    used[opp_card] = used.get(opp_card, 0) + 1
+    for c in public_cards or ():
+        used[c] = used.get(c, 0) + 1
+    remaining_total = 0
+    remaining_outcome = 0
+    for r, cnt in counts.items():
+        rem = int(cnt) - int(used.get(r, 0))
+        if rem < 0:
+            rem = 0
+        remaining_total += rem
+        if r == outcome:
+            remaining_outcome = rem
+    if remaining_total <= 0:
+        return 0.0
+    return float(remaining_outcome) / float(remaining_total)
+
+
+def _compute_best_response_value_suit_abstracted(game_name, player_id, tree, avg_strategy, root_hist=()):
+    """
+    BR evaluation for suit-abstracted variants with multiplicities (e.g. Leduc has 2 copies per rank).
+    We cannot reuse the vectorized BR logic because chance probabilities depend on BOTH private cards.
+    Instead we evaluate one our private card at a time (scalar recursion), which is correct.
+    """
+    root_node = tree['public_states'].get(root_hist)
+    if not root_node:
+        raise ValueError(f"Root public state not found: {root_hist}")
+
+    counts = _deck_counts_for_game(game_name)
+    if counts is None:
+        raise ValueError(f"No abstracted deck counts configured for game {game_name}")
+
+    our_infosets = root_node[f'player{player_id}_info_sets']
+    opp_infosets = root_node[f'player{1-player_id}_info_sets']
+
+    # Prior over our private ranks at root: proportional to multiplicity.
+    total_cards = float(sum(counts.values()))
+    card_priors = {}
+    for info in our_infosets:
+        c = info[0]
+        card_priors[c] = float(counts.get(c, 0)) / total_cards if total_cards > 0 else 0.0
+
+    # Map opponent infosets by private card
+    opp_infos_by_card = defaultdict(list)
+    for info in opp_infosets:
+        opp_infos_by_card[info[0]].append(info)
+
+    def traverse_scalar(public_hist, our_card: str, r_opp_by_card: dict):
+        node = tree['public_states'].get(public_hist)
+        if not node:
+            raise ValueError(f"Public state not found: {public_hist}")
+
+        node_type = node['type']
+        if node_type == 'terminal':
+            # Find our infoset key in this node
+            our_infos = node[f'player{player_id}_info_sets']
+            our_info = None
+            for info in our_infos:
+                if info[0] == our_card:
+                    our_info = info
+                    break
+            if our_info is None:
+                return 0.0
+
+            opp_infos = node[f'player{1-player_id}_info_sets']
+            pot = node['pot']
+            player_bets = node['player_bets']
+            total = 0.0
+            for opp_info in opp_infos:
+                opp_card = opp_info[0]
+                w = float(r_opp_by_card.get(opp_card, 0.0))
+                if w == 0.0:
+                    continue
+                public_cards = our_info[1]
+                if not _is_feasible_assignment_counts(counts, our_card, opp_card, public_cards):
+                    continue
+                total += w * compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, node)
+            return total
+
+        if node_type == 'chance':
+            children = node.get('children', {})
+            if not children:
+                return 0.0
+            # Current public cards can be read from any infoset in this node
+            sample_infos = node[f'player{player_id}_info_sets']
+            current_public = sample_infos[0][1] if sample_infos else ()
+
+            total = 0.0
+            for outcome, child_hist in children.items():
+                # Update opponent reach by conditional chance prob given private cards.
+                r_child = {}
+                for opp_card, w in r_opp_by_card.items():
+                    if w == 0.0:
+                        continue
+                    if not _is_feasible_assignment_counts(counts, our_card, opp_card, current_public + (outcome,)):
+                        continue
+                    p = _chance_prob_given_private(counts, outcome, our_card, opp_card, current_public)
+                    if p == 0.0:
+                        continue
+                    r_child[opp_card] = r_child.get(opp_card, 0.0) + w * p
+                if not r_child:
+                    continue
+                total += traverse_scalar(child_hist, our_card, r_child)
+            return total
+
+        if node_type == 'choice':
+            children = node.get('children', {})
+            if not children:
+                return 0.0
+            acting = node.get('player')
+            if acting == player_id:
+                # our choice: maximize over actions
+                best = None
+                for action, child_hist in children.items():
+                    v = traverse_scalar(child_hist, our_card, r_opp_by_card)
+                    if best is None or v > best:
+                        best = v
+                return 0.0 if best is None else best
+            else:
+                # opponent choice: expected over opponent policy per infoset
+                opp_infos = node[f'player{1-player_id}_info_sets']
+                legal_actions = list(children.keys())
+                total = 0.0
+                for action, child_hist in children.items():
+                    r_child = {}
+                    for opp_info in opp_infos:
+                        opp_card = opp_info[0]
+                        w = float(r_opp_by_card.get(opp_card, 0.0))
+                        if w == 0.0:
+                            continue
+                        prob = get_action_probability(opp_info, action, avg_strategy, legal_actions)
+                        if prob == 0.0:
+                            continue
+                        r_child[opp_card] = r_child.get(opp_card, 0.0) + w * prob
+                    if not r_child:
+                        continue
+                    total += traverse_scalar(child_hist, our_card, r_child)
+                return total
+
+        raise ValueError(f"Unknown node type: {node_type}")
+
+    total_value = 0.0
+    for our_info in our_infosets:
+        our_card = our_info[0]
+        p_our = float(card_priors.get(our_card, 0.0))
+        if p_our == 0.0:
+            continue
+
+        # Opponent distribution conditional on our_card at root.
+        # Remove our card from counts.
+        denom = float(sum(counts.values()) - 1)
+        r_opp = {}
+        for opp_card in opp_infos_by_card.keys():
+            # opponent can be same rank if at least 2 copies exist
+            avail = float(counts.get(opp_card, 0))
+            if opp_card == our_card:
+                avail -= 1.0
+            if avail <= 0:
+                continue
+            r_opp[opp_card] = avail / denom if denom > 0 else 0.0
+
+        total_value += p_our * traverse_scalar(root_hist, our_card, r_opp)
+
     return total_value
 
 

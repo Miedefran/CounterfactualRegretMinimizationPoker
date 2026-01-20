@@ -12,17 +12,19 @@ import time
 from collections import defaultdict
 
 from utils.data_models import KeyGenerator
+from utils.tree_registry import record_tree_stats
 
 
 class Node:
     """Repräsentiert einen Node im Game Tree"""
     def __init__(self, node_id):
         self.node_id = node_id
-        self.type = None  # 'terminal' oder 'decision'
-        self.player = None  # 0 oder 1 (nur bei decision nodes)
+        self.type = None  # 'terminal', 'decision' oder 'chance'
+        self.player = None  # 0 oder 1 (decision nodes), -1 (chance), None (terminal)
         self.infoset_key = None  # InfoSet Key (nur bei decision nodes)
         self.legal_actions = []  # Liste von legalen Aktionen
         self.children = {}  # {action: child_node_id}
+        self.chance_probs = None  # {outcome: prob} (nur bei chance nodes)
         self.payoffs = None  # [payoff_p0, payoff_p1] (nur bei terminal nodes)
         self.depth = 0
     
@@ -35,6 +37,7 @@ class Node:
             'infoset_key': self.infoset_key,
             'legal_actions': self.legal_actions,
             'children': self.children,
+            'chance_probs': self.chance_probs,
             'payoffs': self.payoffs,
             'depth': self.depth
         }
@@ -48,6 +51,7 @@ class Node:
         node.infoset_key = data['infoset_key']
         node.legal_actions = data['legal_actions']
         node.children = data['children']
+        node.chance_probs = data.get('chance_probs')
         node.payoffs = data['payoffs']
         node.depth = data['depth']
         return node
@@ -107,7 +111,8 @@ def build_game_tree(game, combination_generator, game_name=None, game_config=Non
     tree.game_name = game_name
     tree.game_config = game_config
     next_node_id = 0
-    combinations = combination_generator.get_all_combinations()
+    # With explicit chance nodes, we build from a single root state.
+    # (The old combination_generator-based enumeration is no longer needed.)
     
     def traverse_and_build(depth):
         """Rekursive Funktion die den Tree durchläuft und Nodes erstellt"""
@@ -129,6 +134,21 @@ def build_game_tree(game, combination_generator, game_name=None, game_config=Non
             node.type = 'terminal'
             node.payoffs = [game.get_payoff(0), game.get_payoff(1)]
             return node_id
+
+        # Chance Node?
+        if hasattr(game, 'is_chance_node') and game.is_chance_node():
+            node.type = 'chance'
+            node.player = getattr(game, 'CHANCE_PLAYER', -1)
+            outcomes_with_probs = game.get_chance_outcomes_with_probs()
+            node.chance_probs = dict(outcomes_with_probs)
+            node.legal_actions = list(outcomes_with_probs.keys())
+
+            for outcome in node.legal_actions:
+                game.step(outcome)
+                child_id = traverse_and_build(depth + 1)
+                game.step_back()
+                node.children[outcome] = child_id
+            return node_id
         
         # Decision Node
         node.type = 'decision'
@@ -148,18 +168,33 @@ def build_game_tree(game, combination_generator, game_name=None, game_config=Non
         
         return node_id
     
-    # Für jede Kombination (Deal) einen Subtree bauen
-    num_combinations = len(combinations)
-    for combo_idx, combo in enumerate(combinations):
-        if num_combinations > 10 and (combo_idx + 1) % max(1, num_combinations // 10) == 0:
-            print(f"  Processing combination {combo_idx + 1}/{num_combinations}...")
-        combination_generator.setup_game_with_combination(game, combo)
-        root_id = traverse_and_build(0)
-        tree.root_nodes.append(root_id)
+    # Single root (chance at start handles private deals)
+    game.reset(0)
+    root_id = traverse_and_build(0)
+    tree.root_nodes.append(root_id)
     
     build_time = time.time() - start_time
     print(f"Tree built: {len(tree.nodes)} nodes, {len(tree.infoset_to_nodes)} unique infosets")
     print(f"Tree building took {build_time:.2f}s")
+
+    # Registry-Logging (Tree-Build): nur wenn game_name gesetzt ist.
+    if game_name:
+        type_counts = {"terminal": 0, "decision": 0, "chance": 0}
+        for n in tree.nodes.values():
+            t = getattr(n, "type", None)
+            if t in type_counts:
+                type_counts[t] += 1
+        record_tree_stats(
+            {
+                "schema_version": 1,
+                "tree_kind": "game_tree_object",
+                "game": str(game_name),
+                "abstract_suits": bool(abstract_suits),
+                "num_nodes": int(len(tree.nodes)),
+                "num_infosets": int(len(tree.infoset_to_nodes)),
+                "node_type_counts": type_counts,
+            }
+        )
     
     return tree
 
@@ -188,6 +223,25 @@ def save_game_tree(tree, game_name, output_dir=None, abstract_suits=False):
     
     print(f"Saving game tree ({len(tree.nodes)} nodes, {len(tree.infoset_to_nodes)} infosets)...")
     tree_dict = tree.to_dict()
+
+    # Registry-Logging (Tree-Save): persistiert Größen + Node-Typen.
+    type_counts = {"terminal": 0, "decision": 0, "chance": 0}
+    for n in tree.nodes.values():
+        t = getattr(n, "type", None)
+        if t in type_counts:
+            type_counts[t] += 1
+    record_tree_stats(
+        {
+            "schema_version": 1,
+            "tree_kind": "game_tree_object",
+            "game": str(game_name),
+            "abstract_suits": bool(abstract_suits),
+            "num_nodes": int(len(tree.nodes)),
+            "num_infosets": int(len(tree.infoset_to_nodes)),
+            "node_type_counts": type_counts,
+            "tree_path": filepath,
+        }
+    )
     
     # Print Progress beim Speichern
     print(f"  Serializing tree to dictionary...")

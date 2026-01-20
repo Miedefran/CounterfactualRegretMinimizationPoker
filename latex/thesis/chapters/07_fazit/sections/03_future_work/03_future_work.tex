@@ -1,3 +1,19 @@
 \section{Future Work}
+In diesem Abschnitt skizziere ich konkrete nächste Schritte, die sich aus den Ergebnissen und Limitierungen der Arbeit ergeben.
+Ich trenne dabei zwischen Implementierungsarbeit zur Skalierung der bestehenden Pipeline und algorithmischen Erweiterungen, die den Zustandsraum und die Konvergenz beeinflussen.
 
+\subsection{Implementierung und Engineering}
+Ein zentraler nächster Schritt ist die Reduktion der Iterationslaufzeit für große Spiele.
+Dazu gehören effizientere Datenstrukturen, weniger Python-Overhead und eine stärkere Parallelisierung unabhängig bearbeitbarer Teilprobleme.
+Zusätzlich ist eine konsequente Profiling-basierte Optimierung sinnvoll, um Hotspots in Traversierung, Handbewertung und Evaluation gezielt zu verbessern.
+Für Tree-basierte Varianten sind kompaktere Repräsentationen und speichereffiziente Serialisierung relevant, um Speichergrenzen später zu erreichen.
+Darüber hinaus ist die Weiterentwicklung der Tooling-Schicht sinnvoll, damit Experimente, Plots und Profile für Dritte einfacher reproduzierbar sind.
+
+\subsection{Algorithmische und wissenschaftliche Erweiterungen}
+Für die Skalierung auf große Hold'em-Varianten sind zusätzliche algorithmische Techniken notwendig.
+Ein naheliegender Ansatz sind Pruning-Methoden, die unnötige Traversierungen vermeiden und Rechenzeit stärker auf relevante Bereiche konzentrieren \cite{brownSandholm2015regretBasedPruning}.
+Wenn Sampling-basierte Verfahren erneut betrachtet werden sollen, sind effizientere MCCFR-Varianten für Spiele mit vielen Aktionen und stabilere Praxis-Implementierungen relevant \cite{lanctot2009monte,gibson2012efficientMCCFRManyActions}.
+Für sehr große Spiele ist Abstraktion ein zentraler Hebel, um den Zustandsraum zu reduzieren, ohne die grundlegende Spielstruktur vollständig zu verlieren \cite{gilpin2007lossless,billings2003approximating}.
+Als zusätzliche wissenschaftliche Erweiterung ist eine systematische Größenabschätzung und Messung von Spielinstanzen hilfreich, um Skalierungsgrenzen früh zu erkennen und Experimente gezielt zu planen \cite{johanson2013sizeNoLimit}.
+Schließlich können weiterführende Spiel-Solving-Methoden aus der Literatur als langfristige Perspektive dienen, etwa für den Übergang von Toy Games zu vollständigen Hold'em-Varianten \cite{bowling2015heads,brown2019superhuman}.
 

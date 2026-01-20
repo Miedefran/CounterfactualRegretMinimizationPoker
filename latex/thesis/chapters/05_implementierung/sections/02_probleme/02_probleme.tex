@@ -1,0 +1,36 @@
+\section{Probleme und Herausforderungen}
+In diesem Abschnitt beschreibe ich die wichtigsten technischen Schwierigkeiten, die im Verlauf der Implementierung aufgetreten sind.
+Die Darstellung ist bewusst problemorientiert, da die Architektur und die Algorithmik bereits in Kapitel~4 bzw.\ Kapitel~2 erläutert wurden.
+
+\subsection{Fehlende explizite Chance Nodes für öffentliche Karten}
+Ein zentrales Problem entstand dadurch, dass öffentliche Karten in der Game Environment automatisch am Ende einer Setzrunde ausgeteilt werden.
+Dadurch existieren im Spielbaum keine expliziten public chance nodes, die den Kartendeal als eigene Zustandsübergänge repräsentieren.
+Für viele Komponenten ist diese Unterscheidung jedoch wichtig, weil Chance-Ereignisse sonst nicht sauber modelliert und wiederverwendet werden können.
+
+\subsection{Konsequenzen für Public State Tree und Best Response}
+Beim Aufbau des Public State Trees zeigte sich, dass der Best-Response-Ansatz explizite Chance-Knoten erwartet, um Zustände korrekt zu gruppieren und Reach-Probabilities konsistent zu berechnen.
+Um das in der bestehenden Game Environment dennoch abbilden zu können, war zusätzlicher Code notwendig, der den öffentlichen Verlauf rekonstruiert und die öffentlichen Karten an geeigneten Stellen „nachträglich“ behandelt.
+Diese Lösung machte die Evaluation funktionsfähig, erhöhte aber die Komplexität und erschwerte spätere strukturelle Änderungen.
+
+\subsection{Sampling-Solver: Ziel nicht erreicht}
+Zusätzlich habe ich Sampling-basierte Solver implementiert, um die in der Literatur beschriebenen Skalierungsvorteile praktisch zu nutzen.
+In meinem Implementierungsstand habe ich diese Solver jedoch nicht zuverlässig zum gewünschten Konvergenzverhalten gebracht.
+Rückblickend ist es plausibel, dass dies prinzipiell lösbar ist, jedoch eine wesentlich sorgfältigere Behandlung der Chance-Ereignisse und des Deal-Samplings erfordert hätte.
+Da diese Arbeiten den zeitlichen Rahmen gesprengt hätten, wurden die Sampling-Solver im weiteren Projektverlauf nicht mehr als Kernvergleichsbaseline betrachtet.
+
+\subsection{Skalierungsgrenzen am Beispiel großer Hold'em-Varianten}
+Mit steigender Spielkomplexität verschieben sich die praktischen Engpässe von „funktioniert grundsätzlich“ hin zu „passt noch in Speicher und Laufzeitbudget“.
+Für Heads-Up Limit Hold'em war in meinem Projektstand insbesondere der Zustandsraum so groß, dass Tree-basierte Ansätze in der Praxis nicht mehr einsetzbar waren.
+Für solche Spiele fallen damit alle Solver-Varianten weg, die einen vollständigen Game Tree vorab materialisieren müssen.
+Gleichzeitig bedeutet das nicht, dass Training in größeren Spielen grundsätzlich unmöglich ist, sondern dass die aktuelle Implementierung ohne weitere Maßnahmen sehr langsam wird.
+Als grobe Größenordnung habe ich für Rhode Island Hold'em geschätzt, dass eine einzelne Iteration in meinem aktuellen Implementierungsstand etwa 15 Stunden dauern würde.
+Um große Varianten wie Limit Hold'em praktisch bearbeiten zu können, wären daher mehrere weitere Schritte notwendig.
+Erstens wäre eine stärkere Optimierung der Implementation erforderlich, da in Python ein erheblicher Overhead entsteht und sich durch effizientere Datenstrukturen oder native Komponenten vermutlich viel Laufzeit einsparen lässt.
+Zweitens ist Abstraktion notwendig, um den Zustandsraum so zu reduzieren, dass Training und Evaluation in realistischer Zeit möglich werden.
+Drittens wäre Parallelisierung sinnvoll, um unabhängige Teilprobleme (z.B.\ Deals oder Teilbäume) auf mehrere Kerne zu verteilen.
+Viertens sind zusätzliche Optimierungsverfahren wie Pruning oder verwandte Beschleunigungen hilfreich, um unnötige Traversierungen zu vermeiden und Rechenzeit gezielt dort zu investieren, wo sie das Ergebnis beeinflusst.
+
+\subsection{Nicht umgesetzte Abstraktion: Hand-strength-squared}
+Eine zusätzliche Abstraktionsidee war eine Reduktion über Hand-strength-squared.
+Diese Erweiterung wurde im Projektverlauf geplant, konnte jedoch aus Zeitgründen nicht mehr umgesetzt werden.
+

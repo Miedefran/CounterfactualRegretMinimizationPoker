@@ -10,6 +10,9 @@ from training.fold_solver import AlwaysFoldSolver
 from training.mccfr_solver import MCCFRSolver
 from training.tensor_cfr_solver import TensorCFRSolver
 from training.cfr_solver_with_tree import CFRSolverWithTree
+from training.cfr_solver_with_flat_tree import CFRSolverWithFlatTree
+from training.cfr_plus_with_flat_tree import CFRPlusWithFlatTree
+from training.discounted_cfr_solver_with_flat_tree import DiscountedCFRWithFlatTree
 from training.chance_sampling_cfr_solver import ChanceSamplingCFRSolver
 from training.external_sampling_cfr_solver import ExternalSamplingCFRSolver
 from training.outcome_sampling_cfr_solver import OutcomeSamplingCFRSolver
@@ -70,7 +73,23 @@ def main():
     parser.add_argument('iterations', type=int,
                        help='Number of CFR iterations')
     parser.add_argument('algorithm', type=str,
-                       choices=['fold', 'cfr', 'cfr_plus', 'mccfr', 'tensor_cfr', 'cfr_with_tree', 'chance_sampling', 'external_sampling', 'outcome_sampling', 'cfr_plus_with_tree', 'discounted_cfr', 'discounted_cfr_with_tree'],
+                       choices=[
+                           'fold',
+                           'cfr',
+                           'cfr_plus',
+                           'mccfr',
+                           'tensor_cfr',
+                           'cfr_with_tree',
+                           'cfr_plus_with_tree',
+                           'cfr_with_flat_tree',
+                           'cfr_plus_with_flat_tree',
+                           'chance_sampling',
+                           'external_sampling',
+                           'outcome_sampling',
+                           'discounted_cfr',
+                           'discounted_cfr_with_tree',
+                           'discounted_cfr_with_flat_tree',
+                       ],
                        nargs='?',
                        default='cfr',
                        help='Algorithm to use (default: cfr)')
@@ -109,7 +128,12 @@ def main():
         game = KuhnPokerGame(ante=config['ante'], bet_size=config['bet_size'])
         combo_gen = KuhnPokerCombinations()
     elif args.game.startswith('leduc'):
-        game = LeducHoldemGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
+        game = LeducHoldemGame(
+            ante=config['ante'],
+            bet_sizes=config['bet_sizes'],
+            bet_limit=config['bet_limit'],
+            abstract_suits=use_suit_abstraction,
+        )
         if use_suit_abstraction:
             combo_gen = LeducHoldemCombinationsAbstracted()
         else:
@@ -118,7 +142,12 @@ def main():
         game = RhodeIslandGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
         combo_gen = RhodeIslandCombinations()
     elif args.game == 'twelve_card_poker':
-        game = TwelveCardPokerGame(ante=config['ante'], bet_sizes=config['bet_sizes'], bet_limit=config['bet_limit'])
+        game = TwelveCardPokerGame(
+            ante=config['ante'],
+            bet_sizes=config['bet_sizes'],
+            bet_limit=config['bet_limit'],
+            abstract_suits=use_suit_abstraction,
+        )
         if use_suit_abstraction:
             combo_gen = TwelveCardPokerCombinationsAbstracted()
         else:
@@ -172,6 +201,22 @@ def main():
             alternating_updates=alternating,
             partial_pruning=partial_pruning,
         )
+    elif args.algorithm == 'cfr_with_flat_tree':
+        solver = CFRSolverWithFlatTree(
+            game,
+            combo_gen,
+            game_name=args.game,
+            alternating_updates=alternating,
+            partial_pruning=partial_pruning,
+        )
+    elif args.algorithm == 'cfr_plus_with_flat_tree':
+        solver = CFRPlusWithFlatTree(
+            game,
+            combo_gen,
+            game_name=args.game,
+            alternating_updates=alternating,
+            partial_pruning=partial_pruning,
+        )
     elif args.algorithm == 'discounted_cfr':
         # Discounted CFR Solver (ohne Tree)
         solver = DiscountedCFRSolver(
@@ -186,6 +231,17 @@ def main():
         # Discounted CFR with Tree Solver
         solver = DiscountedCFRWithTreeSolver(
             game, combo_gen, 
+            game_name=args.game,
+            alpha=args.dcfr_alpha,
+            beta=args.dcfr_beta,
+            gamma=args.dcfr_gamma,
+            alternating_updates=alternating,
+            partial_pruning=partial_pruning,
+        )
+    elif args.algorithm == 'discounted_cfr_with_flat_tree':
+        solver = DiscountedCFRWithFlatTree(
+            game,
+            combo_gen,
             game_name=args.game,
             alpha=args.dcfr_alpha,
             beta=args.dcfr_beta,
@@ -235,10 +291,16 @@ def main():
             algorithm_for_path = 'cfr_with_tree_simultaneous'
         elif args.algorithm == 'cfr_plus_with_tree':
             algorithm_for_path = 'cfr_plus_with_tree_simultaneous'
+        elif args.algorithm == 'cfr_with_flat_tree':
+            algorithm_for_path = 'cfr_with_flat_tree_simultaneous'
+        elif args.algorithm == 'cfr_plus_with_flat_tree':
+            algorithm_for_path = 'cfr_plus_with_flat_tree_simultaneous'
         elif args.algorithm == 'discounted_cfr':
             algorithm_for_path = 'discounted_cfr_simultaneous'
         elif args.algorithm == 'discounted_cfr_with_tree':
             algorithm_for_path = 'discounted_cfr_with_tree_simultaneous'
+        elif args.algorithm == 'discounted_cfr_with_flat_tree':
+            algorithm_for_path = 'discounted_cfr_with_flat_tree_simultaneous'
 
     # Codierung von (partial) pruning in den Output-Pfad
     if not partial_pruning and args.algorithm in {
@@ -246,10 +308,18 @@ def main():
         'cfr_plus',
         'cfr_with_tree',
         'cfr_plus_with_tree',
+        'cfr_with_flat_tree',
+        'cfr_plus_with_flat_tree',
         'discounted_cfr',
         'discounted_cfr_with_tree',
+        'discounted_cfr_with_flat_tree',
     }:
         algorithm_for_path = f"{algorithm_for_path}_no_pruning"
+
+    # Codierung von Suit-Abstraction in den Output-Pfad, damit Runs nicht überschreiben.
+    # Standardmäßig ist Suit-Abstraction für leduc/twelve_card_poker aktiv (außer --no-suit-abstraction).
+    if use_suit_abstraction and args.game in {'leduc', 'twelve_card_poker'}:
+        algorithm_for_path = f"{algorithm_for_path}_abstracted"
     
     filepath = get_model_path(args.game, args.iterations, algorithm_for_path)
     solver.save_gzip(filepath)

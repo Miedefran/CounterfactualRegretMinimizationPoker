@@ -6,3 +6,7 @@ class SmallIslandHoldemPlayer(KuhnPokerPlayer):
         super().__init__(player_id)
         self.private_card = None
         self.public_cards = []
+
+    def reset(self):
+        super().reset()
+        self.public_cards = []

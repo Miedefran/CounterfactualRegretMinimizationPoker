@@ -22,7 +22,7 @@ mkdir -p "$OUT_DIR"
 # Du kannst hier jederzeit auf andere Algorithmen umstellen, solange die Datei existiert.
 
 LEDUC_MODEL="data/models/leduc/cfr_plus_with_tree_no_pruning/10000/leduc_10000.pkl.gz"
-TWELVE_MODEL="data/models/twelve_card_poker/cfr_plus_with_tree_no_pruning/1000/twelve_card_poker_1000.pkl.gz"
+TWELVE_MODEL="data/models/twelve_card_poker/discounted_cfr_with_tree_no_pruning/1000/twelve_card_poker_1000.pkl.gz"
 SMALL_ISLAND_MODEL="data/models/small_island_holdem/discounted_cfr_with_tree_no_pruning/100/small_island_holdem_100.pkl.gz"
 
 profile_one () {

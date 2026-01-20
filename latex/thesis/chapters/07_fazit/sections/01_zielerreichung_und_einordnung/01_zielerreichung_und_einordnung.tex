@@ -1,0 +1,42 @@
+\section{Zielerreichung und Einordnung}
+In diesem Kapitel fasse ich die Ergebnisse der Arbeit zusammen und ordne sie im Hinblick auf die Zielsetzung aus Kapitel~1 ein.
+Ich führe dabei keine neuen Experimente ein, sondern beziehe mich auf die in Kapitel~6 dargestellten Kurven und Messwerte.
+Der Schwerpunkt der Arbeit liegt auf der Implementierung einer durchgängigen Pipeline aus Training und Evaluation für CFR-basierte Verfahren in Pokerspielen.
+
+\subsection{Kurzüberblick}
+Ich habe mehrere Pokervarianten in einer einheitlichen Game-Environment-Struktur implementiert.
+Darauf aufbauend habe ich mehrere CFR-Varianten implementiert und in verschiedenen Implementierungsformen ausgeführt.
+Zur Bewertung der Strategien habe ich Exploitability über einen Best-Response-Ansatz auf Basis eines Public State Trees berechnet.
+Zusätzlich habe ich den Trainingsprozess so automatisiert, dass Trainingsläufe und Auswertungsartefakte reproduzierbar erzeugt werden können.
+
+\subsection{Zielerreichung (Bezug zu Kapitel~1)}
+Im Folgenden bewerte ich die Zielerreichung in kompakter Form.
+Die detaillierten Ergebnisse und Kurven sind in Kapitel~6 dokumentiert.
+
+\subsubsection{Erreichte Ziele}
+\begin{itemize}
+\item \textbf{Anwendung von CFR auf zunehmend komplexe Pokervarianten bis Twelve Card Poker.}
+Ich habe die Pipeline so umgesetzt, dass Strategien für kleine und mittlere Spiele berechnet werden können und Twelve Card Poker als Zielspiel trainiert und evaluiert werden kann.
+\item \textbf{Implementierung mehrerer CFR-Varianten für einen sinnvollen Vergleich.}
+Neben Vanilla CFR habe ich weitere Varianten implementiert, um Konvergenz- und Laufzeitunterschiede im Rahmen derselben Spielumgebung vergleichen zu können.
+\item \textbf{Evaluation über Exploitability.}
+Ich habe eine Exploitability-basierte Evaluation über Best Response implementiert und damit die Spielstärke gemittelter Strategien messbar gemacht.
+\item \textbf{Vergleich von Implementierungsvarianten.}
+Ich habe dynamische Traversierung und Tree-basierte Traversierung gegenübergestellt und die jeweiligen Trade-offs diskutiert.
+\item \textbf{Reproduzierbarkeit der Experimente.}
+Durch Skripte und feste Output-Pfade lassen sich Training und Auswertung in konsistenter Form wiederholen.
+\end{itemize}
+
+\subsubsection{Nicht erreichte Ziele}
+\begin{itemize}
+\item \textbf{Umsetzung von Sampling-Solvern als geplante Optimierungsverfahren.}
+Im Exposé war vorgesehen, neben CFR+ auch Sampling-basierte Verfahren (MCCFR) praktisch zu vergleichen.
+Die dafür implementierten Solver konnten im Projektstand jedoch nicht so stabilisiert werden, dass sie als belastbarer Vergleich in die Evaluation eingehen.
+\end{itemize}
+
+\subsection{Rückbindung an Hypothesen und Fragestellungen}
+Sofern in Kapitel~1 Hypothesen oder Forschungsfragen formuliert werden, können diese an dieser Stelle abschließend eingeordnet werden.
+Für Hypothesen, die sich direkt auf Spielgröße, Iterationslaufzeiten oder Speicherbedarf beziehen, liefern die Messartefakte aus Kapitel~6 eine belastbare Grundlage.
+Für qualitative Hypothesen über „menschenähnliche“ Taktiken ist eine saubere Belegung schwieriger, wenn ausschließlich Exploitability- und Laufzeitkurven betrachtet werden.
+In diesem Fall ist es sinnvoll, solche Aussagen als offene Frage zu markieren und in den Ausblick zu verschieben.
+

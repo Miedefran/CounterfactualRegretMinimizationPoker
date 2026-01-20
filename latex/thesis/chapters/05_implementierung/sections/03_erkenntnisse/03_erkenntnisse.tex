@@ -1,0 +1,33 @@
+\section{Erkenntnisse und Reflexion}
+
+In diesem Abschnitt fasse ich Erkenntnisse zusammen, die sich direkt aus dem Implementierungsprozess ergeben haben.
+Diese Erkenntnisse sind bewusst von den experimentellen Ergebnissen aus Kapitel~6 getrennt.
+Im Fazit in Kapitel~7 werden diese Punkte erneut aufgegriffen, dort jedoch stärker im Kontext der Zielerreichung und der Gesamtaussagen der Arbeit.
+
+\subsection{Was sich im Projektverlauf als wichtig erwiesen hat}
+Im Projektverlauf hat sich gezeigt, dass eine funktionsfähige Evaluation der wichtigste Hebel zur Sicherstellung von Korrektheit ist.
+Ohne ein verlässliches Exploitability-Signal können Implementierungsfehler lange unentdeckt bleiben.
+Darüber hinaus hat sich gezeigt, dass Architekturentscheidungen, die zunächst wie reine Implementierungsdetails wirken, spätere Arbeiten stark begrenzen können.
+
+\subsection{Lessons Learned aus der Implementierung}
+\textbf{Best Response als Diagnosetool war entscheidend.}
+Ich konnte erst nach Fertigstellung des Best Response Agents zuverlässig erkennen, ob ein Solver tatsächlich in Richtung Nash-Gleichgewicht konvergiert.
+\textbf{Fehler wurden dadurch spät sichtbar.}
+Der lange Aufwand für Public State Tree und Chance-Node-Workarounds hat dazu geführt, dass Korrektheitsprobleme in den Solvern erst spät im Projektverlauf auffielen.
+\textbf{Workaround-Schulden wachsen schnell.}
+Je mehr Sonderfalllogik im Public State Tree gesammelt wurde, desto teurer wurde es, das zugrundeliegende Architekturproblem sauber zu beheben.
+\textbf{„Dynamisch ist dumm“ war zu kurz gedacht.}
+Der Tree-basierte Ansatz kann Laufzeit sparen, führt aber bei großen Spielen schnell zu Speicherproblemen und ist daher nicht universell einsetzbar.
+\textbf{Pragmatische Entscheidungen sind manchmal notwendig.}
+Das Aufgeben der Sampling-Solver und das Ergänzen von DCFR war eine pragmatische Reaktion, um den Vergleich in Kapitel~6 weiterhin sinnvoll durchführen zu können.
+
+\subsection{Was ich beim nächsten Mal anders machen würde}
+Ich würde die Evaluationspipeline früher implementieren, um Korrektheitsprobleme der Solver früh zu erkennen.
+Ich würde die Behandlung von Chance-Ereignissen in der Game Environment so entwerfen, dass öffentliche Kartendeals explizit modelliert werden können.
+Ich würde Skalierungsfragen früher prototypisch prüfen, um Speicher- und Laufzeitgrenzen nicht erst bei sehr großen Varianten zu entdecken.
+Ich würde meine Literaturrecherche am Anfang breiter anlegen und mich nicht so früh auf wenige Standardvarianten wie CFR, CFR+ und MCCFR versteifen.
+Ich würde gezielt nach Überblicksquellen suchen, die die wichtigsten Optimierungen und Varianten systematisch einordnen, bevor ich mich auf drei konkrete Algorithmen festlege.
+Dadurch hätte ich früher gesehen, dass es neben CFR+ weitere Ansätze mit anderen Gewichtungs- und Update-Schemata gibt, die für Vergleiche und Implementierungsentscheidungen relevant sind.
+Als Einstieg in diese \glqq Landkarte\grqq{} wäre ein gut kuratierter Kursüberblick wie z.\,B. \emph{Computational Game Solving} hilfreich gewesen.\footnote{\url{https://www.cs.cmu.edu/~sandholm/cs15-888F25/}}
+Die Folien sind didaktisch deutlich schneller zugänglich als viele Originalpapers und hätten mir zu Projektbeginn Orientierung, Begriffe und Prioritäten klarer vermittelt.
+

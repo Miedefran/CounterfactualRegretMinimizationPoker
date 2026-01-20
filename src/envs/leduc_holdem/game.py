@@ -6,9 +6,10 @@ from envs.leduc_holdem.round import LeducHoldemRound
 
 class LeducHoldemGame(KuhnPokerGame):
    
-    def __init__(self, ante=1, bet_sizes=[2, 4], bet_limit=2):
+    def __init__(self, ante=1, bet_sizes=[2, 4], bet_limit=2, abstract_suits: bool = False):
         self.ante = ante
         self.bet_size = bet_sizes[0]
+        self.abstract_suits = abstract_suits
         self.dealer = LeducHoldemDealer()
         self.players = [LeducHoldemPlayer(0), LeducHoldemPlayer(1)]
         self.judger = LeducHoldemJudger()
@@ -18,24 +19,35 @@ class LeducHoldemGame(KuhnPokerGame):
         self.done = False
         self.betting_round = 0  
         self.public_card = None
-        self.current_player = 0
+        self.current_player = self.CHANCE_PLAYER
         self.pot = 0
         self.total_bets = [0, 0]
         self.starting_player = 0 
+        # Chance state is handled in base class via _chance_targets/_chance_context
+        self._chance_targets = []
+        self._chance_context = None
 
     
     def reset(self, starting_player):
         super().reset(starting_player)
+        # If suit abstraction is enabled, use rank-only deck with multiplicities.
+        # Leduc: 3 ranks, 2 copies each -> 6 cards total.
+        if getattr(self, 'abstract_suits', False):
+            self.dealer.deck = ['J', 'J', 'Q', 'Q', 'K', 'K']
+            self.dealer.shuffle()
         self.betting_round = 0
         self.public_card = None
         self.starting_player = starting_player
         self.total_bets = [self.ante, self.ante]
-        
-        self.round.start_new_round(self, starting_player, self.betting_round) 
+        # Round init happens after private deal chance resolves
         
     def step(self, action):
         
         self.state_stack.append(self.save_state())
+        if self.is_chance_node():
+            self._apply_chance_action(action)
+            return None
+        
         self.history.append(action)
     
         self.round.proceed_round(self, action)
@@ -47,10 +59,8 @@ class LeducHoldemGame(KuhnPokerGame):
         
         if self.round.is_round_complete():
             if self.betting_round == 0:
-                self.history.append('|')
-                self.deal_public_card()
-                self.betting_round = 1
-                self.round.start_new_round(self, self.starting_player, self.betting_round)
+                # Start explicit public-deal chance node
+                self._start_public_deal_chance(next_betting_round=1, num_cards=1)
                 
             else:
                 self.done = True
@@ -58,13 +68,29 @@ class LeducHoldemGame(KuhnPokerGame):
         
         return None
     
-    def deal_public_card(self):
-        self.public_card = self.dealer.deal_card()
-        self.players[0].set_public_card(self.public_card)
-        self.players[1].set_public_card(self.public_card)
+    def _start_public_deal_chance(self, next_betting_round: int, num_cards: int):
+        self._chance_targets = [('public', None)] * num_cards
+        self._chance_context = {'type': 'after_public', 'next_betting_round': next_betting_round}
+        self.current_player = self.CHANCE_PLAYER
     
     def get_legal_actions(self):
+        if self.is_chance_node():
+            return list(self.get_chance_outcomes_with_probs().keys())
         return self.round.get_legal_actions(self)
+    
+    def _after_private_deal(self):
+        # After private deal, start betting round 0
+        self.round.start_new_round(self, self.starting_player, self.betting_round)
+    
+    def _after_public_deal(self, context: dict):
+        # After public card is revealed, advance round and start next betting round
+        self.betting_round = int(context.get('next_betting_round', self.betting_round))
+        self.round.start_new_round(self, self.starting_player, self.betting_round)
+    
+    def _apply_public_card(self, card: str):
+        self.public_card = card
+        self.players[0].set_public_card(card)
+        self.players[1].set_public_card(card)
     
     def get_state(self, player_id):
         return {
@@ -95,7 +121,10 @@ class LeducHoldemGame(KuhnPokerGame):
             'round_bets': list(self.round.round_bets),
             'current_bet_size': self.round.current_bet_size,
             'done': self.done,
-            'dealer_deck': list(self.dealer.deck)
+            'dealer_deck': list(self.dealer.deck),
+            'starting_player': self.starting_player,
+            'chance_targets': list(self._chance_targets),
+            'chance_context': dict(self._chance_context) if self._chance_context is not None else None,
         }
     
     def restore_state(self, saved_state):
@@ -113,6 +142,12 @@ class LeducHoldemGame(KuhnPokerGame):
         self.round.current_bet_size = saved_state['current_bet_size']
         self.done = saved_state['done']
         self.dealer.deck = list(saved_state['dealer_deck'])
+        self.starting_player = saved_state.get('starting_player', 0)
+        self._chance_targets = list(saved_state.get('chance_targets', []))
+        self._chance_context = saved_state.get('chance_context', None)
+        # Keep player public cards consistent
+        self.players[0].set_public_card(self.public_card)
+        self.players[1].set_public_card(self.public_card)
     
     def get_info_set_key(self, player_id):
         return (

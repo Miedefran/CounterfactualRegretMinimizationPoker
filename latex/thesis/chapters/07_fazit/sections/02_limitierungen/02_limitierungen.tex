@@ -1,0 +1,23 @@
+\section{Limitierungen}
+In diesem Abschnitt formuliere ich die wichtigsten Limitierungen der Arbeit und grenze die Aussagekraft der Ergebnisse ein.
+Die Punkte sind nicht als Entschuldigung zu verstehen, sondern als klare Beschreibung der Bedingungen, unter denen die gezeigten Resultate gelten.
+
+\subsection{Iterationslaufzeit als primäre Skalierungsgrenze}
+Die wichtigste praktische Grenze ist die Laufzeit pro Iteration bei großen Spielen.
+Mit zunehmender Spielgröße wird bereits eine vollständige Traversierung in Python so teuer, dass Training in vertretbarer Zeit nicht mehr möglich ist.
+Als Größenordnung ergibt sich für Rhode Island Hold'em in meinem Projektstand eine Iterationslaufzeit in der Größenordnung von etwa 15 Stunden.
+
+\subsection{Speicherbedarf bei Tree-basierten Varianten}
+Tree-basierte Solver reduzieren Overhead durch Zustandsübergänge, benötigen aber Speicher für den vollständigen Game Tree.
+Bei großen Varianten kann dadurch nicht nur Training, sondern bereits das Bauen und Halten der Baumstruktur praktisch begrenzt werden.
+
+\subsection{Evaluation hängt von PST und Best Response ab}
+Exploitability ist nur so zuverlässig wie die Implementierung der Best-Response-Berechnung und des Public State Trees.
+Fehler oder Inkonsistenzen in dieser Pipeline würden sich direkt auf die gemessene Exploitability auswirken.
+Als Plausibilitätscheck kann für Leduc zusätzlich der erwartete Spielwert betrachtet werden, bei dem sich ein konsistentes Zero-Sum-Verhalten als \(+83\,\mathrm{mbb/g}\) bzw.\ \(-83\,\mathrm{mbb/g}\) zeigt.
+
+\subsection{Messdichte und Zeitmessungen}
+Für größere Spiele sind Best-Response-Messpunkte nur sparsam möglich, weil die Evaluation zusätzliche Laufzeit verursacht.
+Zeitplots sind grundsätzlich als Orientierung zu interpretieren, weil Hintergrundlast und Hardwareunterschiede die absolute Wall-Clock-Time beeinflussen können.
+Die betrachteten Volltraversierungs-Solver sind in meinem Setup weitgehend deterministisch, weshalb keine Varianzabschätzung über Seeds im klassischen Sinn erfolgt.
+

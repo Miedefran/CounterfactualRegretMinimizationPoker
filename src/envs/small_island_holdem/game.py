@@ -20,6 +20,10 @@ class SmallIslandHoldemGame(LeducHoldemGame):
         
     def step(self, action):
         self.state_stack.append(self.save_state())
+        if self.is_chance_node():
+            self._apply_chance_action(action)
+            return None
+        
         self.history.append(action)
     
         self.round.proceed_round(self, action)
@@ -31,23 +35,21 @@ class SmallIslandHoldemGame(LeducHoldemGame):
         
         if self.round.is_round_complete():
             if self.betting_round == 0:
-                self.history.append('|')
-                self.deal_public_card()
-                self.betting_round = 1
-                self.round.start_new_round(self, self.starting_player, self.betting_round)
+                self._start_public_deal_chance(next_betting_round=1, num_cards=1)
             elif self.betting_round == 1:
-                self.history.append('|')
-                self.deal_public_card()
-                self.betting_round = 2
-                self.round.start_new_round(self, self.starting_player, self.betting_round)
+                self._start_public_deal_chance(next_betting_round=2, num_cards=1)
             else:
                 self.done = True
                 return self.judger.judge(self.players, self.history, self.current_player, self.pot, self.total_bets)
         
         return None
-    
-    def deal_public_card(self):
-        card = self.dealer.deal_card()
+ 
+    def _start_public_deal_chance(self, next_betting_round: int, num_cards: int):
+        self._chance_targets = [('public', None)] * num_cards
+        self._chance_context = {'type': 'after_public', 'next_betting_round': next_betting_round}
+        self.current_player = self.CHANCE_PLAYER
+
+    def _apply_public_card(self, card: str):
         self.public_cards.append(card)
         self.players[0].public_cards.append(card)
         self.players[1].public_cards.append(card)
@@ -82,7 +84,10 @@ class SmallIslandHoldemGame(LeducHoldemGame):
             'round_bets': list(self.round.round_bets),
             'current_bet_size': self.round.current_bet_size,
             'done': self.done,
-            'dealer_deck': list(self.dealer.deck)
+            'dealer_deck': list(self.dealer.deck),
+            'starting_player': self.starting_player,
+            'chance_targets': list(self._chance_targets),
+            'chance_context': dict(self._chance_context) if self._chance_context is not None else None,
         }
     
     def restore_state(self, saved_state):
@@ -102,6 +107,9 @@ class SmallIslandHoldemGame(LeducHoldemGame):
         self.round.current_bet_size = saved_state['current_bet_size']
         self.done = saved_state['done']
         self.dealer.deck = list(saved_state['dealer_deck'])
+        self.starting_player = saved_state.get('starting_player', 0)
+        self._chance_targets = list(saved_state.get('chance_targets', []))
+        self._chance_context = saved_state.get('chance_context', None)
     
     def get_info_set_key(self, player_id):
         return (
