@@ -54,12 +54,32 @@ def build_one(game: str, abstract_suits: bool, force: bool) -> None:
         save_name = "small_island_holdem"
     elif game == "leduc":
         config = GAME_CONFIGS["leduc"]
-        game_obj = LeducHoldemGame(ante=config["ante"], bet_sizes=config["bet_sizes"], bet_limit=config["bet_limit"])
+        # IMPORTANT: for abstracted trees, the game must also run in abstract_suits mode,
+        # otherwise the chance outcomes (deck) stay suit-specific and the tree size will match
+        # the non-abstracted build.
+        try:
+            game_obj = LeducHoldemGame(
+                ante=config["ante"],
+                bet_sizes=config["bet_sizes"],
+                bet_limit=config["bet_limit"],
+                abstract_suits=abstract_suits,
+            )
+        except TypeError:
+            # Backwards compatibility if a game variant doesn't support this flag
+            game_obj = LeducHoldemGame(ante=config["ante"], bet_sizes=config["bet_sizes"], bet_limit=config["bet_limit"])
         combo_gen = LeducHoldemCombinationsAbstracted() if abstract_suits else LeducHoldemCombinations()
         save_name = "leduc"
     elif game == "twelve_card_poker":
         config = GAME_CONFIGS["twelve_card_poker"]
-        game_obj = TwelveCardPokerGame(ante=config["ante"], bet_sizes=config["bet_sizes"], bet_limit=config["bet_limit"])
+        try:
+            game_obj = TwelveCardPokerGame(
+                ante=config["ante"],
+                bet_sizes=config["bet_sizes"],
+                bet_limit=config["bet_limit"],
+                abstract_suits=abstract_suits,
+            )
+        except TypeError:
+            game_obj = TwelveCardPokerGame(ante=config["ante"], bet_sizes=config["bet_sizes"], bet_limit=config["bet_limit"])
         combo_gen = TwelveCardPokerCombinationsAbstracted() if abstract_suits else TwelveCardPokerCombinations()
         save_name = "twelve_card_poker"
     else:
