@@ -9,19 +9,23 @@ Ein prominentes Beispiel für ein Spiel mit unvollständiger Information ist Pok
 
 %Eigenes Interesse + GTO Populär 
 Ich habe im letzten Jahr ein ausgeprägtes Interesse an dem Spiel No-Limit Texas Hold'em entwickelt. 
-Wenn man sich mit Strategien für dieses Spiel auseinandersetzt, stößt man schnell auf ein Konzept, das „Game Theory Optimized“ (kurz: GTO) genannt wird.
+Wenn man sich mit Strategien für dieses Spiel auseinandersetzt, stößt man schnell auf ein Konzept, das „Game Theory Optimized“ (GTO) genannt wird.
 Dieses Konzept hat innerhalb der letzten Jahre immer mehr an Aufmerksamkeit und Relevanz gewonnen und ist heutzutage kaum noch aus der Pokerwelt wegzudenken.\\
 Eine GTO-Strategie ist im Grunde eine spieltheoretisch optimale Lösung, welche durch den Einsatz von Algorithmen approximiert wird. 
-Diese Strategien sind für Spiele mit einem enorm großen Zustandsraum, wie No Limit Hold'em, o komplex, dass sie von Menschen in ihrer vollständigen Form nicht vollständig erlernt und konsistent angewendet werden können.
+Diese Strategien sind für Spiele mit einem enorm großen Zustandsraum, wie No Limit Hold'em, so komplex, dass sie von Menschen nicht vollständig erlernt und konsistent angewendet werden können.
 Pokerprofis sind allerdings in der Lage, diese Strategien in abstrahierter Form zu adaptieren, indem sie grundlegende strategische Prinzipien und Verhaltensmuster erkennen und anschließend auf ihre Spielsituationen anwenden.
-Die intensive Beschäftigung mit GTO-Strategien in meiner Freizeit weckte mein Interesse an den algorithmischen Grundlagen, die zur Berechnung solcher Strategien verwendet werden.
+Die intensive Auseinandersetzung mit GTO-Strategien in meiner Freizeit weckte mein Interesse an den algorithmischen Grundlagen, die zur Berechnung solcher Strategien verwendet werden.
 
 %Übergang GTO zu CFR
-Ein zentraler Algorithmus, welcher in diesem Bereich verwendet wird, ist Counterfactual Regret Minimization, kurz CFR.
-Seit seiner Einführung durch Zinkevich et al. im Jahr 2007 \cite{zinkevich2007regret} hat sich CFR als einer der erfolgreichsten Ansätze etabliert und bildet die Grundlage für mehrere bahnbrechende Poker-KIs.\\
-Bowling et al. zeigten mit Cepheus, dass CFR in der Lage ist, Heads-Up Limit Texas Hold'em zu lösen \cite{bowling2015heads}.
-Brown und Sandholm demonstrierten mit Libratus, dass CFR-basierte Ansätze in der Lage sind, professionelle Spieler in Heads-Up No-Limit Texas Hold'em zu schlagen \cite{brown2017superhuman}. \\
-Mit Pluribus wurde gezeigt, dass diese Methoden auch in Multiplayer-Szenarien erfolgreich sind \cite{brown2019superhuman}. 
+Ein zentraler Algorithmus welcher verwendet wird um solche Strategien zu finden ist Counterfactual Regret Minimization (CFR).\\
+Seit seiner Einführung durch Zinkevich et al. (2007) \cite{zinkevich2007regret} hat sich CFR als Standardansatz etabliert und bildet die Grundlage für die erfolgreichsten Poker-KIs.\\
+Zu den größten Erfolgen gehören dabei:\\
+1. Cepheus \cite{bowling2015heads,tammelin2015solving}\\
+Mit Cepheus wurde das Spiel Heads-Up Limit Texas Hold’em erstmals gelöst.\\
+2. Libratus \cite{brown2017superhuman,brown2017libratusDemo}\\
+Libratus erweiterte diesen Erfolg dann auf die No-Limit Variante.\\
+3. Pluribus \cite{brown2019superhuman}. \\
+Durch Pluribus wurde gezeigt, dass CFR basierte Ansätze auch in Mehrspieler Szenarien erfolgreich sein können.\\
 
 
 

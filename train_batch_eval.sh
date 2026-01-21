@@ -29,7 +29,7 @@ TWELVE_ITERS=10000
 TWELVE_SCHEDULE="custom_v2"
 
 # Small Island Hold'em (Demonstrator)
-SMALL_ISLAND_ITERS=1000
+SMALL_ISLAND_ITERS=2500
 SMALL_ISLAND_SCHEDULE="very_very_large_games"
 
 # Kuhn Poker

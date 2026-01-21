@@ -187,7 +187,7 @@ def compute_payoff(game_name, our_info, opp_info, pot, player_bets, player_id, n
     return result
 
 
-def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, r_opp):
+def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, r_opp, our_fixed_card=None):
     t_start = time.time()
     
     node = tree['public_states'].get(public_hist)
@@ -208,13 +208,13 @@ def traverse_public_tree(game_name, player_id, tree, avg_strategy, public_hist, 
         return terminal_value(game_name, player_id, node, r_opp)
     
     elif node_type == 'chance':
-        return chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp)
+        return chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp, our_fixed_card)
     
     elif node_type == 'choice':
         if node['player'] == player_id:
-            return our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp)
+            return our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp, our_fixed_card)
         else:
-            return opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp)
+            return opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp, our_fixed_card)
     
     raise ValueError(f"Unknown node type: {node_type}")
 
@@ -369,7 +369,7 @@ def terminal_value(game_name, player_id, node, r_opp):
     return result
 
 
-def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp):
+def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp, our_fixed_card=None):
     t_start = time.time()
     
     our_infosets = node[f'player{player_id}_info_sets']
@@ -379,19 +379,22 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
     result = [0.0] * len(our_infosets)
     num_chance_outcomes = len(children)
 
-    # IMPORTANT:
-    # For public-tree BR, chance probabilities are generally *conditional on private cards*.
-    # Example Leduc (6-card deck): after private deal (2 cards removed), public card is uniform
-    # on remaining 4 cards => p = 1/(6-2) = 1/4 for each physical outcome that is not blocked.
+    # Public-tree chance nodes store an *unconditional* outcome distribution (because private deals
+    # are not explicitly represented in the public tree). For BR we must condition on BOTH private
+    # cards to get correct probabilities, especially for non-abstracted Leduc / Small Island.
     #
-    # Therefore, using node['chance_probs'] (which sums to 1 over all 6 outcomes) is NOT correct.
-    # We compute the effective conditional chance probability here.
+    # We do NOT normalize `r_opp` across outcomes here. Instead we propagate unnormalized reach
+    # weights: r_child(opp_card) = r_parent(opp_card) * P(outcome | our_card, opp_card, public_hist).
+    base_probs = node.get('chance_probs', {}) or {}
+    if not base_probs:
+        # Fallback: treat outcomes as uniform.
+        base_probs = {o: 1.0 / num_chance_outcomes for o in children.keys()} if num_chance_outcomes > 0 else {}
 
-    if 'leduc' in game_name.lower():
-        # Leduc deck has 6 physical cards; 2 are private
-        chance_prob = 1.0 / (6 - 2) if num_chance_outcomes > 0 else 0.0
-    else:
-        chance_prob = 1.0 / num_chance_outcomes if num_chance_outcomes > 0 else 0.0
+    # our_fixed_card is required for correct conditioning. In the current BR setup we evaluate one
+    # our private card at a time in `compute_best_response_value`, so we expect it to be passed.
+    if our_fixed_card is None and our_infosets:
+        # Best-effort fallback (keeps function usable in isolation).
+        our_fixed_card = our_infosets[0][0]
 
     parent_card_to_r_opp = {info[0]: r for info, r in zip(opp_infosets, r_opp)}
 
@@ -408,12 +411,33 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
         has_mass = False
         for info in child_opp_infosets:
             child_card = info[0]
-            if child_card == outcome: 
+            # Physical card collision: opponent cannot hold the revealed public card.
+            if child_card == outcome:
                 r_child.append(0.0)
                 continue
 
             parent_r = parent_card_to_r_opp.get(child_card, 0.0)
-            val = parent_r * chance_prob
+            if parent_r == 0.0:
+                r_child.append(0.0)
+                continue
+
+            # Conditional public chance probability given BOTH private cards.
+            # If the public outcome equals one of the private cards, it is impossible.
+            if outcome == our_fixed_card or outcome == child_card:
+                r_child.append(0.0)
+                continue
+            p_out = float(base_probs.get(outcome, 0.0))
+            if p_out <= 0.0:
+                r_child.append(0.0)
+                continue
+            p_our = float(base_probs.get(our_fixed_card, 0.0))
+            p_opp = float(base_probs.get(child_card, 0.0))
+            denom = 1.0 - p_our - p_opp
+            if denom <= 1e-15:
+                r_child.append(0.0)
+                continue
+            p_cond = p_out / denom
+            val = parent_r * p_cond
             r_child.append(val)
             if val > 0: has_mass = True
 
@@ -427,7 +451,9 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
         return result
 
     for outcome, child_hist, child_our_infosets, r_child in tasks:
-        v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
+        v_child = traverse_public_tree(
+            game_name, player_id, tree, avg_strategy, child_hist, r_child, our_fixed_card=our_fixed_card
+        )
 
         t_merge_start = time.time()
         card_to_child_value = {info[0]: val for info, val in zip(child_our_infosets, v_child)}
@@ -444,7 +470,7 @@ def chance_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_
     return result
 
 
-def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp):
+def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp, our_fixed_card=None):
     t_start = time.time()
     
     our_infosets = node[f'player{player_id}_info_sets']
@@ -469,7 +495,9 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
     action_values = {}
     
     for action, child_hist, child_our_infosets in tasks:
-        v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_opp)
+        v_child = traverse_public_tree(
+            game_name, player_id, tree, avg_strategy, child_hist, r_opp, our_fixed_card=our_fixed_card
+        )
         action_values[action] = (v_child, child_our_infosets)
     
     if not action_values:
@@ -499,7 +527,7 @@ def our_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist
     return result
 
 
-def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp):
+def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public_hist, r_opp, our_fixed_card=None):
     t_start = time.time()
     
     our_infosets = node[f'player{player_id}_info_sets']
@@ -531,7 +559,9 @@ def opponent_choice_value(game_name, player_id, tree, avg_strategy, node, public
         for k, r_val in enumerate(r_opp):
             r_child.append(r_val * probs[k])
         
-        v_child = traverse_public_tree(game_name, player_id, tree, avg_strategy, child_hist, r_child)
+        v_child = traverse_public_tree(
+            game_name, player_id, tree, avg_strategy, child_hist, r_child, our_fixed_card=our_fixed_card
+        )
         
         t_merge_start = time.time()
         child_node = tree['public_states'].get(child_hist)
@@ -609,7 +639,9 @@ def compute_best_response_value(game_name, player_id, tree, avg_strategy, root_h
         for j in valid_opp_indices:
             r_opp_conditional[j] = 1.0 / num_valid
         
-        v_vector = traverse_public_tree(game_name, player_id, tree, avg_strategy, root_hist, r_opp_conditional)
+        v_vector = traverse_public_tree(
+            game_name, player_id, tree, avg_strategy, root_hist, r_opp_conditional, our_fixed_card=our_card
+        )
         total_value += (1.0 / len(our_infosets)) * v_vector[i]
     
     t_total = time.time() - t_total_start
