@@ -335,6 +335,12 @@ class BestResponseTracker:
         Returns:
             True wenn evaluiert werden soll, sonst False
         """
+        # Designentscheidung: Wir evaluieren IMMER bei Iteration 1, unabhängig vom Schedule-Typ.
+        # Das macht Runs vergleichbarer (immer ein "Baseline"-Messpunkt) und verhindert,
+        # dass ein Schedule mit großem Intervall den ersten BR-Punkt sehr spät setzt.
+        if iteration == 1:
+            return True
+
         if self.schedule_type == "fixed":
             return iteration % self.interval == 0
         

@@ -22,20 +22,20 @@ RUN=(uv run python src/training/train.py)
 
 # Leduc (Benchmark im Haupttext)
 LEDUC_ITERS=50000
-LEDUC_SCHEDULE="custom_v2"
+LEDUC_SCHEDULE="standard"
 
 # Twelve Card
 TWELVE_ITERS=10000
-TWELVE_SCHEDULE="custom_v2"
+TWELVE_SCHEDULE="standard"
 
 # Small Island Hold'em (Demonstrator)
 SMALL_ISLAND_ITERS=2500
-SMALL_ISLAND_SCHEDULE="very_very_large_games"
+SMALL_ISLAND_SCHEDULE="low_density"
 
 # Kuhn Poker
 KUHN_GAME="kuhn_case2"
 KUHN_ITERS=50000
-KUHN_SCHEDULE="custom_v2"
+KUHN_SCHEDULE="standard"
 
 ###############################################################################
 # Helper
@@ -137,7 +137,7 @@ echo "DONE. Modelle liegen unter data/models/<game>/<algorithm>/<iters>/"
 
 : <<'COMMENT'
 uv run python src/training/train.py small_island_holdem 2000 discounted_cfr_with_flat_tree \
-  --br-eval-schedule very_large_games \
+  --br-eval-schedule low_density \
   --alternating-updates true \
   --partial-pruning false \
   --early-stop-exploitability-mb 1

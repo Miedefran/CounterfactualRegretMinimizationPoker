@@ -13,19 +13,19 @@ RUN=(uv run python src/training/train.py)
 # Kuhn (nicht abstracted)
 KUHN_GAME="kuhn_case2"
 KUHN_ITERS=1
-KUHN_SCHEDULE="custom_v2"
+KUHN_SCHEDULE="standard"
 
 # Leduc (suit abstracted ist Default in train.py)
 LEDUC_ITERS=1
-LEDUC_SCHEDULE="custom_v2"
+LEDUC_SCHEDULE="standard"
 
 # Twelve Card (suit abstracted ist Default in train.py)
 TWELVE_ITERS=1
-TWELVE_SCHEDULE="custom_v2"
+TWELVE_SCHEDULE="standard"
 
 # Small Island (nicht abstracted)
 SMALL_ISLAND_ITERS=1
-SMALL_ISLAND_SCHEDULE="very_very_large_games"
+SMALL_ISLAND_SCHEDULE="low_density"
 
 ###############################################################################
 # Helper
