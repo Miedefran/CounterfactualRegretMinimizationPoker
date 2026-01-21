@@ -67,10 +67,10 @@ Modelle werden unter `data/models/...` gespeichert.
 
 ## 3) Evaluation via Best Response (während des Trainings)
 
-BR/Eploitability läuft **während des Trainings**, wenn du z.B. setzt:
+BR/Exploitability läuft **während des Trainings**, wenn du z.B. setzt:
 
 ```bash
---br-eval-schedule custom_v2
+--br-eval-schedule standard
 ```
 
 Dabei werden pro Eval-Punkt gespeichert:
@@ -82,6 +82,10 @@ Dabei werden pro Eval-Punkt gespeichert:
 - **`--br-eval-schedule <name|int|json>`**: aktiviert BR-Evaluation während Training  
   - `<int>`: fester Abstand (z.B. `100`)  
   - `<name>`: Eintrag aus `config/br_eval_schedules.json` (z.B. `standard`, `low_density`)
+  - **Hinweis**: unabhängig vom Schedule wird **immer bei Iteration 1** evaluiert.
+  - **Schedules**:
+    - **`standard`**: “normal”/dichterer Default fürs Plotten/Training
+    - **`low_density`**: wenige Evals (sparsam), z.B. für kurze Runs oder teure BRs
 - **`--early-stop-exploitability-mb <float>`**: bricht ab, sobald eine BR-Eval Exploitability < Schwelle (mb/g) ist  
   - funktioniert nur, wenn `--br-eval-schedule` aktiv ist
 - **`--no-suit-abstraction`**: deaktiviert Suit-Abstraction für `leduc` und `twelve_card_poker`  
