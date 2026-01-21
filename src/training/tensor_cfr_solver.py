@@ -248,9 +248,10 @@ class TensorCFRSolver:
         
         return current_strategy
 
-    def train(self, iterations, br_tracker=None, print_interval=100):
+    def train(self, iterations, br_tracker=None, print_interval=100, stop_exploitability_mb=None):
         print(f"Starting Training for {iterations} iterations on {self.device}...")
         start_time = time.time()
+        stopped_early = False
         
         num_nodes = len(self.tree.node_types)
         
@@ -276,10 +277,22 @@ class TensorCFRSolver:
                     current_avg_strategy = self.get_average_strategy()
                     br_tracker.evaluate_and_add(current_avg_strategy, i, start_time=start_time)
                     br_tracker.last_eval_iteration = i
+                    if (
+                        stop_exploitability_mb is not None
+                        and br_tracker.values
+                        and float(br_tracker.values[-1][1]) < float(stop_exploitability_mb)
+                    ):
+                        print(
+                            f"Early stop: Exploitability {float(br_tracker.values[-1][1]):.6f} mb/g "
+                            f"< {float(stop_exploitability_mb):.6f} mb/g (Iteration {i})."
+                        )
+                        stopped_early = True
+                        break
         
-        if br_tracker is not None:
+        if br_tracker is not None and not stopped_early:
             current_avg_strategy = self.get_average_strategy()
-            br_tracker.evaluate_and_add(current_avg_strategy, iterations, start_time=start_time)
+            if br_tracker.last_eval_iteration != int(self.t):
+                br_tracker.evaluate_and_add(current_avg_strategy, int(self.t), start_time=start_time)
         
         total_time = time.time() - start_time
         

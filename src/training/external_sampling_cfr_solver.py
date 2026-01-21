@@ -131,7 +131,7 @@ class ExternalSamplingCFRSolver:
         if info_set_key not in self.strategy_sum:
             self.strategy_sum[info_set_key] = {a: 0.0 for a in legal_actions}
     
-    def train(self, iterations, br_tracker=None, print_interval=100):
+    def train(self, iterations, br_tracker=None, print_interval=100, stop_exploitability_mb=None):
         """
         Training mit External Sampling.
         
@@ -140,6 +140,7 @@ class ExternalSamplingCFRSolver:
         print_interval: Intervall für Print-Statements (Standard: 100)
         """
         start_time = time.time()
+        stopped_early = False
         
         for i in range(iterations):
             self.cfr_iteration()
@@ -153,11 +154,23 @@ class ExternalSamplingCFRSolver:
                 current_avg_strategy = self.get_average_strategy()
                 br_tracker.evaluate_and_add(current_avg_strategy, i + 1, start_time=start_time)
                 br_tracker.last_eval_iteration = i + 1
+                if (
+                    stop_exploitability_mb is not None
+                    and br_tracker.values
+                    and float(br_tracker.values[-1][1]) < float(stop_exploitability_mb)
+                ):
+                    print(
+                        f"Early stop: Exploitability {float(br_tracker.values[-1][1]):.6f} mb/g "
+                        f"< {float(stop_exploitability_mb):.6f} mb/g (Iteration {i + 1})."
+                    )
+                    stopped_early = True
+                    break
         
         # Finale Best Response Evaluation
-        if br_tracker is not None:
+        if br_tracker is not None and not stopped_early:
             current_avg_strategy = self.get_average_strategy()
-            br_tracker.evaluate_and_add(current_avg_strategy, iterations, start_time=start_time)
+            if br_tracker.last_eval_iteration != self.iteration_count:
+                br_tracker.evaluate_and_add(current_avg_strategy, self.iteration_count, start_time=start_time)
         
         total_time = time.time() - start_time
         

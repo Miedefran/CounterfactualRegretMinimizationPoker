@@ -109,6 +109,13 @@ def main():
                        help='Beta Parameter für Discounted CFR (Standard: 0.0)')
     parser.add_argument('--dcfr-gamma', type=float, default=2.0,
                        help='Gamma Parameter für Discounted CFR (Standard: 2.0)')
+    parser.add_argument(
+        '--early-stop-exploitability-mb',
+        type=float,
+        default=None,
+        help='Bricht das Training ab, sobald eine BR-Evaluation Exploitability < Schwelle (mb/g) erreicht. '
+             'Funktioniert nur, wenn --br-eval-schedule aktiv ist.',
+    )
     args = parser.parse_args()
     config = GAME_CONFIGS[args.game]
 
@@ -273,7 +280,18 @@ def main():
             br_tracker = None
     
     print_interval = get_print_interval(args.iterations)
-    solver.train(args.iterations, br_tracker=br_tracker, print_interval=print_interval)
+    if args.early_stop_exploitability_mb is not None and br_tracker is None:
+        print("WARNING: --early-stop-exploitability-mb gesetzt, aber BR-Eval ist deaktiviert -> kein Early-Stop möglich.")
+
+    solver.train(
+        args.iterations,
+        br_tracker=br_tracker,
+        print_interval=print_interval,
+        stop_exploitability_mb=args.early_stop_exploitability_mb,
+    )
+
+    # Wenn Early-Stop aktiv war, können weniger Iterationen als angefordert gelaufen sein.
+    actual_iterations = int(getattr(solver, "iteration_count", getattr(solver, "t", args.iterations)))
     
     # Für tensor_cfr: Unterscheide zwischen cfr und cfr_plus in Dateinamen
     # Für cfr_with_tree: Unterscheide zwischen alternierend und simultan
@@ -321,7 +339,7 @@ def main():
     if use_suit_abstraction and args.game in {'leduc', 'twelve_card_poker'}:
         algorithm_for_path = f"{algorithm_for_path}_abstracted"
     
-    filepath = get_model_path(args.game, args.iterations, algorithm_for_path)
+    filepath = get_model_path(args.game, actual_iterations, algorithm_for_path)
     solver.save_gzip(filepath)
     
     # Best Response Plotting und Speichern
