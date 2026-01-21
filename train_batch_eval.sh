@@ -135,4 +135,10 @@ train_one "small_island_holdem" "$SMALL_ISLAND_ITERS" discounted_cfr_with_flat_t
 echo
 echo "DONE. Modelle liegen unter data/models/<game>/<algorithm>/<iters>/"
 
-
+: <<'COMMENT'
+uv run python src/training/train.py small_island_holdem 2000 discounted_cfr_with_flat_tree \
+  --br-eval-schedule very_large_games \
+  --alternating-updates true \
+  --partial-pruning false \
+  --early-stop-exploitability-mb 1
+COMMENT
