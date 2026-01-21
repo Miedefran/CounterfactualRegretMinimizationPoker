@@ -1,28 +1,32 @@
 \subsection{Counterfactual Regret}
 Die zentrale Idee welche Zinkevich et. al. in ihrem Paper "Regret Minimization in Games with Incomplete Information" präsentieren ist, den gesamten Regret Wert in eine Menge aus additiven Termen zu zerlegen.
 Diese Terme können dann unabhängig voneinander minimiert werden.
-Insbesondere wird ein völlig neues regret Konzept mit dem Namen \glqq Counterfactual Regret \grqq eingeführt, welches für jedes Informationsset definiert ist.
+Insbesondere wird ein völlig neues Regret Konzept mit dem Namen \emph{Counterfactual Regret} eingeführt, welches für jedes Informationsset definiert ist.
 
-Um das Konzept zu erläutern, betrachten wir zunächst ein Informationsset $I \in \mathcal{I}_i$.
-Die \emph{counterfactual utility} $u_i(\sigma, I)$ ist der erwartete Nutzen unter der Bedingung, dass $I$ erreicht wird und alle Spieler mit $\sigma$ agieren, während Spieler $i$ so agiert um den Zustand $I$ zu erreichen.
+Um das Konzept zu erläutern, wird ein Informationsset $I \in \mathcal{I}_i$ betrachtet.\\
+Die \emph{Counterfactual Utility} $u_i(\sigma, I)$ ist der erwartete Nutzen unter der Bedingung, dass $I$ erreicht wird und alle Spieler mit $\sigma$ agieren, während Spieler $i$ so agiert um den Zustand $I$ zu erreichen.
 Mit $\pi^\sigma(h, h')$ als Wahrscheinlichkeit, von $h$ nach $h'$ zu gelangen, gilt
 \begin{equation}
 u_i(\sigma, I) = \frac{\sum_{h \in I,\, h' \in Z} \pi_{-i}^\sigma(h)\,\pi^\sigma(h, h')\,u_i(h')}{\pi_{-i}^\sigma(I)}.
 \end{equation}
 (\cite[Eq.~5]{zinkevich2007regret})
 
-Für alle $a \in A(I)$ definieren wir $\sigma|_{I \to a}$ als ein Strategieprofil welches identisch zu $\sigma$ ist, ausser das Spieler $i$ immer Aktion $a$ ausführt wenn er Informationsset $I$ erreicht.
-Der \emph{immediate counterfactual regret} ist
+Für alle $a \in A(I)$ ist $\sigma|_{I \to a}$ ein Strategieprofil, das identisch zu $\sigma$ ist, außer dass Spieler $i$ immer die Aktion $a$ ausführt, wenn er das Informationsset $I$ erreicht.
+Der \emph{Immediate Counterfactual Regret} ist
 \begin{equation}
 R_{i,\mathrm{imm}}^{T}(I) = \frac{1}{T}\sum_{t=1}^{T} \max_{a \in A(I)} \pi_{-i}^{\sigma^t}(I)\,\bigl(u_i(\sigma^t|_{I \to a}, I) - u_i(\sigma^t, I)\bigr).
 \end{equation}
 (\cite[Eq.~6]{zinkevich2007regret})
-Dieser Term misst den Regret im Informationsset $I$, gewichtet mit der \emph{counterfactual probability}, dass $I$ erreicht werden würde, wenn Spieler $i$ es erzwingen wollte.
-Da für uns hauptsächlich die positiven regret Werte relevant sind, definieren wir die positiven immediate counterfactual regret Werte als \begin{equation} R_{i,\mathrm{imm}}^{T,+}(I) = \max\!\bigl(R_{i,\mathrm{imm}}^{T}(I), 0\bigr)\end{equation}
+
+Dieser Term misst den Regret im Informationsset $I$, gewichtet mit der \emph{Counterfactual Probability}, dass $I$ erreicht werden würde, wenn Spieler $i$ es erzwingen wollte.
+Da hauptsächlich die positiven Regretwerte relevant sind, sind die positiven Immediate Counterfactual Regret Werte definiert als
+\begin{equation}
+R_{i,\mathrm{imm}}^{T,+}(I) = \max\!\bigl(R_{i,\mathrm{imm}}^{T}(I), 0\bigr).
+\end{equation}
 
 Theorem 3 beschreibt die erste große Erkenntnis des Papers. 
 \begin{equation}
     R_i^T \le \sum_{I \in \mathcal{I}_i} R_{i,\mathrm{imm}}^{T,+}(I)
 \end{equation}
 (\cite[Thm.~3]{zinkevich2007regret})\\
-Das heißt, wenn wir den immediate counterfactual regret minimieren, dann minimieren wir auch den average overall regret.
+Das heißt, wenn der Immediate Counterfactual Regret minimiert wird, dann wird auch der Average Overall Regret minimiert.

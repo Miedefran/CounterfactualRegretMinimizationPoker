@@ -1,18 +1,15 @@
 \subsection{Outcome Sampling MCCFR}
 
-Outcome Sampling MCCFR sampelt in jeder Iteration nur eine einzelne terminal history.
-Jeder Block $Q \in Q$ enthält genau eine terminal history: $\forall Q \in Q: |Q| = 1$.
+Outcome Sampling MCCFR sampelt in jeder Iteration genau eine terminale Historie.
+Jeder Block $Q_j \in Q$ enthält eine terminale Historie, also $|Q_j| = 1$.
 
-Die Sampling-Wahrscheinlichkeiten $q_j$ müssen eine Verteilung über die terminal histories spezifizieren.
-Dazu wird eine \emph{sampling policy} $\sigma'$ verwendet, sodass $q(z) = \pi^{\sigma'}(z)$ gilt.
-Jede Wahl einer sampling policy induziert eine bestimmte Verteilung über die Blockwahrscheinlichkeiten.
-Für $\sigma'_i(a|I) > \epsilon$ mit $\epsilon > 0$ existiert ein $\delta > 0$ mit $q(z) > \delta$, sodass der Nenner $\pi^{\sigma'}(z)$ in der Formel für $w_I$ nicht null wird.
+Die Samplingwahrscheinlichkeiten $q_j$ spezifizieren eine Verteilung über terminale Historien.
+Diese wird über eine \emph{Sampling Policy} $\sigma'$ festgelegt, sodass $q(z) = \pi^{\sigma'}(z)$ gilt.
+Damit die Gewichtung nicht ausartet, wird $q(z)\ge \delta>0$ angenommen. Praktisch lässt sich dies durch Exploration sicherstellen, z.\,B.\ durch eine Untergrenze $\sigma'_i(a|I)\ge \epsilon>0$.
 
-Der Algorithmus funktioniert, indem eine terminal history $z$ gemäß der sampling policy $\sigma'$ gesampelt wird und dabei $\pi^{\sigma'}(z)$ gespeichert wird.
-Die einzelne History wird dann vorwärts traversiert, um für jeden Präfix $h$ von $z$ die Wahrscheinlichkeit $\pi_i^\sigma(h)$ zu berechnen, mit der Spieler $i$ diesen Präfix erreicht.
-Anschließend wird die History rückwärts traversiert, um für jeden Präfix $h$ die Wahrscheinlichkeit $\pi_i^\sigma(h, z)$ zu berechnen, mit der Spieler $i$ die verbleibenden Aktionen der History spielt.
+In jeder Iteration wird eine terminale Historie $z \sim \sigma'$ gesampelt; aktualisiert werden nur die Informationssets entlang von $z$.
 
-Während der Rückwärtstraversierung werden die sampled counterfactual regrets an jedem besuchten Informationsset berechnet und zu den Gesamtregrets hinzugefügt:
+Während der Rückwärtstraversierung entlang von $z$ werden die Sampled Counterfactual Regrets an jedem besuchten Informationsset berechnet und zu den Gesamtregrets hinzugefügt:
 \begin{equation}
 \tilde{r}(I, a) = \begin{cases}
 w_I \cdot (1 - \sigma(a|z[I])) & \text{falls } (z[I]a) \sqsubset z \\
@@ -24,3 +21,6 @@ wobei
 w_I = \frac{u_i(z) \pi_{-i}^\sigma(z) \pi_i^\sigma(z[I]a, z)}{\pi^{\sigma'}(z)}.
 \end{equation}
 (\cite[Eq.~10]{lanctot2009monte})
+
+$w_I$ ist der Importance-Sampling-Faktor für die Samplingwahrscheinlichkeit $\pi^{\sigma'}(z)$. 
+Die Bedingung $(z[I]a)\sqsubset z$ bedeutet, dass auf der gesampelten Historie nach dem Präfix $z[I]$ die Aktion $a$ gespielt wurde.

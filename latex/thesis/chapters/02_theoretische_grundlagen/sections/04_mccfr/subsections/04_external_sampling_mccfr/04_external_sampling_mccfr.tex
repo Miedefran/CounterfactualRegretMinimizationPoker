@@ -1,25 +1,23 @@
 \subsection{External Sampling MCCFR}
-
-External Sampling MCCFR sampelt nur Aktionen des Gegners und des Zufalls.
-Für jede reine Strategie $\tau$ von Gegner und Zufall wird ein Block $Q_\tau \in Q$ definiert.
-Die Strategie $\tau$ ist eine deterministische Abbildung von Informationssets $I \in \mathcal{I}_c \cup \mathcal{I}_{N \setminus \{i\}}$ zu Aktionen $A(I)$.
+External Sampling MCCFR sampelt nur die Aktionen des Gegners sowie die Züge des Zufalls.
+Für jede deterministische Strategie $\tau$ von Gegner und Zufall wird ein Block $Q_\tau \in Q$ definiert.
+Dabei ist $\tau$ eine deterministische Abbildung von Informationssets $I \in \mathcal{I}_c \cup \mathcal{I}_{N \setminus \{i\}}$ auf Aktionen $A(I)$.
 
 Die Blockwahrscheinlichkeiten sind:
 \begin{equation}
 q_\tau = \prod_{I \in \mathcal{I}_c} f_c(\tau(I)|I) \prod_{I \in \mathcal{I}_{N \setminus \{i\}}} \sigma_{-i}(\tau(I)|I).
 \end{equation}
-Der Block $Q_\tau$ enthält alle terminal histories $z$, die mit $\tau$ konsistent sind: wenn $ha$ ein Präfix von $z$ ist mit $h \in I$ für ein $I \in \mathcal{I}_{-i}$, dann gilt $\tau(I) = a$.
-$\tau$ wird nicht explizit gesampelt, sondern die einzelnen Aktionen werden bei Bedarf gesampelt.
+Der Block $Q_\tau$ enthält alle terminalen Historien $z$, die mit $\tau$ konsistent sind (d.\,h.\ entlang von $z$ wählt $\tau$ an allen $I \in \mathcal{I}_c \cup \mathcal{I}_{-i}$ jeweils die in $z$ auftretende Aktion).
 
 Es gilt $q(z) = \pi_{-i}^\sigma(z)$.
-Der Algorithmus iteriert über jeden Spieler $i \in N$ und traversiert für jeden den game tree von den terminal nodes zur Wurzel.
+Der Algorithmus iteriert über jeden Spieler $i \in N$ und traversiert für jeden den Spielbaum von der Wurzel bis zum Endknoten.
 An jeder History $h$ mit $P(h) \neq i$ werden Aktionen gesampelt.
-Die gesampelten Aktionen werden gespeichert, sodass alle Histories im selben Informationsset die gleichen Aktionen verwenden.
-Aufgrund von perfect recall wird während der Traversierung höchstens eine History pro Informationsset besucht.
+Die gesampelten Aktionen werden pro Informationsset festgelegt, sodass innerhalb einer Iteration an allen Knoten desselben Informationssets dieselbe Aktion verwendet wird.
+In Spielen mit \emph{Perfect Recall} wird ein Informationsset auf einem einzelnen Pfad höchstens einmal erreicht.
 
-Für jedes besuchte Informationsset werden die sampled counterfactual regrets berechnet:
+Für jedes besuchte Informationsset werden die Sampled Counterfactual Regrets berechnet:
 \begin{equation}
 \tilde{r}(I, a) = (1 - \sigma(a|I)) \sum_{z \in Q_\tau \cap Z_I} u_i(z) \pi_i^\sigma(z[I]a, z).
 \end{equation}
 (\cite[Eq.~11]{lanctot2009monte})
-Die Summation wird effizient berechnet, indem für jede History eine gewichtete Summe der Utilities aller erreichbaren terminal histories aufrechterhalten wird.
+

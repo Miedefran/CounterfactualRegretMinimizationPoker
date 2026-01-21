@@ -1,77 +1,30 @@
 \subsection{Theoretische Eigenschaften}
+Lanctot et~al.~\cite{lanctot2009monte} verwenden zur genaueren Angabe von Regretschranken die Größe $M_i$.
+Sie beschreibt die Komplexität eines Spiels feiner als die Anzahl der Informationssets und ist im Anhang definiert (Abschnitt~\ref{anhang:mwert}).
 
-\subsubsection{Der M Wert}
 
-Um die Regret Bounds für MCCFR Varianten zu formulieren, wird ein strukturelles Maß der Spielkomplexität eingeführt: der M Wert.
-Dieser Wert hängt von der spezifischen Struktur des extensiven Spiels ab und ermöglicht eine präzisere Abschätzung der Konvergenzrate als die einfache Anzahl der Information Sets.
-
-Sei $\vec{a}_i$ eine Teilsequenz einer Historie, die nur die Aktionen von Spieler $i$ in dieser Historie enthält.
-Sei $\vec{A}_i$ die Menge aller solcher Aktionssequenzen von Spieler $i$.
-Für eine Aktionssequenz $\vec{a}_i$ sei $\mathcal{I}_i(\vec{a}_i)$ die Menge aller Information Sets, bei denen die Aktionssequenz von Spieler $i$ bis zu diesem Information Set genau $\vec{a}_i$ ist.
-Der M Wert für Spieler $i$ ist dann definiert als
-\begin{equation}
-M_i = \sum_{\vec{a}_i \in \vec{A}_i} \sqrt{|\mathcal{I}_i(\vec{a}_i)|}.
-\end{equation}
-(\cite{lanctot2009monte})
-
-Der M Wert summiert also über alle möglichen Aktionssequenzen von Spieler $i$ die Wurzel der Anzahl der Information Sets, die zu dieser Sequenz gehören.
-Dies erfasst, wie sich die Information Sets über die verschiedenen Aktionssequenzen verteilen.
-
-Für den M Wert gilt die folgende Ungleichung:
-\begin{equation}
-\sqrt{|\mathcal{I}_i|} \le M_i \le |\mathcal{I}_i|,
-\end{equation}
-wobei beide Seiten dieser Schranke von bestimmten Spielen erreicht werden können (\cite{lanctot2009monte}).
-
-Die untere Schranke $\sqrt{|\mathcal{I}_i|}$ wird erreicht, wenn alle Information Sets zu derselben Aktionssequenz gehören.
-Die obere Schranke $|\mathcal{I}_i|$ wird erreicht, wenn jede Aktionssequenz zu genau einem Information Set führt.
-
-Als Beispiel betrachten wir Kuhn Poker.
-Beide Spieler haben jeweils sechs Information Sets: $|\mathcal{I}_0| = |\mathcal{I}_1| = 6$.
-
-Für Spieler 0 gibt es zwei Aktionssequenzen mit Information Sets:
-die leere Sequenz $[]$ mit drei Information Sets $(J, (), 0)$, $(Q, (), 0)$, $(K, (), 0)$ am Spielbeginn,
-sowie die Sequenz $['check']$ mit drei Information Sets $(J, ('check', 'bet'), 0)$, $(Q, ('check', 'bet'), 0)$, $(K, ('check', 'bet'), 0)$ nach einem Check von Spieler 0 und einem Bet von Spieler 1.
-Somit gilt $M_0 = \sqrt{3} + \sqrt{3} = 2\sqrt{3} \approx 3.46$.
-
-Für Spieler 1 gibt es nur eine Aktionssequenz mit Information Sets:
-die leere Sequenz $[]$ mit sechs Information Sets, nämlich drei nach einem Check von Spieler 0 und drei nach einem Bet von Spieler 0.
-Somit gilt $M_1 = \sqrt{6} \approx 2.45$.
-
-Die Verifikation der Schranken ergibt:
-$\sqrt{6} \approx 2.45 \le M_0 = 3.46 \le 6$ und $\sqrt{6} \approx 2.45 \le M_1 = 2.45 \le 6$.
-Für Spieler 1 wird die untere Schranke erreicht, da alle sechs Information Sets zur selben Aktionssequenz gehören.
-Für Spieler 0 liegt $M_0$ zwischen den Schranken, da die Information Sets auf zwei verschiedene Aktionssequenzen verteilt sind.
-
-Der M Wert wird sowohl in den folgenden Regret Bounds für Vanilla CFR als auch für MCCFR verwendet.
 \subsubsection{Regret Bounds}
 
-Mit Hilfe des M Werts können präzisere Regret Bounds für Vanilla CFR formuliert werden.
+Für Vanilla CFR gilt:
 \begin{equation}
 R_i^T \le \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T},
 \end{equation}
-(\cite[Thm.~3]{lanctot2009monte})
-wobei $\Delta_{u,i} = \max_z u_i(z) - \min_z u_i(z)$ der Nutzenbereich für Spieler $i$ ist und $|A_i| = \max_{h:P(h)=i} |A(h)|$ die maximale Anzahl verfügbarer Aktionen für Spieler $i$ bezeichnet.
+~\cite[Thm.~3]{lanctot2009monte}.
+mit $\Delta_{u,i} = \max_z u_i(z) - \min_z u_i(z)$ und $|A_i| = \max_{h:P(h)=i} |A(h)|$.
 
-Diese Schranke verbessert die ursprüngliche Schranke aus Theorem 4 des Zinkevich Papers, die $|\mathcal{I}_i|$ anstelle von $M_i$ verwendet.
-Da $M_i \le |\mathcal{I}_i|$ gilt, ist die neue Schranke mindestens so gut wie die ursprüngliche und oft deutlich besser.
-Die Konvergenzrate bleibt bei $O(1/\sqrt{T})$, wobei der konstante Faktor durch die strukturabhängige Komplexität $M_i$ statt der einfachen Anzahl der Information Sets bestimmt wird.
-
-Für die MCCFR Varianten können probabilistische Regret Bounds angegeben werden.
-External Sampling MCCFR benötigt nur einen konstanten Faktor mehr Iterationen als Vanilla CFR.
-Für jeden Parameter $p \in (0, 1]$ gilt mit Wahrscheinlichkeit mindestens $1-p$:
+Für External Sampling MCCFR gilt für jedes $p$ mit $0 < p \le 1$ mit Wahrscheinlichkeit mindestens $1-p$:
 \begin{equation}
 R_i^T \le \left(1 + \sqrt{\frac{2}{p}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T}.
 \end{equation}
-(\cite[Thm.~4]{lanctot2009monte})
+~\cite[Thm.~4]{lanctot2009monte}.
 
-Obwohl External Sampling die gleiche Ordnung von Iterationen benötigt wie Vanilla CFR, muss der Algorithmus in jeder Iteration nur einen Bruchteil des Spielbaums traversieren.
-Für ausgewogene Spiele, in denen die Spieler ungefähr gleich viele Entscheidungen treffen, betragen die Iterationskosten von External Sampling $O(\sqrt{|H|})$, während Vanilla CFR $O(|H|)$ benötigt.
-Dies bedeutet, dass External Sampling MCCFR asymptotisch weniger Zeit benötigt, um ein approximatives Gleichgewicht zu berechnen als Vanilla CFR (\cite{lanctot2009monte}).
+Obwohl External Sampling nur asymptotisch mehr Iterationen benötigt als Vanilla CFR, wird pro Iteration nur ein Bruchteil des Spielbaums traversiert.
+Für ausgewogene Spiele, in denen die Spieler ungefähr gleich viele Entscheidungen treffen, liegen die Iterationskosten (Anzahl besuchter Historien) bei External Sampling bei $O(\sqrt{|H|})$, während Vanilla CFR $O(|H|)$ benötigt.
+Damit ergibt sich asymptotisch eine geringere Gesamtzeit zur Berechnung eines approximativen Gleichgewichts~\cite[Sec.~4]{lanctot2009monte}.
 
-Für Outcome Sampling MCCFR gilt mit Wahrscheinlichkeit mindestens $1-p$ für $p \in (0, 1]$:
+Für Outcome Sampling MCCFR gilt für jedes $p$ mit $0 < p \le 1$ mit Wahrscheinlichkeit mindestens $1-p$:
 \begin{equation}
 R_i^T \le \left(1 + \sqrt{\frac{2}{p}} \cdot \frac{1}{\sqrt{\delta}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T},
 \end{equation}
-wenn $q(z) \ge \delta > 0$ für alle relevanten terminal histories $z$ gilt (\cite[Thm.~5]{lanctot2009monte}).
-Im Vergleich zu External Sampling enthält diese Schranke den zusätzlichen Faktor $\frac{1}{\sqrt{\delta}}$, der von der sampling policy abhängt.
+wenn $q(z) \ge \delta > 0$ für alle relevanten terminalen Historien $z$ gilt~\cite[Thm.~5]{lanctot2009monte}.
+Der Faktor $1/\sqrt{\delta}$ hängt von der Sampling Policy ab.
