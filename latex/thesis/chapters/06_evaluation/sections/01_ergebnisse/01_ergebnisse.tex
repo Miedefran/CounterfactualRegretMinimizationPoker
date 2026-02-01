@@ -1,0 +1,144 @@
+\section{Ergebnisse}
+In diesem Abschnitt folgen die Evaluationsdiagramme welche vorher im Versuchsaufbau besprochen wurden.
+\subsection{Kuhn Poker}
+
+Abbildung~\ref{fig:kuhn_algorithmusvergleich} zeigt den Vergleich der verschiedenen CFR-Algorithmen hinsichtlich ihrer Konvergenzgeschwindigkeit über die Anzahl der Iterationen.
+Die Kurve für CFR mit simultanen Updates ist nicht zu erkennen, da sie identisch mit der Kurve für CFR mit alternierenden Updates ist.
+Dies bedeutet, dass alternierende Updates bei diesem Spiel keine Leistungsverbesserung bringen.\\
+CFR+ und Discounted CFR konvergieren deutlich schneller als Vanilla CFR.
+Um eine Exploitability von unter 0.1~mb/g zu erreichen, benötigt Discounted CFR 31 Iterationen (finale Exploitability: 0.096~mb/g), CFR+ benötigt 161 Iterationen (finale Exploitability: 0.077~mb/g), während Vanilla CFR 11.111 Iterationen benötigt (finale Exploitability: 0.090~mb/g).
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{kuhn/kuhn_cfr_variants_iterations.png}
+    \caption{Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Kuhn Poker}
+    \label{fig:kuhn_algorithmusvergleich}
+\end{figure}
+
+Abbildung~\ref{fig:kuhn_implementierungsvergleich} vergleicht die drei Implementierungsansätze Dynamic, Rekursiver Tree Ansatz und Layer-basiert hinsichtlich ihrer Zeiteffizienz.
+Um eine Exploitability von unter 0.1~mb/g zu erreichen, benötigt der Rekursive Tree Ansatz 1.03~Sekunden, der Dynamic Ansatz 3.02~Sekunden und der Layer-basierte Ansatz 5.34~Sekunden.
+Bei dieser kleinen Spielgröße ist der Rekursive Tree Ansatz am schnellsten, während der Layer-basierte Ansatz aufgrund des Overheads der Layer-basierten Traversierung am langsamsten ist.
+
+Abbildung~\ref{fig:kuhn_all} zeigt einen Gesamtvergleich aller evaluierten Kombinationen aus Algorithmus und Implementierung, wobei die Trainingszeiten von unter 0.01~Sekunden bis zu 5.34~Sekunden reichen.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{kuhn/kuhn_cfr_alternate_time.png}
+        \caption{Vergleich der Implementierungsansätze}
+        \label{fig:kuhn_implementierungsvergleich}
+    \end{subfigure}
+    \vspace{0.5cm}
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{kuhn/kuhn_all_time.png}
+        \caption{Gesamtvergleich aller Algorithmus- und Implementierungskombinationen}
+        \label{fig:kuhn_all}
+    \end{subfigure}
+    \caption{Vergleich der Implementierungsansätze und Gesamtvergleich aller Kombinationen bei Kuhn Poker}
+\end{figure}
+\newpage
+\subsection{Leduc Hold'em}
+
+Abbildung~\ref{fig:leduc_algorithmusvergleich} zeigt den Vergleich der verschiedenen CFR-Algorithmen hinsichtlich ihrer Konvergenzgeschwindigkeit über die Anzahl der Iterationen.
+Um eine Exploitability von unter 1~mb/g zu erreichen, benötigt Discounted CFR 411 Iterationen (finale Exploitability: 0.836~mb/g), CFR+ benötigt 511 Iterationen (finale Exploitability: 0.813~mb/g), während Vanilla CFR mit alternierenden Updates 31.111 Iterationen benötigt (finale Exploitability: 0.820~mb/g).
+Vanilla CFR mit simultanen Updates benötigt 911.111 Iterationen (finale Exploitability: 0.967~mb/g).
+Hier sieht man deutlich, was für einen enormen Unterschied alternierende Updates bei einem relativ kleinen Spiel wie Leduc schon machen können.
+Aus diesem Grund werden simultane Updates in den nächstgrößeren Varianten nicht mehr evaluiert.
+
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{leduc/leduc_cfr_variants_iterations.png}
+    \caption{Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Leduc Hold'em}
+    \label{fig:leduc_algorithmusvergleich}
+\end{figure}
+
+Abbildung~\ref{fig:leduc_implementierungsvergleich} vergleicht die drei Implementierungsansätze hinsichtlich ihrer Zeiteffizienz.
+Um eine Exploitability von unter 1~mb/g zu erreichen, benötigt der Layer-basierte Ansatz 1.42~Minuten, der Rekursive Tree Ansatz 1.85~Minuten und der Dynamic Ansatz 6.94~Minuten.
+Bei dieser Spielgröße zeigt sich, dass die Wahl des Algorithmus einen größeren Einfluss auf die Trainingszeit hat als der Implementierungsansatz.
+
+Abbildung~\ref{fig:leduc_all} zeigt einen Gesamtvergleich aller evaluierten Kombinationen aus Algorithmus und Implementierung für Leduc Hold'em.
+Die Trainingszeiten reichen von wenigen Sekunden bis zu mehreren Stunden, wobei die Unterschiede zwischen den Algorithmen deutlich größer sind als zwischen den Implementierungen.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{leduc/leduc_cfr_alternate_time.png}
+        \caption{Vergleich der Implementierungsansätze}
+        \label{fig:leduc_implementierungsvergleich}
+    \end{subfigure}
+    \vspace{0.5cm}
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{leduc/leduc_all_time.png}
+        \caption{Gesamtvergleich aller Algorithmus- und Implementierungskombinationen}
+        \label{fig:leduc_all}
+    \end{subfigure}
+    \caption{Vergleich der Implementierungsansätze und Gesamtvergleich aller Kombinationen bei Leduc Hold'em}
+\end{figure}
+
+\newpage
+\subsection{Twelve Card Poker}
+
+Bei Twelve Card Poker wurden nur der Rekursive Tree Ansatz und der Layer-basierte Ansatz evaluiert.
+Abbildung~\ref{fig:twelve_algorithmusvergleich} zeigt den Vergleich der verschiedenen CFR-Algorithmen hinsichtlich ihrer Konvergenzgeschwindigkeit über die Anzahl der Iterationen für den Layer-basierten Ansatz.
+Um eine Exploitability von unter 1~mb/g zu erreichen, benötigt Discounted CFR 911 Iterationen (finale Exploitability: 0.839~mb/g), CFR+ benötigt 1611 Iterationen (finale Exploitability: 0.941~mb/g), während Vanilla CFR 161.111 Iterationen benötigt (finale Exploitability: 0.818~mb/g).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{twelve_card_poker/twelve_flat_tree_variants_iterations.png}
+    \caption{Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Twelve Card Poker (Layer-basierter Ansatz)}
+    \label{fig:twelve_algorithmusvergleich}
+\end{figure}
+
+Abbildung~\ref{fig:twelve_implementierungsvergleich} vergleicht die beiden Implementierungsansätze hinsichtlich ihrer Zeiteffizienz für Vanilla CFR.
+Um eine Exploitability von unter 1~mb/g zu erreichen, benötigt der Layer-basierte Ansatz 2.46~Stunden, der Rekursive Tree Ansatz 9.33~Stunden.
+Bei dieser Spielgröße zeigt sich, dass der Layer-basierte Ansatz deutlich schneller ist als der Rekursive Tree Ansatz.
+
+Abbildung~\ref{fig:twelve_all} zeigt einen Gesamtvergleich aller evaluierten Kombinationen aus Algorithmus und Implementierung für Twelve Card Poker.
+Die Trainingszeiten reichen von Sekunden bis zu mehreren Stunden, wobei die Unterschiede zwischen den Algorithmen deutlich größer sind als zwischen den Implementierungen.
+
+\begin{figure}[htbp]
+    \centering
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{twelve_card_poker/twelve_cfr_alternate_time.png}
+        \caption{Vergleich der Implementierungsansätze}
+        \label{fig:twelve_implementierungsvergleich}
+    \end{subfigure}
+    \vspace{0.5cm}
+    \begin{subfigure}[b]{\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{twelve_card_poker/twelve_all_time.png}
+        \caption{Gesamtvergleich aller Algorithmus- und Implementierungskombinationen}
+        \label{fig:twelve_all}
+    \end{subfigure}
+    \caption{Vergleich der Implementierungsansätze und Gesamtvergleich aller Kombinationen bei Twelve Card Poker}
+\end{figure}
+
+\newpage
+\subsection{Small Island Hold'em}
+
+Bei Small Island Hold'em wurden nur die Layer-basierten Implementierungen evaluiert, da die Rekursive Tree Implementierung aufgrund von Speicherproblemen nicht mehr praktikabel ist.
+Abbildung~\ref{fig:small_island_algorithmusvergleich} zeigt den Algorithmusvergleich.
+Um eine Exploitability von unter 1~mb/g zu erreichen, benötigt Discounted CFR 381 Iterationen in 1.75~Stunden (finale Exploitability: 0.609~mb/g), CFR+ benötigt 781 Iterationen in 3.58~Stunden (finale Exploitability: 0.891~mb/g).
+Vanilla CFR mit alternierenden Updates erreicht auch nach 10.000 Iterationen beziehungsweise 45.66~Stunden noch keine Exploitability von unter 1~mb/g und verbleibt bei 1.94~mb/g.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{small_island_holdem/small_island_all_flat_tree_iterations.png}
+    \caption{Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Small Island Hold'em}
+    \label{fig:small_island_algorithmusvergleich}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.85\textwidth]{small_island_holdem/small_island_all_flat_tree_time.png}
+    \caption{Trainingszeit der verschiedenen CFR-Algorithmen bei Small Island Hold'em}
+    \label{fig:small_island_zeit}
+\end{figure}
+\newpage

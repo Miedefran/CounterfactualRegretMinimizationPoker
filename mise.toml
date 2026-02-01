@@ -1,0 +1,2 @@
+[tasks.tui]
+run = 'uv run python src/tui/app.py'

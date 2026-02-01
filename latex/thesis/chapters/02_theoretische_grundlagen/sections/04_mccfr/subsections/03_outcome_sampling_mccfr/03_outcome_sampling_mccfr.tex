@@ -1,0 +1,26 @@
+\subsection{Outcome Sampling MCCFR}
+
+Outcome Sampling MCCFR sampelt pro Iteration genau eine terminale Historie $z$ und aktualisiert nur die Informationsets entlang dieses Pfads.
+Damit ist der Aufwand pro Iteration minimal, da ein Block die Größe $|Q_j| = 1$ besitzt.
+
+Welche Historie $z$ gesampelt wird, legt eine \emph{Sampling Policy} $\sigma'$ fest: $q(z) = \pi^{\sigma'}(z)$.
+Die Sampling Policy $\sigma'$ kann von der aktuellen Strategie $\sigma$ abweichen.
+Um diese Abweichung zu korrigieren, wird der Beitrag der Stichprobe mit einem Gewicht $w_I$ versehen (Importance Sampling).
+Damit $w_I$ wohldefiniert bleibt, muss $q(z) \ge \delta > 0$ gelten, beispielsweise durch $\sigma'_i(a|I) \ge \epsilon > 0$ für alle Aktionen.
+
+In jeder Iteration wird eine terminale Historie $z$ gemäß $\sigma'$ gesampelt.
+Anschließend erfolgt eine Rückwärtstraversierung entlang $z$.
+An jedem Informationset $I$ auf diesem Pfad werden die Sampled Immediate Counterfactual Regrets $\tilde{r}(I,a)$ berechnet und akkumuliert:
+\begin{equation}
+\tilde{r}(I, a) = \begin{cases}
+w_I \cdot (1 - \sigma(a|z[I])) & \text{falls } (z[I]a) \sqsubset z \\
+-w_I \cdot \sigma(a|z[I]) & \text{sonst}
+\end{cases},
+\end{equation}
+mit
+\begin{equation}
+w_I = \frac{u_i(z) \pi_{-i}^\sigma(z) \pi_i^\sigma(z[I]a, z)}{\pi^{\sigma'}(z)}.
+\end{equation}
+(\cite[Eq.~10]{lanctot2009monte})
+
+Die Notation $(z[I]a) \sqsubset z$ bedeutet, dass auf dem gesampelten Pfad $z$ am Informationset $I$ die Aktion $a$ gewählt wurde (Fall 1); andernfalls wird Fall 2 verwendet.

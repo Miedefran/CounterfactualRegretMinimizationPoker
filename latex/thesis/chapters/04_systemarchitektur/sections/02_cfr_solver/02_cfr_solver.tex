@@ -1,0 +1,183 @@
+\section{CFR-Solver}
+Dieser Abschnitt beschreibt verschiedene Designs, die zur Implementierung eines CFR-Algorithmus genutzt wurden.
+Das erste Design nutzt die öffentlichen Methoden der Game Environment, um während des Trainings den Spielbaum dynamisch aufzubauen und zu durchlaufen.
+Das zweite Design verwendet einen statischen Spielbaum, der im Voraus mithilfe der Game Environment gebaut und gespeichert wurde.
+Diese Variante speichert den Spielbaum als Python-Objekte in Dictionary-Strukturen und durchläuft ihn rekursiv.
+Die dritte Variante nutzt ebenfalls einen statischen Spielbaum, jedoch in einer Array-basierten Repräsentation mit NumPy-Arrays statt Python-Objekten.
+Anstelle einer rekursiven Traversierung wird hier eine schichtweise Berechnung verwendet, bei der Knoten nach ihrer Tiefe gruppiert und verarbeitet werden.
+
+Erwähnenswert ist, dass ursprünglich keine expliziten Zufallsknoten implementiert wurden, sondern alle Zufallskombinationen vorab mit einer Klasse namens Combination Generator erzeugt wurden.
+Dies hat an vielen Stellen Probleme bereitet und wurde erst zu einem späten Zeitpunkt aus dem Design entfernt.
+Deshalb sind an einigen Stellen noch Rückstände dieses Codes enthalten.
+
+\subsection{Dynamisch erzeugter Spielbaum}
+Die dynamische Implementierung des CFR Solvers verzichtet auf die Speicherung eines expliziten Spielbaums.
+Stattdessen wird der Spielbaum bei jeder Iteration neu durch wiederholte Aufrufe von \texttt{game.step()} und \texttt{game.step\_back()} traversiert.
+Dieser Ansatz benötigt weniger Arbeitsspeicher als die statische Variante, da nicht der gesamte Baum im Speicher gehalten werden muss.
+Allerdings ist er durch wiederholtes Aufrufen der Spielzustandsfunktionen deutlich langsamer.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Klassendiagramm_cfr_solver.pdf}
+\caption{Klassendiagramm der dynamischen CFR Solver Architektur}
+\label{fig:cfr_solver_class}
+\end{figure}
+
+Der Trainingsprozess beginnt mit der Initialisierung der Objekte Game und Solver.
+Eine Iteration des CFR-Algorithmus enthält dann folgende Schritte:\\
+Der Spielbaum wird für beide Spieler durchlaufen, wobei entweder alternierende oder simultane Updates durchgeführt werden können.
+Bei alternierenden Updates wird zunächst der Spielbaum für Spieler 0 durchlaufen und dessen Strategie aktualisiert.
+Danach für Spieler 1 mit der bereits aktualisierten Strategie von Spieler 0.
+Bei simultanen Updates wird der Spielbaum für beide Spieler mit derselben Strategie durchlaufen, anschließend werden die Strategien beider Spieler aktualisiert.
+Nachdem der Spielbaum traversiert wurde, wird die Strategie für alle Informationsets mittels Regret Matching basierend auf den kumulierten Counterfactual Regrets aktualisiert.
+Hiermit endet eine Iteration.\\
+
+Optional kann während des Trainings eine Exploitability-Berechnung durchgeführt werden.
+Hierfür wird die durchschnittliche Strategie berechnet und anschließend eine Best-Response-Evaluation durchgeführt.\\
+Dieser Prozess wird für die gewünschte Anzahl an Iterationen wiederholt und anschließend wird das Modell gespeichert.
+Wichtig zu erwähnen ist, dass die Best-Response-Evaluation nicht bei jeder Iteration durchgeführt wird, sondern in regelmäßigen Abständen gemäß einer konfigurierbaren Evaluationsfrequenz.
+Diese Abstände werden so gewählt, dass aus den gesammelten Werten anschließend ein aussagekräftiger Konvergenzplot erstellt werden kann.
+
+Hier wird der eben wörtlich beschriebene Ablauf mithilfe eines UML-Aktivitätsdiagramms veranschaulicht.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.85\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_cfr_dynamic_training.pdf}
+\caption{Aktivitätsdiagramm des Trainingsprozesses der dynamischen CFR Solver Implementierung}
+\label{fig:cfr_dynamic_training_activity}
+\end{figure}
+\newpage
+
+Auf dem UML Diagramm ist eine rekursive Traversierungsfunktion zu sehen; diese wird jetzt hier genauer erklärt und mit einem weiteren Aktivitätsdiagramm veranschaulicht.
+Die rekursive Traversierungsfunktion berechnet den erwarteten Nutzen für einen gegebenen Spieler und aktualisiert dabei dessen Counterfactual Regrets.
+Als Parameter erhält sie die Spieler-ID, die Erreichbarkeitswahrscheinlichkeiten beider Spieler sowie die Zufallswahrscheinlichkeit.
+Die Erreichbarkeitswahrscheinlichkeiten beschreiben die Wahrscheinlichkeit, den aktuellen Knoten zu erreichen, während die Zufallswahrscheinlichkeit die kumulierte Wahrscheinlichkeit aller Zufallsereignisse entlang des Pfades beschreibt.
+Beim initialen Aufruf starten beide Wahrscheinlichkeiten bei 1.0.
+
+Die Traversierung unterscheidet zwischen vier Knotentypen:
+Bei einem \textbf{Terminalknoten} wird der reale Nutzen für den betrachteten Spieler vom Game-Objekt abgerufen und zurückgegeben.
+
+Bei einem \textbf{Zufallsknoten} werden alle möglichen Outcomes mit ihren Wahrscheinlichkeiten abgerufen.
+Für jedes Outcome wird die Zufallswahrscheinlichkeit mit der Outcome-Wahrscheinlichkeit multipliziert und rekursiv traversiert.
+Der erwartete Nutzen wird über alle Outcomes gewichtet berechnet.
+Es werden keine Regrets aktualisiert, die Zufallswahrscheinlichkeit wird jedoch weitergegeben, da sie für die Gewichtung der Regret-Updates benötigt wird.
+
+Bei einem \textbf{Gegner-Knoten} wird die aktuelle Strategie für das Informationset bestimmt.
+Jede mögliche Aktion wird ausgeführt, die Erreichbarkeitswahrscheinlichkeiten werden aktualisiert und der Spielbaum rekursiv durchlaufen, anschließend wird die Aktion rückgängig gemacht.
+Der erwartete Nutzen wird als gewichtete Summe über alle Aktionen berechnet, wobei die Gewichtung durch die Strategie des Gegners erfolgt.
+
+Bei einem \textbf{Spieler-Knoten} wird analog vorgegangen, jedoch wird der Nutzen jeder Aktion gespeichert.
+Nach der Berechnung des erwarteten Nutzens wird für jede Aktion der Counterfactual Regret berechnet und mit der Erreichbarkeitswahrscheinlichkeit des Gegners sowie der Zufallswahrscheinlichkeit multipliziert.
+Die kumulierten Regrets und die kumulierte Strategie werden für das Informationset aktualisiert.
+
+Die vollständige Implementierung der Traversierungsfunktion im dynamischen CFR-Solver ist im folgenden Listing wiedergegeben.
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\footnotesize, caption={Methode \texttt{traverse\_game\_tree} (dynamischer CFR-Solver)}, breaklines=true]
+def traverse_game_tree(self, player_id, reach_probabilities, chance_reach: float = 1.0):
+    """
+    Traverse game tree and compute counterfactual regret for one player.
+    """
+    if self.game.done:
+        return self.game.get_payoff(player_id)
+
+    # Chance node: expectation over chance outcomes (no regret updates)
+    if hasattr(self.game, 'is_chance_node') and self.game.is_chance_node():
+        outcomes_with_probs = self.game.get_chance_outcomes_with_probs()
+        if not outcomes_with_probs:
+            return 0.0
+        value = 0.0
+        for outcome, prob in outcomes_with_probs.items():
+            if prob == 0:
+                continue
+            self.game.step(outcome)
+            value += prob * self.traverse_game_tree(
+                player_id, reach_probabilities, chance_reach * prob)
+            self.game.step_back()
+        return value
+
+    current_player = self.game.current_player
+
+    # Opponent's node, don't update regrets
+    if current_player != player_id:
+        legal_actions = self.game.get_legal_actions()
+        opponent = 1 - player_id
+        opponent_info_set = KeyGenerator.get_info_set_key(self.game, opponent)
+        self.ensure_init(opponent_info_set, legal_actions)
+        opponent_strategy = self.get_current_strategy(
+            opponent_info_set, legal_actions)
+        state_value = 0.0
+        for action in legal_actions:
+            action_prob = opponent_strategy[action]
+            self.game.step(action)
+            new_reach_probs = reach_probabilities.copy()
+            new_reach_probs[opponent] *= action_prob
+            state_value += action_prob * self.traverse_game_tree(
+                player_id, new_reach_probs, chance_reach)
+            self.game.step_back()
+        return state_value
+
+    # Player's node, update regrets
+    info_set_key = KeyGenerator.get_info_set_key(self.game, player_id)
+    legal_actions = self.game.get_legal_actions()
+    self.ensure_init(info_set_key, legal_actions)
+    current_strategy = self.get_current_strategy(info_set_key, legal_actions)
+    action_utilities = {}
+    for action in legal_actions:
+        self.game.step(action)
+        new_reach_probs = reach_probabilities.copy()
+        new_reach_probs[player_id] *= current_strategy[action]
+        action_utilities[action] = self.traverse_game_tree(
+            player_id, new_reach_probs, chance_reach)
+        self.game.step_back()
+    current_utility = sum(
+        current_strategy[action] * action_utilities[action]
+        for action in legal_actions)
+    counterfactual_weight = reach_probabilities[1 - player_id] * chance_reach
+    player_reach = reach_probabilities[player_id] * chance_reach
+    self.update_regrets(info_set_key, legal_actions, action_utilities,
+                        current_utility, counterfactual_weight)
+    self.update_strategy_sum(info_set_key, legal_actions, current_strategy,
+                             player_reach)
+    return current_utility
+\end{lstlisting}
+
+Auf der folgenden Seite wird der Ablauf der rekursiven Traversierung mit einem UML-Aktivitätsdiagramm beschrieben.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=1\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_traverse_game_tree_dynamic.pdf}
+    \caption{Aktivitätsdiagramm der Spielbaum-Traversierung der rekursiven Implementierung}
+    \label{fig:traverse_game_tree_dynamic}
+\end{figure}
+
+\newpage
+\subsection{Statischer Spielbaum}
+Es gibt zwei verschiedene Varianten eines statischen Spielbaums, die in dieser Arbeit umgesetzt wurden.
+Die erste Variante durchläuft einen Spielbaum aus Python-Objekten rekursiv, die zweite nutzt eine schichtweise Berechnung auf einem Spielbaum aus NumPy-Arrays.
+In diesem Kapitel wird ausschließlich der zweite Ansatz beschrieben, da sich die Traversierung des ersten Ansatzes kaum von der des dynamischen unterscheidet.
+Die Idee für den Layer-by-Layer Aufbau kommt aus den folgenden zwei Quellen ~\cite{kim2024gpu,reis2015gpu}.
+
+Die \texttt{FlatTree} Datenstruktur speichert den Spielbaum mit NumPy-Arrays statt Python-Objekten und benötigt deshalb deutlich weniger Speicherplatz.
+Jeder Knoten wird über eine Integer-ID identifiziert.
+Die Struktur des Baums wird durch verschiedene Arrays repräsentiert.
+\texttt{node\_type} speichert den Typ jedes Knotens (Terminal, Entscheidung oder Zufall).
+Für Entscheidungsknoten speichert \texttt{children} die Verbindungen zu ihren Kindknoten.
+Für Zufallsknoten werden die möglichen Outcomes und deren Wahrscheinlichkeiten in separaten Arrays gespeichert.
+Zusätzlich werden die Knoten nach ihrer Tiefe in Layern gruppiert (\texttt{layer\_terminal\_nodes}, \texttt{layer\_chance\_nodes}, \texttt{layer\_decision\_nodes}).
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.6\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Klassendiagramm_cfr_flat_tree.pdf}
+\caption{Klassendiagramm der Layer-by-Layer CFR Solver Architektur}
+\label{fig:cfr_flat_tree_class}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.5\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_flat_tree_traversal.pdf}
+\caption{Aktivitätsdiagramm der Layer-by-Layer Traversierung}
+\label{fig:flat_tree_traversal}
+\end{figure}
+
+\newpage

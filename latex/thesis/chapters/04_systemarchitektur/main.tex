@@ -1,0 +1,27 @@
+\chapter{Architektur und Design}\label{chap:architektur}
+In diesem Kapitel wird die Architektur des Softwareprojekts beschrieben.
+Hierbei wird zuerst ein Überblick darüber gegeben, wie die einzelnen Bestandteile miteinander interagieren.
+Anschließend wird auf die Struktur der einzelnen Komponenten eingegangen und die wichtigsten von ihnen mit UML-Diagrammen dargestellt.
+Kritische Designentscheidungen werden erklärt und Probleme, die durch diese entstanden sind, werden erwähnt.
+Die Probleme und deren Konsequenzen werden anschließend in \autoref{chap:entwicklungsvorgang} genauer erläutert.
+
+Eine zentrale Designentscheidung, die schon zu Beginn getroffen wurde, ist eine explizite Trennung der Pokerspiellogik vom CFR-Algorithmus.
+Die Logik der Pokerspiele, ab jetzt Game Environment genannt, wird als separate Entität implementiert, die das Spielverhalten und die Zustandsverwaltung übernimmt.
+Ziel dieser Unterteilung war es, das Projekt später einfach erweiterbar für neue Spiele und Algorithmen zu halten.
+
+Dieses Kapitel gliedert sich in drei Hauptkomponenten: Game Environment, CFR-Solver und Evaluationsmethoden.
+Außerdem werden zwei verschiedene Arten der Implementierung des CFR-Solvers besprochen.
+\newpage
+\input{chapters/04_systemarchitektur/sections/01_game_environment/01_game_environment}
+\input{chapters/04_systemarchitektur/sections/02_cfr_solver/02_cfr_solver}
+\input{chapters/04_systemarchitektur/sections/03_evaluationsmethoden/03_evaluationsmethoden}
+\newpage
+
+In diesem Kapitel wurde die Unterteilung der Software in die Komponenten Spielumgebung, Solver und Evaluation mit UML Diagrammen beschrieben.
+Hierbei wurde genauer auf die Funktionsweise der rekursiven und Layer-basierten Traversierung eingegangen.
+Ausserdem wurde der Ablauf des Best Response Agents und die rekursive  näher beschrieben.
+Im nächsten Kapitel wird der Entwicklungsvorgang beschrieben und anschließend auf die dabei entstandenen Probleme eingegangen.
+
+
+
+

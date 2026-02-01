@@ -1,0 +1,31 @@
+\babel@toc {ngerman}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {2.1}{\ignorespaces Game Tree für Kuhn Poker}}{32}{figure.caption.8}%
+\contentsline {figure}{\numberline {2.2}{\ignorespaces Information Set Trees für beide Spieler in Kuhn Poker}}{32}{figure.caption.9}%
+\contentsline {figure}{\numberline {2.3}{\ignorespaces Public State Tree für Kuhn Poker}}{34}{figure.caption.10}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces Klassendiagramm der Game Environment für Kuhn Poker und Leduc Hold'em}}{40}{figure.caption.11}%
+\contentsline {figure}{\numberline {4.2}{\ignorespaces Klassendiagramm der dynamischen CFR Solver Architektur}}{41}{figure.caption.12}%
+\contentsline {figure}{\numberline {4.3}{\ignorespaces Aktivitätsdiagramm des Trainingsprozesses der dynamischen CFR Solver Implementierung}}{42}{figure.caption.13}%
+\contentsline {figure}{\numberline {4.4}{\ignorespaces Aktivitätsdiagramm der Spielbaum-Traversierung der rekursiven Implementierung}}{45}{figure.caption.14}%
+\contentsline {figure}{\numberline {4.5}{\ignorespaces Klassendiagramm der Layer-by-Layer CFR Solver Architektur}}{46}{figure.caption.15}%
+\contentsline {figure}{\numberline {4.6}{\ignorespaces Aktivitätsdiagramm der Layer-by-Layer Traversierung}}{47}{figure.caption.16}%
+\contentsline {figure}{\numberline {4.7}{\ignorespaces Aktivitätsdiagramm der Best-Response-Berechnung}}{48}{figure.caption.17}%
+\contentsline {figure}{\numberline {4.8}{\ignorespaces Aktivitätsdiagramm der Public-State-Tree-Traversierung}}{49}{figure.caption.18}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Kuhn Poker}}{57}{figure.caption.20}%
+\contentsline {figure}{\numberline {6.2}{\ignorespaces Vergleich der Implementierungsansätze und Gesamtvergleich aller Kombinationen bei Kuhn Poker}}{59}{figure.caption.21}%
+\contentsline {figure}{\numberline {6.3}{\ignorespaces Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Leduc Hold'em}}{60}{figure.caption.22}%
+\contentsline {figure}{\numberline {6.4}{\ignorespaces Vergleich der Implementierungsansätze und Gesamtvergleich aller Kombinationen bei Leduc Hold'em}}{61}{figure.caption.23}%
+\contentsline {figure}{\numberline {6.5}{\ignorespaces Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Twelve Card Poker (Layer-basierter Ansatz)}}{62}{figure.caption.24}%
+\contentsline {figure}{\numberline {6.6}{\ignorespaces Vergleich der Implementierungsansätze und Gesamtvergleich aller Kombinationen bei Twelve Card Poker}}{63}{figure.caption.25}%
+\contentsline {figure}{\numberline {6.7}{\ignorespaces Konvergenzverhalten der verschiedenen CFR-Algorithmen bei Small Island Hold'em}}{64}{figure.caption.26}%
+\contentsline {figure}{\numberline {6.8}{\ignorespaces Trainingszeit der verschiedenen CFR-Algorithmen bei Small Island Hold'em}}{64}{figure.caption.27}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {A.1}{\ignorespaces Übersicht der Pokerhände und deren Rangordnung, \url {https://en.wikipedia.org/wiki/List_of_poker_hands}}}{71}{figure.caption.28}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }

@@ -1,0 +1,15 @@
+\paragraph{Abstract}
+
+Counterfactual Regret Minimization (CFR) ist ein etablierter Algorithmus zur Berechnung von Nash-Gleichgewichten in Spielen mit imperfekter Information, der insbesondere in der Pokerspielforschung eingesetzt wird.
+Diese Arbeit untersucht die Leistungsfähigkeit verschiedener CFR-Varianten und Implementierungsansätze bei steigender Spielkomplexität.
+
+Es wurden die Algorithmen Vanilla CFR, CFR+ und Discounted CFR (DCFR) in Python implementiert und auf vier Pokervarianten unterschiedlicher Komplexität angewendet: Kuhn Poker, Leduc Hold'em, Twelve Card Poker und Small Island Hold'em.
+Die Implementierungen umfassen einen dynamischen Ansatz, einen rekursiven Tree-basierten Ansatz sowie eine Layer-basierte Architektur.
+Zur Bewertung der Strategiequalität wurde die Exploitability mittels eines Best-Response-Agents auf Basis eines Public-State-Trees berechnet.
+
+Die Ergebnisse zeigen, dass DCFR und CFR+ deutlich schneller konvergieren als Vanilla CFR, wobei DCFR generell besser abschneidet als CFR+, jedoch die Performance abhängig vom Spieltyp ist.
+Bei kleinen Spielen wie Kuhn Poker sind die Unterschiede zwischen den Implementierungsansätzen vernachlässigbar, während bei größer werdenden Spielen die Unterschiede signifikant werden.
+Bei Small Island Hold'em erweist sich Vanilla CFR mit der vorliegenden Implementierung als unpraktikabel, da selbst nach 45 Stunden Training keine hinreichend niedrige Exploitability erreicht werden konnte.
+
+Die Arbeit demonstriert die Notwendigkeit algorithmischer und implementierungstechnischer Optimierungen für die Skalierung von CFR auf komplexere Pokervarianten und identifiziert die Problemstellen.
+

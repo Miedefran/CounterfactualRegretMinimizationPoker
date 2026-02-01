@@ -1,0 +1,22 @@
+\subsection{External Sampling MCCFR}
+External Sampling MCCFR sampelt nur die Aktionen des Gegners sowie die Ausgänge von Zufallsereignissen.
+Für jede deterministische Strategie $\tau$ von Gegner und Zufall wird ein Block $Q_\tau \in Q$ definiert.
+Dabei ist $\tau$ eine deterministische Abbildung von Informationsets $I \in \mathcal{I}_c \cup \mathcal{I}_{N \setminus \{i\}}$ auf Aktionen $A(I)$.
+
+Die Blockwahrscheinlichkeiten sind:
+\begin{equation}
+q_\tau = \prod_{I \in \mathcal{I}_c} f_c(\tau(I)|I) \prod_{I \in \mathcal{I}_{N \setminus \{i\}}} \sigma_{-i}(\tau(I)|I).
+\end{equation}
+Der Block $Q_\tau$ enthält alle terminalen Historien $z$, die mit $\tau$ konsistent sind (d.\,h.\ entlang von $z$ wählt $\tau$ an allen $I \in \mathcal{I}_c \cup \mathcal{I}_{N \setminus \{i\}}$ jeweils die in $z$ auftretende Aktion).
+Es gilt $q(z) = \pi_{-i}^\sigma(z)$.
+
+Für jeden Spieler $i \in N$ werden an jeder History $h$ mit $P(h) \neq i$ Aktionen gesampelt.
+Die gesampelten Aktionen werden pro Informationset festgelegt, sodass innerhalb einer Iteration an allen Knoten desselben Informationsets dieselbe Aktion verwendet wird.
+In Spielen mit \enquote{Perfect Recall} wird ein Informationset auf einem einzelnen Pfad höchstens einmal erreicht.
+
+Für jedes besuchte Informationset werden die Sampled Immediate Counterfactual Regrets $\tilde{r}(I,a)$ berechnet:
+\begin{equation}
+\tilde{r}(I, a) = (1 - \sigma(a|I)) \sum_{z \in Q_\tau \cap Z_I} u_i(z) \pi_i^\sigma(z[I]a, z).
+\end{equation}
+(\cite[Eq.~11]{lanctot2009monte})
+

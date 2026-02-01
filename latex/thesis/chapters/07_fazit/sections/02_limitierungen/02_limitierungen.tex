@@ -1,0 +1,19 @@
+\section{Limitierungen}
+
+In diesem Abschnitt werden die wichtigsten Limitierungen der Arbeit formuliert und die Aussagekraft der Ergebnisse eingeordnet.
+Die Punkte sind nicht als Entschuldigung zu verstehen, sondern als klare Beschreibung der Bedingungen, unter denen die gezeigten Resultate gelten.
+
+Die Skalierungsgrenzen unterscheiden sich je nach Implementierungsansatz.
+Beim Dynamic Ansatz wird die Laufzeit pro Iteration mit zunehmender Spielgröße so hoch, dass Training in vertretbarer Zeit nicht mehr möglich ist.
+Beim Flat Tree Ansatz bleibt die Laufzeit pro Iteration konstant, jedoch wird der Speicherbedarf zur Grenze.
+Tree basierte Solver reduzieren Overhead durch Zustandsübergänge, benötigen aber Speicher für den vollständigen Game Tree.
+Bei großen Varianten kann dadurch nicht nur Training, sondern bereits das Bauen und Halten der Baumstruktur praktisch begrenzt werden.
+Dies zeigt sich insbesondere bei Small Island Hold'em, wo nur noch Flat Tree Implementierungen praktikabel sind.
+
+Exploitability ist nur so zuverlässig wie die Implementierung der Best Response Berechnung und des Public State Trees.
+Fehler oder Inkonsistenzen in dieser Pipeline würden sich direkt auf die gemessene Exploitability auswirken.
+Als Plausibilitätscheck kann für Leduc zusätzlich der erwartete Spielwert betrachtet werden, bei dem sich ein konsistentes Zero-Sum-Verhalten zeigt.
+
+Für größere Spiele sind Best-Response-Messpunkte nur sparsam möglich, weil die Evaluation zusätzliche Laufzeit verursacht.
+Zeitplots sind grundsätzlich als Orientierung zu interpretieren, weil Hintergrundlast und Hardwareunterschiede die absolute Wall-Clock-Time beeinflussen können.
+Die betrachteten Solver mit Volltraversierung sind weitgehend deterministisch, weshalb keine Varianzabschätzung über Seeds im klassischen Sinn erfolgt.

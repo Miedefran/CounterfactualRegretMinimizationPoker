@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+.cursor/
+.cursorindexingignore
+.specstory/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Trained models
+data/
+
+# Development files
+PROMPT_CURSOR.md
+UML_CONTEXT_PROMPT.md
+cleanuplatex.md
+play_vs_agent.py
+test_data/TESTING_NOTES.md
+
+
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.toc
+*.fdb_latexmk
+*.fls
+*.synctex.gz
+*.synctex(busy)
+*.txt
+*.cb
+*.cb2
+*.bbl
+*.blg
+*.npz
+*.glo
+*.gls
+*.glsdefs
+*.acn
+*.acr
+*.alg
+*.ist
+*.idx
+*.ilg
+*.ind
+*.xdy
+*.ping
+# LaTeX output (keep main.pdf)
+*.pdf
+!latex/thesis/main.pdf
+*.md
+*.png
+*.svg
+*.puml
+
+# Reference projects and literature
+githubProjects/
+Literatur/
+NGROK_ANLEITUNG.md
+
+# Random bullshit
+random_bullshit/
+
+external/

@@ -1,0 +1,31 @@
+\subsection{Allgemeine Definition}
+MCCFR fasst die Menge aller terminalen Historien $Z$ in Teilmengen zusammen, die als Blöcke bezeichnet werden.
+Die Menge dieser Teilmengen ist definiert als $Q = \{Q_1, \ldots, Q_r\}$.
+In jeder Iteration wird zufällig ein Block ausgewählt und nur die terminalen Historien dieses Blocks betrachtet.\\
+Die Definition eines Blocks hängt von der verwendeten Samplingstrategie ab.
+In dem Fall, dass Chance Sampling verwendet wird, enthält ein Block $Q_j$ alle terminalen Historien mit derselben Sequenz von Zufallsereignissen.\\
+Beim External Sampling hingegen wird ein Block durch eine Kombination aus Zufallsereignissen und Aktionen des Gegners bestimmt.\\
+Die extremste hier genannte Form des Samplings ist das Outcome Sampling, bei dem Zufallsereignisse, Aktionen des Gegners sowie private Aktionen zufällig ausgewählt werden.
+
+Sei $q_j > 0$ die Wahrscheinlichkeit, dass Block $Q_j$ in der aktuellen Iteration ausgewählt wird. 
+Für die Summe aller Blockwahrscheinlichkeiten gilt $\sum_{j=1}^r q_j = 1$.\\
+Die Wahrscheinlichkeit, dass eine terminale Historie $z$ in der aktuellen Iteration betrachtet wird, beträgt $q(z) = \sum_{j:z \in Q_j} q_j$.\\
+Als nächstes wird im Paper eine gewichtete Form des Counterfactual Value eingeführt, um zu berücksichtigen, dass eine terminale Historie nur mit Wahrscheinlichkeit $q(z)$ betrachtet wird.
+Folgende Formel beschreibt den Sampled Counterfactual Value, wenn Block $Q_j$ aktualisiert wird:
+\begin{equation}
+\tilde{v}_i(\sigma, I|j) = \sum_{z \in Q_j \cap Z_I} \frac{1}{q(z)} u_i(z) \pi_{-i}^\sigma(z[I]) \pi^\sigma(z[I], z).
+\end{equation}
+(\cite[Eq.~6]{lanctot2009monte})
+
+Die Gewichtung mit $\frac{1}{q(z)}$ sorgt dafür, dass der Erwartungswert des Sampled Counterfactual Value dem tatsächlichen Counterfactual Value entspricht.
+Im Gegensatz zu \\\cite{zinkevich2007regret} wird der Counterfactual Value hier mit $v_i(\sigma,I)$ anstelle von $u_i(\sigma,I)$ beschrieben.
+\begin{equation}
+\mathbb{E}_{j \sim q_j}[\tilde{v}_i(\sigma, I|j)] = v_i(\sigma, I).
+\end{equation}
+(\cite[Lemma~1]{lanctot2009monte})
+
+
+Durch die Gewichtung wird garantiert, dass MCCFR im Erwartungswert die gleichen Regret-Updates wie CFR durchführt, obwohl nur ein Teil des Spielbaums in jeder Iteration betrachtet wird.
+Der MCCFR-Algorithmus sampelt in jeder Iteration einen Block und berechnet für jedes von diesem Block betroffene Informationset die Sampled Immediate Counterfactual Regrets.
+Diese Regretwerte werden akkumuliert und die Strategie wird in der nächsten Iteration mittels Regret Matching aktualisiert.
+

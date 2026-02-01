@@ -1,0 +1,41 @@
+Lanctot et~al.~\cite{lanctot2009monte} führen zur Formulierung der Regret-Bounds ein strukturabhängiges Maß der Spielkomplexität ein: den M-Wert.
+Dieser Wert hängt von der spezifischen Struktur des extensiven Spiels ab und ermöglicht eine präzisere Abschätzung der Konvergenzrate als die einfache Anzahl der Information Sets.
+
+Sei $\vec{a}_i$ eine Teilsequenz einer Historie, die nur die Aktionen von Spieler $i$ in dieser Historie enthält.
+Sei $\vec{A}_i$ die Menge aller solcher Aktionssequenzen von Spieler $i$.
+Für eine Aktionssequenz $\vec{a}_i$ sei $\mathcal{I}_i(\vec{a}_i)$ die Menge aller Information Sets, bei denen die Aktionssequenz von Spieler $i$ bis zu diesem Information Set genau $\vec{a}_i$ ist.
+Der M-Wert für Spieler $i$ ist dann definiert als
+\begin{equation}
+M_i = \sum_{\vec{a}_i \in \vec{A}_i} \sqrt{|\mathcal{I}_i(\vec{a}_i)|}.
+\end{equation}
+
+Der M-Wert summiert also über alle möglichen Aktionssequenzen von Spieler $i$ die Wurzel der Anzahl der Information Sets, die zu dieser Sequenz gehören.
+Dies erfasst, wie sich die Information Sets über die verschiedenen Aktionssequenzen verteilen.
+
+Für den M-Wert gilt die folgende Ungleichung:
+\begin{equation}
+\sqrt{|\mathcal{I}_i|} \le M_i \le |\mathcal{I}_i|,
+\end{equation}
+wobei beide Seiten dieser Schranke von bestimmten Spielen erreicht werden können (\cite{lanctot2009monte}).
+
+Die untere Schranke $\sqrt{|\mathcal{I}_i|}$ wird erreicht, wenn alle Information Sets zu derselben Aktionssequenz gehören.
+Die obere Schranke $|\mathcal{I}_i|$ wird erreicht, wenn jede Aktionssequenz zu genau einem Information Set führt.
+
+Als Beispiel dient Kuhn Poker.
+Beide Spieler haben jeweils sechs Information Sets: $|\mathcal{I}_0| = |\mathcal{I}_1| = 6$.
+
+Für Spieler 0 gibt es zwei Aktionssequenzen mit Information Sets:
+die leere Sequenz $[]$ mit drei Information Sets $(J, (), 0)$, $(Q, (), 0)$, $(K, (), 0)$ am Spielbeginn,
+sowie die Sequenz $['check']$ mit drei Information Sets $(J, ('check', 'bet'), 0)$, $(Q, ('check', 'bet'), 0)$, $(K, ('check', 'bet'), 0)$ nach einem Check von Spieler 0 und einem Bet von Spieler 1.
+Somit gilt $M_0 = \sqrt{3} + \sqrt{3} = 2\sqrt{3} \approx 3.46$.
+
+Für Spieler 1 gibt es nur eine Aktionssequenz mit Information Sets:
+die leere Sequenz $[]$ mit sechs Information Sets, nämlich drei nach einem Check von Spieler 0 und drei nach einem Bet von Spieler 0.
+Somit gilt $M_1 = \sqrt{6} \approx 2.45$.
+
+Die Verifikation der Schranken ergibt:
+$\sqrt{6} \approx 2.45 \le M_0 = 3.46 \le 6$ und $\sqrt{6} \approx 2.45 \le M_1 = 2.45 \le 6$.
+Für Spieler 1 wird die untere Schranke erreicht, da alle sechs Information Sets zur selben Aktionssequenz gehören.
+Für Spieler 0 liegt $M_0$ zwischen den Schranken, da die Information Sets auf zwei verschiedene Aktionssequenzen verteilt sind.
+
+Der M-Wert wird in den Regret-Bounds für Vanilla CFR und MCCFR verwendet.

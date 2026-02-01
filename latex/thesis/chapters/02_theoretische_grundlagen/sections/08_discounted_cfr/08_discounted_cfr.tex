@@ -1,0 +1,67 @@
+\section{Discounted CFR}
+
+Discounted CFR (DCFR) wurde im Paper \enquote{Solving Imperfect-Information Games via Discounted Regret Minimization}~\cite{brown2018discounted} als Optimierung von CFR vorgestellt.
+Die Motivation für DCFR liegt darin, dass CFR+ in Spielen mit stark suboptimalen Aktionen relativ schlecht abschneidet.
+Ein anschauliches Beispiel hierfür ist der Fall, dass ein Spieler zwischen drei Aktionen mit den Payoffs 0, 1 und -1.000.000 wählen muss.
+CFR+ benötigt in diesem Fall 471.407 Iterationen, um die beste Aktion mit 100\% Wahrscheinlichkeit zu wählen, da der frühe Fehler der ersten Iteration lange im kumulierten Regretwert erhalten bleibt.
+Durch die Abwertung früherer Iterationen können solche Fehler schneller aus dem Regretwert verschwinden, wodurch die Konvergenz beschleunigt wird.
+
+Der Algorithmus unterscheidet sich in drei Punkten von CFR+:
+\begin{itemize}
+    \item Frühere Iterationen werden bei der Regret-Akkumulation abgewertet (Discounting), wobei positive und negative Regretwerte unterschiedlich behandelt werden.
+    \item Iterationen werden bei der Berechnung der Durchschnittsstrategie unterschiedlich gewichtet.
+    \item Optimistische Regret-Matching-Algorithmen können verwendet werden.
+\end{itemize}
+
+\subsection{Linear CFR}
+Linear CFR (LCFR) ist ein Vorläufer von DCFR, der das Konzept des Regret Discountings einführt.
+In LCFR werden die Regretwerte nach jedem Update mit dem Faktor $\frac{t}{t+1}$ multipliziert, wodurch frühere Iterationen weniger stark gewichtet werden.
+Zusätzlich wird die Durchschnittsstrategie mit Gewicht $t$ in Iteration $t$ gewichtet.
+Im oben genannten Beispiel benötigt LCFR nur 970 Iterationen im Gegensatz zu den 471.407 Iterationen bei CFR+, um mit einhundert Prozent Wahrscheinlichkeit die richtige Aktion zu wählen.
+DCFR übernimmt dieses Konzept und erweitert es um differenziertes Discounting für positive und negative Regretwerte.
+
+\subsection{Discounting}
+
+Discounting der Regretwerte bedeutet, dass frühere Iterationen weniger stark gewichtet werden.
+Dies beschleunigt die Konvergenz insbesondere in Spielen mit stark suboptimalen Aktionen, da frühe Fehler schneller aus dem kumulierten Regretwert verschwinden.
+Positive und negative Regretwerte erfahren hierbei eine gesonderte Behandlung.
+Nach jedem Update werden positive Regretwerte mit Faktor $\frac{t^\alpha}{t^\alpha + 1}$ multipliziert, negative Regretwerte mit $\frac{t^\beta}{t^\beta + 1}$.
+Formal werden die Regretwerte in Iteration $t$ wie folgt aktualisiert:
+\begin{equation}
+R^t(I,a) = \begin{cases}
+(R^{t-1}(I,a) + r^t(I,a)) \cdot \frac{t^\alpha}{t^\alpha + 1} & \text{falls } R^{t-1}(I,a) + r^t(I,a) > 0 \\
+(R^{t-1}(I,a) + r^t(I,a)) \cdot \frac{t^\beta}{t^\beta + 1} & \text{sonst}
+\end{cases}
+\end{equation}
+Die Parameter $\alpha$ und $\beta$ sind frei wählbar, das Paper schlägt allerdings $\alpha = 3/2$ und $\beta = 0$ vor.
+
+DCFR hat eine Konvergenzschranke von $O(1/\sqrt{T})$, die sich von CFR nur durch einen konstanten Faktor unterscheidet.
+
+\subsection{Gewichtung der Durchschnittsstrategie}
+
+DCFR verwendet wie CFR+ eine gewichtete Durchschnittsstrategie, wobei die Gewichtung durch den Parameter $\gamma$ gesteuert wird.
+Iteration $t$ trägt mit Gewicht $t^\gamma$ bei.
+Dies ist unabhängig vom Regret Discounting, das die Regretwerte während des Trainings beeinflusst.
+Die Gewichtung der Durchschnittsstrategie bestimmt, wie stark jede Iteration zur finalen Output-Strategie beiträgt.
+
+\subsection{Standard-Parameter}
+
+DCFR wird durch drei Parameter charakterisiert: 
+$\alpha$ für das Discounting positiver Regretwerte,
+$\beta$ für das Discounting negativer Regretwerte und 
+$\gamma$ für die Gewichtung der durchschnittlichen Strategie.\\
+Die empfohlene Standard-Parameterkonfiguration ist DCFR$_{3/2,0,2}$ mit $\alpha = 3/2$, $\beta = 0$ und $\gamma = 2$.\\
+Experimentelle Ergebnisse zeigen, dass diese Konfiguration CFR+ in allen im Paper getesteten Spielen übertrifft.
+
+Bei $\beta = 0$ gehen negative Regretwerte nicht gegen $-\infty$, sondern nähern sich einem konstanten Wert an.
+Dies macht DCFR$_{3/2,0,2}$ nicht kompatibel mit Pruning-Algorithmen, die auf negativen Regretwerten basieren.
+Für Anwendungen, die Pruning verwenden, wird DCFR$_{3/2,1/2,2}$ mit $\beta = 0.5$ empfohlen, da diese Konfiguration suboptimale Aktionen erlaubt, deren Regret gegen $-\infty$ geht, und damit Pruning ermöglicht.
+
+\subsection{Optimistisches Regret Matching}
+
+Optimistisches Regret Matching ist eine optionale Erweiterung, bei der die letzte Iteration doppelt gezählt wird, wenn die Strategie für die nächste Iteration berechnet wird.
+Formal wird dabei ein modifizierter Regretwert $R_{\text{mod}}^T(I,a) = \sum_{t=1}^{T-1} r^t(I,a) + 2r^T(I,a)$ verwendet, der die letzte Iteration zweifach berücksichtigt.
+Experimentelle Ergebnisse zeigen, dass Optimistic DCFR$_{3/2,0,2}$ in allen getesteten HUNL-Subgames schlechter abschneidet als normales DCFR$_{3/2,0,2}$.
+Optimistic LCFR kann hingegen in Spielen mit besonders großen suboptimalen Aktionen zu schnellerer Konvergenz führen als LCFR.
+
+

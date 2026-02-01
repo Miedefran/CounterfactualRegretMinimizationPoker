@@ -1,0 +1,61 @@
+\subsection{Definition und Konzepte}
+Die Spieltheorie beschäftigt sich mit der Analyse strategischer Interaktionen zwischen Entscheidungsträgern und bietet hierfür eine Vielzahl analytischer Methoden.
+Diese basieren auf zwei zentralen Annahmen~\cite[Kap.~1.1]{osborne1994course}.
+
+
+Die erste Annahme ist, dass Entscheidungsträger rational handeln.
+Ein rationaler Entscheidungsträger kennt seine Handlungsmöglichkeiten, kann Erwartungen über unbekannte Situationen bilden und hat klare Vorstellungen darüber, welche Ergebnisse er bevorzugt.
+Er wählt seine Aktion bewusst nach einem Prozess der Optimierung.
+Liegt keine Unsicherheit vor, wählt er die Aktion, die zu den für ihn besten Konsequenzen führt.
+Diese Präferenzen lassen sich durch eine Nutzenfunktion beschreiben, die jedem möglichen Ergebnis einen Wert zuordnet.
+Die beste Aktion ist die, die den höchsten Nutzen erzielt.
+Sind die Konsequenzen von Aktionen unsicher, maximiert ein rationaler Entscheidungsträger den erwarteten Nutzen.
+Hierfür muss er in der Lage sein, Wahrscheinlichkeiten für unsichere Ereignisse abzuschätzen~\cite[Kap.~1.4]{osborne1994course}.
+
+Die zweite Annahme ist, dass Entscheidungsträger ihr Wissen oder ihre Erwartungen über das Verhalten anderer Spieler bei ihrer Entscheidungsfindung berücksichtigen. 
+Dies nennt man auch strategisches Handeln.
+Spieltheoretisches Denken berücksichtigt, dass jeder Entscheidungsträger vor seiner Entscheidung versucht, Informationen über das Verhalten der anderen Spieler zu erhalten.
+Im Gegensatz dazu nimmt die Theorie des Wettbewerbsgleichgewichts an, dass jeder Akteur sich nur für Umgebungsparameter wie Preise interessiert, auch wenn diese durch die Aktionen aller Akteure bestimmt werden~\cite[Kap.~1.3]{osborne1994course}.\\
+Ein anschauliches Beispiel hierfür ist das Gefangenendilemma. 
+Zwei Verdächtige werden getrennt verhört und müssen jeweils entscheiden, ob sie schweigen oder den anderen belasten. 
+Schweigen beide, erhalten beide zwei Jahre Haft.
+Wenn beide gestehen, erhalten sie fünf Jahre Haft.
+Gesteht jedoch nur einer, wird dieser freigelassen, während der andere zu zehn Jahren Haft verurteilt wird.
+Die optimale Entscheidung ist abhängig von den Tendenzen anderer Entscheidungsträger.
+Strategisches Handeln bedeutet, solche Erwartungen über das Verhalten anderer Spieler in die Entscheidungsfindung mit einzubeziehen~\cite[Kap.~1.1]{osborne1994course}.
+
+Spieltheoretische Modelle befinden sich auf einer hohen Abstraktionsebene und können daher verwendet werden, um ein breites Spektrum an Phänomenen zu betrachten. 
+Zur formalen Darstellung dieser Modelle werden mathematische Definitionen genutzt. 
+Die zugrunde liegenden Konzepte sind jedoch nicht primär mathematischer Natur und lassen sich auch ohne formale Notation erläutern.\\
+Die Spieltheorie findet Anwendung in unzähligen Bereichen.
+Zu den klassischen Anwendungsgebieten zählen die Analyse wirtschaftlicher und politischer Wettbewerbssituationen. 
+Darüber hinaus wird sie auch in der Evolutionsbiologie, der Soziologie und anderen Disziplinen genutzt, um strategische Interaktionen zu modellieren\\~\cite[Kap.~1.1]{osborne1994course}.
+
+Ein Spiel beschreibt eine strategische Interaktion zwischen Spielern mit festgelegten Rahmenbedingungen. 
+Es definiert, welche Aktionen den Spielern zur Verfügung stehen und welche Ergebnisse in ihrem Interesse sind.
+Das Spiel legt damit die Struktur und die Regeln der Interaktion fest, bestimmt aber nicht, wie sich die Spieler tatsächlich verhalten.\\
+Die Frage, welche Aktionen die Spieler tatsächlich ausführen, wird nicht durch das Spiel selbst beantwortet, sondern durch die Lösung des Spiels.
+Eine Lösung ist ein Konzept, das systematisch beschreibt, welche Ergebnisse in einer Klasse von Spielen unter bestimmten Verhaltensannahmen zu erwarten sind.
+Sie liefert damit eine Vorhersage über das tatsächliche Verhalten der Spieler unter den getroffenen Annahmen über Rationalität und strategisches Denken~\cite[Kap.~1.2]{osborne1994course}.\\
+Spiele können anhand verschiedener Kriterien systematisch kategorisiert werden.
+Grundlegend für alle spieltheoretischen Modelle ist das Konzept des Spielers. 
+Ein Spieler kann dabei sowohl eine einzelne Person als auch eine Gruppe von Personen darstellen, die gemeinsam eine Entscheidung treffen.
+
+Die erste grundlegende Unterscheidung betrifft kooperative und nicht-kooperative Spiele.
+Nicht-kooperative Spiele modellieren die Aktionen einzelner Spieler. 
+Kooperative Spiele hingegen konzentrieren sich auf Gruppen von Spielern.
+Dabei wird nicht betrachtet, wie diese Gruppen intern funktionieren~\cite[Kap.~1.2]{osborne1994course}.
+
+Eine weitere wichtige Kategorisierung betrifft die Darstellungsform des Spiels. 
+Hierbei werden strategische Spiele, auch als Spiele in Normalform bezeichnet, von extensiven Spielen unterschieden. 
+Bei strategischen Spielen wählen die Spieler ihre Strategie zu Beginn des Spiels und passen diese während des Spielverlaufs nicht mehr an. 
+Die Entscheidungen werden zudem simultan getroffen, sodass keine Informationen über die Aktionen der Gegenspieler verfügbar sind. 
+Extensive Spiele hingegen spezifizieren die möglichen Reihenfolgen von Ereignissen und erlauben es jedem Spieler, seinen Aktionsplan nicht nur zu Beginn, sondern auch bei jeder weiteren Entscheidung zu überdenken~\cite[Kap.~1.2]{osborne1994course}.
+
+Die letzte hier zu nennende Unterscheidung betrifft den Informationsstand der Spieler. 
+Bei Spielen mit perfekter Information sind alle Teilnehmer vollständig über die Züge der anderen Spieler informiert. 
+Bei Spielen mit imperfekter Information hingegen können die Spieler unvollständig über die Aktionen der anderen Spieler oder über Ausgänge von Zufallsereignissen informiert sein~\cite[Kap.~1.2]{osborne1994course}.
+
+Ein \emph{strikt kompetitives Spiel} (auch \emph{Nullsummenspiel}) liegt vor, wenn der Gewinn des einen Spielers genau dem Verlust des anderen entspricht.
+Das bedeutet, dass für alle möglichen Spielausgänge die Summe der Nutzenwerte beider Spieler null ergibt.
+Formal: Ist die Nutzenfunktion von Spieler 1 durch $u_1$ gegeben, so gilt für die Nutzenfunktion $u_2$ von Spieler 2 stets $u_1 + u_2 = 0$~\cite[Def.~21.1]{osborne1994course}.

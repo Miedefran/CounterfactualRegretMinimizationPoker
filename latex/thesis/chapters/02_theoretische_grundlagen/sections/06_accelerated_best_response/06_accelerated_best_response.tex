@@ -1,0 +1,43 @@
+\section{Exploitability einer Strategie}
+
+Um die Qualität einer Strategie zu bewerten, ist es wichtig, ihre Worst-Case-Performance zu kennen.
+In Nullsummenspielen kann dies durch die Berechnung einer \emph{best response} ermittelt werden.
+Eine best response ist die optimale Strategie für einen Spieler gegen eine gegebene Gegnerstrategie.
+
+Die \emph{exploitability} einer Strategie misst, wie viel zusätzlicher Nutzen durch eine best response verloren geht, verglichen mit einer optimalen Strategie.
+In einem Zweipersonen-Nullsummenspiel ist die exploitability einer Strategie $\sigma_i$ definiert als
+\begin{equation}
+\varepsilon_i(\sigma_i) = v_i - u_i(\sigma_i, b_{-i}(\sigma_i)),
+\end{equation}
+wobei $v_i$ der Spielwert für Spieler $i$ ist und $b_{-i}(\sigma_i)$ die best response des Gegners gegen $\sigma_i$ darstellt.
+Eine Strategie ist optimal, wenn ihre exploitability null ist.
+
+Für Strategien, die in beiden Positionen gespielt werden, wird die exploitability als Durchschnitt der best response Werte aus beiden Positionen berechnet:
+\begin{equation}
+\varepsilon(\sigma) = \frac{u_2(\sigma_1, b_2(\sigma_1)) + u_1(b_1(\sigma_2), \sigma_2)}{2}.
+\end{equation}
+
+In Nullsummenspielen ist die exploitability eng mit dem Nash-Gleichgewicht verbunden: Eine Strategie ist optimal, wenn ihre exploitability null ist.
+Daher ist die exploitability eine zentrale Metrik zur Evaluation von Strategien.
+
+\subsection{Konventionelle Best Response Berechnung}
+
+Die konventionelle Berechnung einer best response erfolgt durch eine rekursive Traversierung des Information Set Trees.
+Der Algorithmus traversiert den Information Set Tree des betrachteten Spielers und berechnet für jedes Informationset den erwarteten Nutzen.
+An Terminalknoten müssen alle möglichen Game States berücksichtigt werden, die dem Spieler nicht unterscheidbar sind.
+Dazu werden die \emph{Erreichbarkeitswahrscheinlichkeiten} des Gegners berechnet, also die Wahrscheinlichkeiten, mit denen der Gegner verschiedene Informationsets erreicht.
+Der Nutzen wird als gewichtete Summe über alle möglichen Game States berechnet, wobei jeder Nutzen mit der entsprechenden Erreichbarkeitswahrscheinlichkeit gewichtet wird.
+An Entscheidungsknoten wählt der Algorithmus die Aktion mit dem höchsten erwarteten Wert, um die best response Strategie zu konstruieren.
+
+Diese Methode erfordert eine vollständige Traversierung des Information Set Trees, was für große Spiele wie Poker mit $10^{18}$ Game States selbst bei moderner Hardware nicht durchführbar ist.
+
+\subsection{Accelerated Best Response}
+
+Johanson et al.~\cite{johanson2011accelerating} präsentieren eine beschleunigte Methode, die eine vollständige Traversierung vermeidet.
+Der Accelerated Best Response Algorithmus nutzt die Struktur von Information und Utilities, um Berechnungen wiederzuverwenden und zu vermeiden.
+Dies ermöglicht es erstmals, die Worst-Case-Performance von Strategien in großen Spielen wie Texas Hold'em zu berechnen.
+
+\input{chapters/02_theoretische_grundlagen/sections/06_accelerated_best_response/subsections/01_public_state_tree/01_public_state_tree}
+\input{chapters/02_theoretische_grundlagen/sections/06_accelerated_best_response/subsections/02_effiziente_terminal_node_evaluierung/02_effiziente_terminal_node_evaluierung}
+\input{chapters/02_theoretische_grundlagen/sections/06_accelerated_best_response/subsections/03_isomorphismus/03_isomorphismus}
+\input{chapters/02_theoretische_grundlagen/sections/06_accelerated_best_response/subsections/04_parallel_computation/04_parallel_computation}

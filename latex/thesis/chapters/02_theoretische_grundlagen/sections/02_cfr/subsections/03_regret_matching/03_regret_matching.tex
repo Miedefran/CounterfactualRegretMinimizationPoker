@@ -1,0 +1,35 @@
+\subsection{Regret Matching}
+\label{sec:regret-matching}
+
+Mit folgender Formel wird der Counterfactual Regret für eine konkrete Aktion $a$ in einem Informationset $I$ berechnet.
+\begin{equation}
+    R_i^{T}(I, a) = \frac{1}{T} \sum_{t=1}^{T} \pi_{-i}^{\sigma^{t}}(I)
+    \left( u_i(\sigma^{t}|_{I \to a}, I) - u_i(\sigma^{t}, I) \right)
+\end{equation}
+(\cite[Eq.~7]{zinkevich2007regret})
+
+Dabei sei $R_i^{T,+}(I, a) = \max(R_i^{T}(I, a), 0)$ als positiver Anteil des Immediate Counterfactual Regret für Aktion $a$ definiert.
+
+Die Strategie für Iteration $T+1$ wird dann durch Regret Matching bestimmt:
+\begin{equation}
+\label{eq:cfr-regret-matching}
+\sigma_i^{T+1}(I)(a) = \begin{cases}
+\frac{R_i^{T,+}(I, a)}{\sum_{a' \in A(I)} R_i^{T,+}(I, a')} & \text{falls } \sum_{a' \in A(I)} R_i^{T,+}(I, a') > 0 \\
+\frac{1}{|A(I)|} & \text{in jedem anderen Fall.}
+\end{cases}
+\end{equation}
+(\cite[Eq.~8]{zinkevich2007regret})
+
+Diese Formel weist Aktionen Wahrscheinlichkeiten proportional zu ihrem positiven Regret aus dem Nichtspielen dieser Aktion zu.
+Gibt es keine positiven Regretwerte, werden alle Aktionen gleichverteilt gewählt.
+
+Theorem 4 zeigt, dass bei Verwendung von \hyperref[eq:cfr-regret-matching]{Formel~\ref*{eq:cfr-regret-matching}} der Immediate Counterfactual Regret und der Overall Regret folgendermaßen beschränkt sind:
+\begin{equation}
+R_{i,\mathrm{imm}}^{T}(I) \le \frac{\Delta_{u,i}\sqrt{|A_i|}}{\sqrt{T}},
+\end{equation}
+\begin{equation}
+R_i^T \le \frac{\Delta_{u,i}|\mathcal{I}_i|\sqrt{|A_i|}}{\sqrt{T}},
+\end{equation}
+wobei $\Delta_{u,i} = \max_z u_i(z) - \min_z u_i(z)$ der Nutzenbereich und $|A_i| = \max_{h:P(h)=i} |A(h)|$ die maximale Anzahl verfügbarer Aktionen für Spieler $i$ ist (\cite[Thm.~4]{zinkevich2007regret}).
+Die Schranke für den Average Overall Regret ist linear in der Anzahl der Informationsets $|\mathcal{I}_i|$ und fällt asymptotisch mit $O(1/\sqrt{T})$.
+Zusammen mit \hyperref[thm:cfr-nash]{Theorem~2} folgt, dass die Durchschnittsstrategie $\bar\sigma^T$ im Selbstspiel gegen ein Nash-Gleichgewicht konvergiert (\cite[Thm.~2]{zinkevich2007regret}).

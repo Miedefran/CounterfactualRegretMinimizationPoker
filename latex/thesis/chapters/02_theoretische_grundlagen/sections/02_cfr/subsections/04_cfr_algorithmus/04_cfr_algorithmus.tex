@@ -1,0 +1,7 @@
+\subsection{CFR-Algorithmus}
+
+Das CFR-Verfahren verbindet die Komponenten aus den vorherigen Abschnitten zu einer wiederholten Selbstspielprozedur.
+In jeder Iteration wird die Strategie gemäß \hyperref[eq:cfr-regret-matching]{Formel~\ref*{eq:cfr-regret-matching}} aktualisiert.
+Für jedes Informationset $I$ und jede Aktion $a$ werden die kumulierten Regretwerte $R_i^t(I,a)$ gespeichert und nach jeder Iteration aktualisiert.
+Parallel dazu wird die Durchschnittsstrategie gemäß \hyperref[eq:cfr-durchschnittsstrategie]{Formel~\ref*{eq:cfr-durchschnittsstrategie}} aktualisiert.
+Nach $T$ Iterationen gibt der Algorithmus $(\bar\sigma_1^T, \bar\sigma_2^T)$ als approximatives Nash-Gleichgewicht zurück.

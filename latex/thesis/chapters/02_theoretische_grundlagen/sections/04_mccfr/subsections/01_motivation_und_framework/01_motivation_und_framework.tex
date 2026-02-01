@@ -1,0 +1,12 @@
+\subsection{Motivation und Framework}
+
+Die von Zinkevich et al. präsentierte Vanilla Version von CFR erfordert in jeder Iteration eine vollständige Traversierung des gesamten Game Trees.
+Dies macht den Algorithmus für sehr große Spiele unpraktikabel.
+
+MCCFR stellt ein allgemeines Framework für Sampling in Counterfactual Regret Minimization dar.
+Es definiert eine Familie von Monte Carlo CFR Algorithmen, die sich darin unterscheiden, wie sie den Game Tree in jeder Iteration sampeln.
+Vanilla CFR und eine Verallgemeinerung des chance sampled CFR von Zinkevich et al. sind Spezialfälle dieses Frameworks.
+Zusätzlich werden zwei neue Mitglieder dieser Familie eingeführt: Outcome Sampling, bei dem nur ein einzelnes Spiel pro Iteration gesampelt wird, und External Sampling, das Zufallsknoten und Aktionen des Gegners sampelt.
+
+Unter einer angemessenen Sampling Strategie minimiert jedes Mitglied dieser Familie den overall regret und kann daher für die Berechnung von Nash Gleichgewichten verwendet werden.
+

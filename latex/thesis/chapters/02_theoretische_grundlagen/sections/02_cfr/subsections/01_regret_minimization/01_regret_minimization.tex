@@ -1,0 +1,26 @@
+\subsection{Regret-Minimierung}
+Regret misst den Unterschied zwischen dem maximal erreichbaren Nutzen unter Verwendung der zu diesem Zeitpunkt bestmöglichen Strategie und dem tatsächlich erzielten Nutzen.\\
+Um Regret-Minimierung zu definieren, wird das wiederholte Spielen eines extensiven Spiels betrachtet.
+Sei $\sigma_i^t$ die von Spieler $i$ in Runde $t$ verwendete Strategie.
+Der durchschnittliche \emph{Overall Regret} von Spieler $i$ zum Zeitpunkt $T$ ist:
+\begin{equation}
+R_i^T = \frac{1}{T}\max_{\sigma_i^\ast\in\Sigma_i}\sum_{t=1}^T \bigl(u_i(\sigma_i^\ast,\sigma_{-i}^t) - u_i(\sigma^t)\bigr).
+\end{equation}
+(\cite[Eq.~3]{zinkevich2007regret})
+
+Die Durchschnittsstrategie $\bar\sigma_i^T$ für Spieler $i$ von Zeit $1$ bis $T$ wird für jedes Informationset $I \in \mathcal{I}_i$ und jede Aktion $a \in A(I)$ definiert als:
+\begin{equation}
+\label{eq:cfr-durchschnittsstrategie}
+\bar\sigma_i^T(I)(a) = \frac{\sum_{t=1}^T \pi_i^{\sigma^t}(I)\,\sigma_i^t(I)(a)}{\sum_{t=1}^T \pi_i^{\sigma^t}(I)}.
+\end{equation}
+(\cite[Eq.~4]{zinkevich2007regret})
+
+Die Durchschnittsstrategie gewichtet Aktionen proportional zur Erreichbarkeitswahrscheinlichkeit $\pi_i^{\sigma^t}(I)$ des Informationsets $I$ in Runde $t$.
+
+Es besteht ein wichtiger Zusammenhang zwischen Regret und Nash-Gleichgewichten.
+\label{thm:cfr-nash}
+In einem Nullsummenspiel gilt: Ist der durchschnittliche Overall Regret beider Spieler zum Zeitpunkt $T$ kleiner als $\varepsilon$, dann ist $\bar\sigma^T$ ein $2\varepsilon$-Nash-Gleichgewicht (\cite[Thm.~2]{zinkevich2007regret}).
+
+Ein Algorithmus zur Bestimmung von $\sigma_i^t$ ist Regret-minimierend, wenn der durchschnittliche Overall Regret von Spieler $i$ unabhängig von der Strategiefolge $\sigma_{-i}^t$ des Gegners gegen Null konvergiert, während $T$ gegen Unendlich läuft.
+Daher können Regret-minimierende Algorithmen im Self-Play verwendet werden, um ein approximatives Nash-Gleichgewicht zu berechnen.
+

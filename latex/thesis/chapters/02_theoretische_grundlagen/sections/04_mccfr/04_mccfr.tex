@@ -1,0 +1,16 @@
+\section{Monte Carlo CFR}
+
+Der CFR-Algorithmus benötigt in jeder Iteration eine vollständige Traversierung des gesamten Spielbaums.
+Monte Carlo CFR ist ein im Paper \enquote{Monte Carlo Sampling for Regret Minimization in Extensive Games}~\cite{lanctot2009monte} veröffentlichtes Framework von Algorithmen, die diesen Aufwand durch verschiedene Sampling-Varianten reduzieren.
+In diesem Abschnitt wird zuerst die Grundidee des Frameworks erklärt und anschließend genauer auf die einzelnen Sampling-Verfahren eingegangen.
+Abschließend werden die theoretischen Eigenschaften besprochen.
+Hierfür wird ein neues Maß zur Abschätzung der Komplexität eines Spiels eingeführt, das im Anhang~\ref{anhang:mwert} erklärt wird.
+
+\input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/02_monte_carlo_cfr/02_monte_carlo_cfr}
+\input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/03_chance_sampling_cfr/03_chance_sampling_cfr}
+\input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/04_external_sampling_mccfr/04_external_sampling_mccfr}
+\input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/03_outcome_sampling_mccfr/03_outcome_sampling_mccfr}
+\input{chapters/02_theoretische_grundlagen/sections/04_mccfr/subsections/05_theoretische_eigenschaften/05_theoretische_eigenschaften}
+
+In diesem Abschnitt wurde gezeigt, wie die Iterationszeit des CFR-Algorithmus durch verschiedene Sampling-Techniken erheblich reduziert werden kann, ohne das Konvergenzverhalten dabei zu stark zu beeinträchtigen.
+Im nächsten Abschnitt wird CFR+ vorgestellt, eine Optimierung, die die Konvergenzgeschwindigkeit verbessert und damit schneller zu einer Strategie hoher Qualität führt.

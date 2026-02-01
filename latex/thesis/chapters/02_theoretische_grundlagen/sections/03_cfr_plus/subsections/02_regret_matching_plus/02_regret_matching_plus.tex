@@ -1,0 +1,31 @@
+\subsection{Regret Matching+}
+
+Regret Matching+ ist ein Regret minimierender Algorithmus, der ähnlich zu Regret Matching operiert.
+Der entscheidende Unterschied liegt im Umgang mit negativen Regretwerten.
+Während Regret Matching Aktionen mit akkumuliertem negativen Regret ignoriert, werden diese von Regret Matching+ auf null zurückgesetzt.
+
+Formal speichert Regret Matching+ nicht die Regretwerte $R^t(a)$, sondern verwendet einen Regret-ähnlichen Wert:
+\begin{equation}
+Q^t(a) = {\left(Q^{t-1}(a) + \Delta R^t(a)\right)}^{+},
+\end{equation}
+wobei $x^+ = \max(x, 0)$ den positiven Anteil bezeichnet.
+Dabei bezeichnet $\Delta R^t(a)$ den in Iteration $t$ hinzukommenden Regretanteil (Zuwachs des kumulierten Regrets) für Aktion $a$.
+Die Strategie basiert auf folgenden Werten:
+\begin{equation}
+\sigma^t(a) = \frac{Q^{t-1}(a)}{\sum_{b \in A} Q^{t-1}(b)}.
+\end{equation}
+
+Für Regret Matching+ gilt folgende Regret-Schranke~\cite[Thm.~1]{bowling2015heads}:
+Sei $A$ eine Menge von Aktionen und $v^t : A \to \mathbb{R}$ eine Sequenz von $T$ Wertfunktionen.
+Falls $|v^t(a) - v^t(b)| \le L$ für alle $t$ und $a, b \in A$ gilt, dann hat ein Agent, der nach Regret Matching+ handelt, einen Regret von höchstens:
+\begin{equation}
+R^T \le L\sqrt{|A|T}.
+\end{equation}
+(\cite[Thm.~1]{bowling2015heads})
+
+Diese Schranke ist identisch mit der Schranke von Regret Matching.
+CFR+ hat daher die gleiche theoretische Regret-Schranke wie CFR, konvergiert in der Praxis jedoch deutlich schneller.
+Dies lässt sich durch die besseren Tracking-Regret-Eigenschaften von Regret Matching+ erklären.\\
+Die empirische Überlegenheit von Regret Matching+ zeigt sich insbesondere dann, wenn sich die beste Aktion plötzlich ändert.
+Bei Regret Matching muss der Algorithmus warten, bis eine zuvor schlechte Aktion sich beweist, und muss dabei ihren gesamten akkumulierten negativen Regret überwinden.
+Regret Matching+ kann dagegen sofort die neue beste Aktion spielen, da negative Regrets auf null zurückgesetzt werden und nicht erst überwunden werden müssen.

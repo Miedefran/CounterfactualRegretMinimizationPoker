@@ -1,0 +1,98 @@
+%%
+%% Berliner Hochschule für Technik -- Bachelorarbeit
+%%
+%% Hauptdokument
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\documentclass[12pt, a4paper]{book}
+
+%% Übersetzen für die Abgabe
+\usepackage[abgabe]{bhtThesis}
+\typeout{BHT-Abschlussarbeit V2.0}
+
+\usepackage{csquotes}
+\usepackage{xspace}
+\usepackage{listings}
+\lstset{ 
+  literate={ö}{{\"o}}1
+           {ä}{{\"a}}1
+           {ü}{{\"u}}1
+           {Ö}{{\"O}}1
+           {Ä}{{\"A}}1
+           {Ü}{{\"U}}1
+           {ß}{{\ss}}1
+}
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{comment}
+\usepackage{subcaption}
+\usepackage[colorlinks=false,pdfborder={0 0 1},linkbordercolor=red,urlbordercolor=blue,citebordercolor=blue]{hyperref}
+\setlength{\parskip}{1.5ex plus 0.5ex minus 0.2ex}
+\setlength{\headsep}{18pt}
+
+%%
+%% Pfad zu den Bildern
+%%
+\graphicspath{
+  {figures/}
+  {../../plots_export_2/}
+}
+
+\version{1.0}
+\datum{\today}
+
+%%
+%% Titel, Autor und Betreuer
+%%
+\fachbereich{VI -- Informatik und Medien} 
+\studiengang{Technische Informatik}
+\autor{Friedemann Doll}
+\edvnr{ 924315}
+\titel{Implementierung von Counterfactual Regret Minimization in zunehmend komplexen Pokervarianten} 
+\untertitel{}
+\betreuerFeld{
+  \begin{tabular}{@{}l l@{}}
+    \multicolumn{2}{@{}l}{\textbf{Gutachter}}\\
+    Prof.~Dr.-Ing.~Stefan Edlich & Berliner Hochschule für Technik\\
+    Prof.~Dr.-Ing.~habil.~Alexander Löser & Berliner Hochschule für Technik\\
+  \end{tabular}
+}
+
+\begin{document}
+\pagestyle{fancy}
+
+\maketitle
+\clearpage
+
+
+\input{abstract_de}
+\clearpage
+\input{abstract_en}
+\clearpage
+\input{ai_disclaimer}
+\clearpage
+
+%% Inhaltsverzeichnis
+\tableofcontents
+
+%% Abbildungsverzeichnis
+\clearpage
+\listoffigures
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Die Kapitel der Arbeit
+
+\input{chapters/main}
+\appendix
+\input{chapters/08_anhang/main}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Literaturverzeichnis
+
+\clearpage\newpage
+\addcontentsline{toc}{chapter}{Literaturverzeichnis}
+\bibliographystyle{apalike}
+\bibliography{bibliography}
+
+\end{document}
+

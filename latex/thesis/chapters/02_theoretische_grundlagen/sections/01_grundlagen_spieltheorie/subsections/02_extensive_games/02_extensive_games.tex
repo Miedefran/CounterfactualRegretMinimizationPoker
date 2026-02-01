@@ -1,0 +1,62 @@
+\subsection{Extensive Games with Imperfect Information}
+Nachdem die grundlegenden Konzepte der Spieltheorie eingeführt wurden, widmet sich dieser Abschnitt den extensiven Spielen mit imperfekter Information.
+Diese Spielklasse ist für die vorliegende Arbeit von zentraler Bedeutung, da die meisten Pokerspiele, insbesondere Hold'em-Varianten, zu dieser Kategorie gehören.
+
+\subsubsection{Definition}
+Ein extensives Spiel mit imperfekter Information modelliert eine sequenzielle Interaktion zwischen Spielern, bei der nicht alle Spieler stets vollständig über alle vergangenen Aktionen informiert sind. 
+Dabei werden die möglichen Spielverläufe als Historien erfasst, wobei eine Historie eine Abfolge von Aktionen darstellt. 
+Zu jedem Zeitpunkt ist entweder ein Spieler oder der Zufall am Zug. \\
+cUm die imperfekte Information darzustellen, werden Informationsets verwendet. 
+Diese fassen Zustände zusammen, die ein Spieler nicht voneinander unterscheiden kann. 
+Hierbei können sowohl vergangene Aktionen anderer Spieler als auch Ausgänge von Zufallsereignissen betroffen sein.
+
+Ein extensives Spiel mit imperfekter Information lässt sich formal durch folgende Komponenten definieren:
+\begin{itemize}
+  \item Eine Menge von Historien $H$.
+  Eine Historie ist eine endliche oder unendliche Sequenz von Aktionen, getätigt von Spielern oder dem Zufall.\\
+  Die Menge $H$ erfüllt folgende Eigenschaften:
+  \begin{itemize}
+    \item Die leere Sequenz $\emptyset$ ist ein Element von $H$.
+    \item Ist $(a^k)_{k=1,\dots,K} \in H$ (wobei $K$ unendlich sein kann) und $L < K$, dann gilt $(a^k)_{k=1,\dots,L} \in H$.
+    Das bedeutet, wenn eine Sequenz ein Teil von $H$ ist, dann ist auch jeder Präfix dieser Sequenz ein Teil von $H$.
+    \item Wenn für eine unendliche Folge $(a^k)_{k=1}^\infty$ die Bedingung $(a^k)_{k=1,\dots,L} \in H$ für jede positive ganze Zahl $L$ erfüllt ist, dann gilt $(a^k)_{k=1}^\infty \in H$.
+  \end{itemize}
+  \item Eine Historie $(a^k)_{k=1,\dots,K} \in H$ ist terminal, wenn sie unendlich ist oder wenn kein $a^{K+1}$ existiert, so dass $(a^k)_{k=1,\dots,K+1} \in H$ gilt. 
+  Man bezeichnet die Menge aller terminalen Historien mit $Z$.\\
+  Die Menge der Aktionen, die nach einer nicht terminalen Historie $h$ verfügbar sind, wird mit $A(h) = \{a : (h,a) \in H\}$ bezeichnet.
+  
+  \item Die Funktion $P$ ordnet jeder nicht terminalen Historie $h \in H \setminus Z$ einen Spieler aus $N$ oder $c$ zu.
+  $P(h)$ bezeichnet den Spieler, der nach $h$ am Zug ist. 
+  Wenn $P(h) = c$ ist, bestimmt der Zufall die nächste Aktion.
+  
+  \item Die Funktion $f_c$ ordnet jeder Historie $h$ mit $P(h) = c$ eine Zufallsverteilung $f_c(\cdot \mid h)$ auf $A(h)$ zu.
+  $f_c(a \mid h)$ ist die Wahrscheinlichkeit, dass nach $h$ die Aktion $a$ folgt. 
+  Diese Verteilungen sind unabhängig voneinander.
+
+  \item Für jeden Spieler $i \in N$ wird die Menge der Historien $h$ mit $P(h)=i$ in Informationsets unterteilt.
+  Diese Informationspartition wird bezeichnet mit $\mathcal{I}_i$.
+  Ein Element $I_i \in \mathcal{I}_i$ heißt Informationset von Spieler $i$.
+  Historien $h$ und $h'$, die zum selben Informationset $I_i$ gehören, sind für Spieler $i$ nicht unterscheidbar.
+  Wesentlich ist dabei, dass alle Historien in einem Informationset $I_i$ die gleichen verfügbaren Aktionen haben, also $A(h) = A(h')$ für alle $h, h' \in I_i$. 
+  Für ein Informationset $I_i$ bezeichnet $A(I_i)$ die verfügbaren Aktionen und $P(I_i)$ den Spieler, der am Zug ist.
+
+  \item Für jeden Spieler $i \in N$ ist eine Präferenzrelation $\succeq_i$ über Lotterien auf $Z$ gegeben.
+  Eine Lotterie ist hierbei eine Wahrscheinlichkeitsverteilung über terminale Historien.
+  Diese Präferenzen lassen sich durch eine Nutzenfunktion $u_i: Z \to \mathbb{R}$ repräsentieren, sodass für zwei Lotterien $L_1, L_2$ gilt:
+  $L_1 \succeq_i L_2 \iff \mathbb{E}_{z \sim L_1}[u_i(z)] \ge \mathbb{E}_{z \sim L_2}[u_i(z)]$.
+\end{itemize}
+Formale Definition entspricht~\cite[Ch.~11, Sec.~11.1, Def.~200.1]{osborne1994course}.
+
+\subsubsection{Strategien}
+
+In extensiven Spielen mit imperfekter Information gibt es verschiedene Möglichkeiten, wie die Strategien von Spielern definiert werden können.\\
+Eine reine Strategie von Spieler $i \in N$ ordnet jedem Informationset $I \in \mathcal{I}_i$ genau eine zulässige Aktion $s_i(I) \in A(I)$ zu.
+Sie legt somit einen vollständigen Handlungsplan für alle Informationslagen von $i$ fest.\\
+Eine gemischte Strategie $\alpha_i$ ist eine Wahrscheinlichkeitsverteilung über der Menge der reinen Strategien von $i$.\\
+Eine behavioral Strategie $\beta_i$ hingegen ist eine Sammlung unabhängiger Wahrscheinlichkeitsverteilungen $(\beta_i(I))_{I \in \mathcal{I}_i}$, wobei $\beta_i(I)$ eine Wahrscheinlichkeitsverteilung über die Aktionen $A(I)$ am Informationset $I$ ist~\cite[Ch.~11, Sec.~11.4, Def.~212.1]{osborne1994course}.\\
+Der Unterschied liegt darin, dass bei einer gemischten Strategie vor Spielbeginn zufällig eine komplette reine Strategie ausgewählt wird, die dann während des gesamten Spiels deterministisch befolgt wird.\\
+Im Gegensatz dazu wird bei einer behavioral Strategie in jedem Informationset unabhängig eine Wahrscheinlichkeitsverteilung über die verfügbaren Aktionen verwendet, sodass die zufällige Auswahl der Aktionen während des Spiels erfolgt\\~\cite[Ch.~11, Sec.~11.4]{osborne1994course}.\\
+Ein extensives Spiel hat \enquote{Perfect Recall}, wenn sich jeder Spieler zu jedem Zeitpunkt an alles erinnert, was er in der Vergangenheit wusste und welche Aktionen er selbst getroffen hat~\cite[Ch.~11, Sec.~11.1]{osborne1994course}.
+Unter dieser Annahme erzeugen beide Repräsentationen outcome-äquivalente Wahrscheinlichkeitsverteilungen über die terminalen Historien~\cite[Ch.~11, Sec.~11.4, Prop.~214.1]{osborne1994course}.\\
+Ein Profil von behavioral Strategien $\beta=(\beta_i)_{i\in N}$ zusammen mit den Zufallszügen $f_c$ bestimmt eine Wahrscheinlichkeitsverteilung über die terminalen Historien $Z$.
+Daraus lässt sich für jede Auszahlungsfunktion $u_i$ der Erwartungswert $\mathbb{E}_{z \sim O(\beta, f_c)}[u_i(z)]$ berechnen.

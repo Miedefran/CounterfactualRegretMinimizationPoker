@@ -1,0 +1,42 @@
+\section{Ausblick}
+
+In diesem Abschnitt werden konkrete nächste Schritte skizziert, um die Implementierung weiter zu skalieren.
+Hierbei wird zwischen Implementierungsansätzen und Algorithmischen Ansätzen unterschieden.
+
+\subsection{Implementierungsoptimierungen}
+Auf der Implementierungsseite ist ein Ansatz, der vorher einen Tree baut, bei Spielen höherer Komplexität nicht mehr vertretbar.
+Deshalb muss man an irgendeinem Punkt auf eine dynamische Implementierung umsteigen.
+Um das praktikabel zu machen, muss die Spielumgebung komplett überarbeitet werden und auf die Laufzeit optimiert sein.
+Eine nächste Optimierung wäre eine parallelisierte Berechnung auf einem dynamischen Baum.
+%Dies könnte zum Beispiel in den unabhängigen Pfaden eines Sampling-Solvers geschehen.
+Zusätzlich wäre es sinnvoll, einen Sampling-basierten Ansatz zu verwenden, wenn man bereits einen dynamischen Ansatz verfolgt.
+Hierfür müsste eine passende Evaluation implementiert werden.
+
+Ein weiterer interessanter Punkt wäre das Betrachten anderer Programmiersprachen wie C++ oder Rust.
+Da diese Sprachen maschinennäher sind, könnte damit eine erhebliche Laufzeitverbesserung erreicht werden.
+Auf die Speicherprobleme der Ansätze mit statischem Spielbaum hätte dies jedoch wahrscheinlich keine Auswirkung.
+
+Die Evaluation mittels des Best Response Agents kann auch weiter optimiert werden, indem die fehlenden Optimierungen aus \hyperref[sec:exploitability]{Kapitel~2.5} umgesetzt werden.
+Außerdem sollte der Best Response Agent auch auf schnellere Datenstrukturen umgestellt werden, ebenso wie die Game-Environment.
+
+Bei einer Layer-basierten Implementierung könnte sich tiefer mit der GPU Optimierung beschäftigt werden, welche in \cite{kim2024gpu,reis2015gpu} beschrieben wird.
+
+\subsection{Algorithmische Optimierungen}
+Bei den algorithmischen Optimierungen gibt es zahlreiche Möglichkeiten.
+
+Die erste Maßnahme wäre es, sich mit verschiedenen Abstraktionstechniken zu beschäftigen, um die Größe des Spielbaums zu reduzieren.
+Dies hilft sowohl allen Tree-basierten Ansätzen, da dadurch der abstrahierte Baum des nächstgrößeren Spiels in den Speicher passen könnte, als auch der Laufzeit pro Iteration, da nicht so viele Zustandsknoten besucht werden müssen.
+Relevante Literatur hierzu ist \cite{gilpin2007lossless,billings2003approximating,brown2015hierarchical,kroer2018unified}.
+
+Eine zweite Optimierung wäre das Einbauen verschiedener Arten von Pruning.
+Es gab schon einen Versuch, Partial Pruning zu implementieren, dieser scheiterte jedoch bei der Evaluation aus demselben Grund wie die Sampling-Solver.
+Beim Pruning werden bestimmte Teilbäume nicht weiter besucht, sobald bestimmte Umstände eingetroffen sind.
+Relevante Literatur hierzu ist \cite{brownSandholm2015regretBasedPruning,brown2017reduced}.
+
+Ebenfalls denkbar wären Ansätze, die die Strategie nicht tabellarisch speichern, sondern mithilfe eines neuronalen Netzes darstellen.
+Ein Beispiel hierfür ist Deep CFR \cite{brown2019deepcfr}.
+
+Anschließend könnten State-of-the-Art-Techniken wie Subgame Solving betrachtet werden.
+Diese werden in bahnbrechenden Poker-KIs wie Libratus und Pluribus in unterschiedlicher Form verwendet\cite{brown2017superhuman,brown2019superhuman}.
+
+

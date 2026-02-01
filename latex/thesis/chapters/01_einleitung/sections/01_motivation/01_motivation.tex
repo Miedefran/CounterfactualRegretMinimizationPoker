@@ -1,0 +1,32 @@
+\section{Motivation und Relevanz}
+%Kurzer Einleitungspart, der Interesse wecken soll
+
+Im Alltag werden ständig Entscheidungen getroffen, ohne dass Entscheidungsträger stets vollständig über alle relevanten Umstände informiert sind.
+Um dennoch handlungsfähig zu bleiben, treffen Menschen bewusst oder unterbewusst Annahmen über unbekannte Aspekte einer Situation.
+Das Verhalten von Akteuren in solchen strategischen Entscheidungssituationen lässt sich durch spieltheoretische Modelle beschreiben.
+Die Spieltheorie umfasst sowohl Modelle für Situationen bzw. Spiele mit vollständiger als auch mit unvollständiger Information.
+Ein prominentes Beispiel für ein Spiel mit unvollständiger Information ist Poker, insbesondere Hold'em-Varianten wie Texas Hold'em oder Omaha Hold'em.
+
+%Eigenes Interesse + GTO Populär 
+Ich habe im letzten Jahr ein ausgeprägtes Interesse an dem Spiel No-Limit Texas Hold'em entwickelt. 
+Wenn man sich mit Strategien dieses Spiels auseinandersetzt, stößt man schnell auf ein Konzept, das „Game Theory Optimized“ (GTO) genannt wird.
+Dieses Konzept hat innerhalb der letzten Jahre immer mehr an Aufmerksamkeit und Relevanz gewonnen und ist heutzutage kaum noch aus der Pokerwelt wegzudenken.\\
+Eine GTO-Strategie ist im Grunde eine spieltheoretisch optimale Lösung, die durch den Einsatz von Algorithmen approximiert wird. 
+Diese Strategien sind für Spiele mit einem enorm großen Zustandsraum, wie No-Limit Texas Hold'em, so komplex, dass sie von Menschen nicht vollständig erlernt und angewendet werden können.
+Pokerprofis sind allerdings in der Lage, diese Strategien in abstrahierter Form zu adaptieren, indem sie grundlegende strategische Prinzipien und Verhaltensmuster erkennen und anschließend auf ihre Spielsituationen anwenden.
+Die Auseinandersetzung mit GTO-Strategien in meiner Freizeit weckte mein Interesse an den algorithmischen Grundlagen, die zur Berechnung solcher Strategien verwendet werden.
+
+%Übergang GTO zu CFR
+Ein zentraler Algorithmus zum Finden solcher Strategien ist Counterfactual Regret Minimization (CFR).
+Seit seiner Einführung in \enquote{Regret Minimization in Games with Incomplete Information} \cite{zinkevich2007regret} hat sich CFR als Standardansatz etabliert und bildet die Grundlage für die erfolgreichsten Poker-KIs.
+\newpage
+Zu den größten Erfolgen gehören:
+\begin{itemize}
+    \item Cepheus \cite{bowling2015heads} löste erstmals das Spiel Heads-Up Limit Texas Hold'em.
+    \item Libratus \cite{brown2017superhuman,brown2017libratusDemo} erweiterte diesen Erfolg dann auf die Heads-Up No-Limit-Variante.
+    \item Durch Pluribus \cite{brown2019superhuman} wurde gezeigt, dass diese Erfolge auch auf Mehrspielerszenarien übertragen werden können.
+\end{itemize}
+
+
+
+

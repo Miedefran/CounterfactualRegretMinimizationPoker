@@ -1,0 +1,30 @@
+\section{Erkenntnisse und Reflexion}
+
+Dieser Abschnitt präsentiert die während des Entwicklungsvorgangs gewonnenen Erkenntnisse und reflektiert mögliche Verbesserungen.
+
+Im Projektverlauf hat sich gezeigt, dass eine funktionsfähige Evaluation das wichtigste Werkzeug zur Sicherstellung der Korrektheit der Algorithmen ist.
+Ohne eine verlässliche Exploitability-Berechnung können Implementierungsfehler lange unentdeckt bleiben.
+Darüber hinaus hat sich gezeigt, dass Architekturentscheidungen, die zunächst wie reine Implementierungsdetails wirken, schwerwiegende Folgen haben können.
+Das beste Beispiel hierfür ist die Modellierung der Zufallsknoten.
+Solche Problemstellen sollten möglichst schnell behoben werden, da der Aufwand für Workaround-Code schnell wächst.
+
+Im Verlauf der Arbeit wurden viele Erkenntnisse in Bezug auf die Strukturierung einer wissenschaftlichen Arbeitsweise gewonnen.
+Zunächst hätte die Literaturrecherche breiter angelegt werden sollen, statt sich früh auf wenige Standardvarianten wie CFR, CFR+ und MCCFR zu versteifen.
+Dadurch hätte früher erkannt werden können, dass es durchaus noch andere interessantere CFR-Varianten wie DCFR gibt.
+Ein guter Einstieg wäre der Kurs \emph{Computational Game Solving} gewesen \cite{sandholmAnagnostidesCS15888F25}.
+Die Folien sind didaktisch deutlich besser zu verarbeiten als die zugrunde liegenden Paper und hätten in den Anfangsphasen einen breiten Überblick über das Thema geboten.
+
+Die größte Schwierigkeit war das Setzen des Rahmens der Arbeit.
+Dem lag die Arbeitsreihenfolge von Recherche, Implementierung und Dokumentation zugrunde.
+Nach einer ersten Literaturrecherche wurden die Spielumgebung und die ersten Solver implementiert.
+Als der Best Response Agent nicht funktionierte, wurde sich der Dokumentation gewidmet.
+Dies war jedoch ein Fehler.
+Große Teile der zu diesem Zeitpunkt verfassten Dokumentation erwiesen sich später als nicht mehr brauchbar.
+Außerdem wurde der Best Response Agent erst in der Mitte der Bearbeitungszeit erfolgreich umgesetzt, sodass Fehler spät festgestellt wurden und Optimierungen warten mussten.
+Gegen Ende der Arbeit wurden fortlaufend neue interessante Bereiche entdeckt, mit denen man sich hätte beschäftigen können. 
+Jedoch reichte die Zeit nicht mehr aus, diese erfolgreich umzusetzen und anschließend zu dokumentieren.
+Mit einer besseren zeitlichen Planung hätte ein breiteres und besser ausgewähltes Spektrum an Themen rund um Counterfactual Regret Minimization gewählt werden können.
+Außerdem hätte die Entdeckung eines Kurses wie \emph{Computational Game Solving} zu einem frühen Zeitpunkt massiv beim Setzen des Rahmens geholfen.
+Würde diese Arbeit erneut geschrieben werden, wäre ein sinnvoller Ablauf: intensive Literaturrecherche, Rahmen festlegen, Implementierung, anschließend Dokumentation.
+Die Vermischung der Phasen hat nur Probleme bereitet.
+

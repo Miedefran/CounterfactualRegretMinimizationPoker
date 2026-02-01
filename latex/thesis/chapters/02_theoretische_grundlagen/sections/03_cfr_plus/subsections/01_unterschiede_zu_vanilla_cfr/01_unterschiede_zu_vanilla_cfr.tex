@@ -1,0 +1,12 @@
+\subsection{Unterschiede zu Vanilla CFR}
+
+CFR+ unterscheidet sich von Vanilla CFR durch drei Hauptänderungen.
+
+Erstens verwendet CFR+ eine linear gewichtete Durchschnittsstrategie statt der uniformen Durchschnittsstrategie.
+Die gewichtete Durchschnittsstrategie ist definiert als $\bar{\sigma}_p^T = 2/(T^2 + T) \sum_{t=1}^T t\sigma_p^t$, wobei spätere Iterationen stärker gewichtet werden.
+
+Zweitens führt CFR+ alternierende Updates durch.
+Im Gegensatz zu Vanilla CFR, der die Regretwerte beider Spieler simultan aktualisiert, aktualisiert CFR+ die Regretwerte der Spieler abwechselnd.
+
+Drittens verwendet CFR+ Regret Matching+ anstelle von Regret Matching.
+Regret Matching+ setzt negative Regretwerte auf null zurück, statt sie zu ignorieren, was zu besseren Tracking-Regret-Eigenschaften führt.

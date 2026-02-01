@@ -1,0 +1,26 @@
+\subsection{Linear Weighted Average}
+
+CFR+ verwendet eine linear gewichtete Durchschnittsstrategie anstelle der uniformen Durchschnittsstrategie von CFR.
+Dabei wird jede Iteration $t$ mit Gewicht $t$ versehen, wodurch spätere Iterationen stärker gewichtet werden.
+Die linear gewichtete Durchschnittsstrategie ist definiert als:
+\begin{equation}
+\bar{\sigma}_p^T = \frac{2}{T^2 + T} \sum_{t=1}^T t\sigma_p^t.
+\end{equation}
+
+~\cite[Thm.~3]{bowling2015heads} besagt Folgendes:
+Wenn CFR+ für $T$ Iterationen in einem extensiven Spiel läuft, dann ist die linear gewichtete Durchschnittsstrategie ein approximatives Nash-Gleichgewicht.
+Voraussetzung ist, dass die maximale Differenz zwischen den Auszahlungen für jeden Spieler durch eine Konstante $L$ beschränkt ist.
+Die Qualität der Approximation wird durch die Schranke $2(|\mathcal{I}_1| + |\mathcal{I}_2|)L\sqrt{k}/\sqrt{T}$ beschrieben.
+Dabei bezeichnet $k = \max_{I \in \mathcal{I}} |A(I)|$ die maximale Anzahl von Aktionen pro Informationset.
+Die Schranke impliziert eine Konvergenzrate von $O(1/\sqrt{T})$, die asymptotisch identisch mit der Rate der uniformen Gewichtung ist.
+
+Theorem~3 gilt nicht für CFR.
+Im Gegensatz zu CFR+, wo lineare Gewichtung die Performance verbessert, verschlechtert lineare Gewichtung die Performance von Vanilla CFR.
+
+In der Praxis erreicht die aktuelle Strategie in CFR+ oft bereits eine gute Approximation zum Nash Equilibrium, sodass die aggressive Gewichtung die Konvergenz weiter beschleunigen kann.
+
+Empirisch wurde beobachtet, dass eine quadratische Gewichtung mit $t^2$ statt $t$ die Konvergenz von CFR+ weiter beschleunigen kann~\cite{brown2018discounted}.
+
+%maybe hier noch mehr zu squared weight sagen idk
+
+

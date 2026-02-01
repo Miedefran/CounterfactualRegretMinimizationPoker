@@ -1,0 +1,47 @@
+\section{Best Response Agent}
+
+Der Best Response Agent berechnet die Exploitability einer Strategie durch Traversierung des Public State Trees.
+In diesem Kapitel wird dieser Ablauf mittels UML Diagrammen beschrieben.
+
+Der Public State Tree wird einmalig gebaut und anschließend gespeichert.
+
+\subsection{Gesamtablauf der Best-Response-Berechnung}
+
+Die Berechnung beginnt mit dem Laden des Public State Trees und der durchschnittlichen Strategie.
+Für jedes Informationset des betrachteten Spielers werden die gültigen Gegner-Informationsets bestimmt (ausschließlich solche mit unterschiedlichen Karten).
+Die Erreichbarkeitswahrscheinlichkeiten für den Gegner werden berechnet, und anschließend wird der Public State Tree rekursiv traversiert.
+Der Gesamtnutzen wird als gewichtete Summe über alle Informationsets berechnet und als Exploitability zurückgegeben.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.4\textwidth]{chapters/04_systemarchitektur/sections/03_evaluationsmethoden/Aktivitaetsdiagramm_best_response.pdf}
+\caption{Aktivitätsdiagramm der Best-Response-Berechnung}
+\label{fig:best_response_activity}
+\end{figure}
+
+\newpage
+\subsection{Details der rekursiven Traversierung}
+
+Die rekursive Traversierung des Public-State-Trees unterscheidet zwischen vier Knotentypen.
+Handelt es sich um einen \textbf{Terminalknoten}, wird die Hand-Strength für alle Informationsets berechnet (mit Caching zur Performance-Optimierung), und die Payoffs werden als gewichtete Summe über die Erreichbarkeitswahrscheinlichkeiten des Gegners berechnet.
+
+Bei einem \textbf{Zufallsknoten} wird für jedes Zufallsereignis der neue Public State bestimmt und rekursiv weiter traversiert.
+Der erwartete Nutzen wird als gewichtete Summe über alle Zufallsereignisse berechnet.
+
+Bei einem \textbf{Entscheidungsknoten} wird unterschieden, ob es sich um einen Knoten des betrachteten Spielers oder des Gegners handelt.
+Handelt es sich um einen Knoten des \textbf{betrachteten Spielers}, wird für jede mögliche Aktion rekursiv traversiert und der Nutzen gespeichert.
+Für jedes Informationset wird anschließend die Best Response berechnet, indem das Maximum über alle Aktionen gewählt wird.
+
+Handelt es sich um einen \textbf{Gegner-Knoten}, wird die Strategie des Gegners für die entsprechenden Informationsets abgerufen.
+Für jede mögliche Aktion werden die Erreichbarkeitswahrscheinlichkeiten aktualisiert und rekursiv weiter traversiert.
+Der erwartete Nutzen wird als gewichtete Summe über alle Aktionen berechnet, wobei die Gewichte die Strategie-Wahrscheinlichkeiten des Gegners sind.
+
+Die Terminalknoten-Evaluierung nutzt Hand-Strength-Sortierung für O(n) statt O(n²) Komplexität, und Hand-Strength-Evaluierungen werden gecacht, um wiederholte Berechnungen zu vermeiden.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=1.0\textwidth]{chapters/04_systemarchitektur/sections/03_evaluationsmethoden/Aktivitaetsdiagramm_traverse_public_tree.pdf}
+\caption{Aktivitätsdiagramm der Public-State-Tree-Traversierung}
+\label{fig:traverse_public_tree}
+\end{figure}
+

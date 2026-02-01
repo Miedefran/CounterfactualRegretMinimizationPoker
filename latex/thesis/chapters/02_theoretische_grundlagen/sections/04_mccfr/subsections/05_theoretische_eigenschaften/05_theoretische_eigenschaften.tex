@@ -1,0 +1,29 @@
+\subsection{Theoretische Eigenschaften}
+Lanctot et~al.~\cite{lanctot2009monte} verwenden zur genaueren Angabe von Regretschranken die Größe $M_i$.
+Der M-Wert $M_i$ beschreibt, wie sich die Informationsets von Spieler $i$ über seine Aktionssequenzen verteilen, und liegt zwischen $\sqrt{|\mathcal{I}i|}$ und $|\mathcal{I}_i|$. 
+Dieses Maß ist abhängig von der Struktur des spezifischen Spiels und schätzt die Komplexität genauer ab, als die reine Anzahl der Informationsets.
+Die genaue Definition, sowie die Erklärung anhand eines Beispiels ist imAnhang~\ref{anhang:mwert} zu finden.
+
+Für Vanilla CFR gilt:
+\begin{equation}
+R_i^T \le \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T},
+\end{equation}
+(\cite[Thm.~3]{lanctot2009monte}),
+wobei $\Delta_{u,i}$ und $|A_i|$ wie in Abschnitt~\ref{sec:regret-matching} definiert sind.
+
+Für External Sampling MCCFR gilt für jedes $p$ mit $0 < p \le 1$ mit Wahrscheinlichkeit mindestens $1-p$:
+\begin{equation}
+R_i^T \le \left(1 + \sqrt{\frac{2}{p}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T}.
+\end{equation}
+(\cite[Thm.~4]{lanctot2009monte}).
+
+Obwohl External Sampling nur einen konstanten Faktor mehr Iterationen benötigt als Vanilla CFR, wird pro Iteration nur ein Bruchteil des Spielbaums traversiert.
+Für ausgewogene Spiele, in denen die Spieler ungefähr gleich viele Entscheidungen treffen, liegen die Iterationskosten (Anzahl besuchter Historien) bei External Sampling bei $O(\sqrt{|H|})$, während Vanilla CFR $O(|H|)$ benötigt.
+Damit ergibt sich asymptotisch eine geringere Gesamtzeit zur Berechnung eines approximativen Gleichgewichts (\cite[Sec.~4]{lanctot2009monte}).
+
+Für Outcome Sampling MCCFR gilt für jedes $p$ mit $0 < p \le 1$ mit Wahrscheinlichkeit mindestens $1-p$:
+\begin{equation}
+R_i^T \le \left(1 + \sqrt{\frac{2}{p}} \cdot \frac{1}{\sqrt{\delta}}\right) \Delta_{u,i} M_i \sqrt{|A_i|}/\sqrt{T},
+\end{equation}
+wenn $q(z) \ge \delta > 0$ für alle relevanten terminalen Historien $z$ gilt (\cite[Thm.~5]{lanctot2009monte}).
+Der Faktor $1/\sqrt{\delta}$ hängt von der Sampling Policy ab.

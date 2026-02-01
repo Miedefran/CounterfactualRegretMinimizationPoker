@@ -1,0 +1,10 @@
+\section{Evaluationsmethoden}
+Die Evaluation erfolgt mittels Exploitability-Tests mit einem Best Response Agent.
+Diese Methode ermöglicht es, die Qualität der trainierten Strategien zu bewerten, indem ein optimaler Gegner simuliert wird, der die Strategie maximal ausnutzt.
+Um das Konvergenzverhalten eines Algorithmus einschätzen zu können, wird während des Trainings in regelmäßigen Abständen die Exploitability bestimmt.
+Nach dem Training wird diese dann in Abhängigkeit von der Anzahl der Iterationen oder der vergangenen Zeit in einem Diagramm dargestellt.
+
+Eine weitere Metrik, die ursprünglich geplant war, ist der Erwartungswert einer Strategie im Self-Play.
+Hierbei spielt eine Strategie wiederholt gegen sich selbst, wodurch im Falle eines Nash-Equilibriums der Erwartungswert des Spiels berechnet werden kann.
+Bei Forschungsvarianten wie Kuhn Poker und Leduc Hold'em ist dieser Wert bekannt und kann daher zur Verifikation der Implementierung genutzt werden.
+Im Verlauf der Arbeit hat sich jedoch herausgestellt, dass diese Metrik nicht aussagekräftig genug ist und außerdem implizit in der Best Response Berechnung enthalten ist.

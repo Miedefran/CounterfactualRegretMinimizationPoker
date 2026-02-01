@@ -1,0 +1,17 @@
+\subsection{Tracking Regret}
+
+Tracking Regret ist ein von ~\cite{herbster1998tracking} eingeführtes Konzept.
+Externes Regret vergleicht nur gegen statische Strategien, die immer die gleiche Aktion wählen.
+Tracking Regret erlaubt dagegen den Vergleich gegen Strategien, die ihre Aktion höchstens $(k-1)$ Mal ändern können.
+
+Regret Matching hat sehr schlechte Tracking-Regret-Eigenschaften.
+Der Algorithmus kann lineares Regret aufweisen, das proportional zur Anzahl der Iterationen $T$ wächst, selbst wenn die Vergleichsstrategie nur einmal ihre Aktion ändert ($k = 2$).
+Im Gegensatz dazu ist Regret Matching+ der erste Regret-Matching-basierte Algorithmus mit sublinearem Tracking-Regret.
+
+Für alternative Strategien, die bis zu $(k-1)$ Mal wechseln können, hat Regret Matching+ eine Regret-Schranke von
+\begin{equation}
+R^T \le kL\sqrt{|A|T}.
+\end{equation}
+(\cite[Thm.~2]{bowling2015heads})
+
+Diese Schranke zeigt, dass der Regret linear mit der Anzahl der Partitionen $k$ skaliert, aber sublinear mit der Anzahl der Iterationen $T$ bleibt.

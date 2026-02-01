@@ -1,0 +1,42 @@
+\subsection{Definitionen}
+\subsubsection{Wahrscheinlichkeiten und Werte}
+
+Für ein Strategieprofil $\sigma$ werden folgende Wahrscheinlichkeiten und Werte definiert:
+
+Die Wahrscheinlichkeit, dass eine Historie $h$ auftritt, wenn alle Spieler gemäß $\sigma$ handeln, wird mit $\pi^\sigma(h)$ bezeichnet.
+Diese Wahrscheinlichkeit kann in ein Produkt zerlegt werden:
+\begin{equation}
+\pi^\sigma(h) = \prod_{i \in N \cup \{c\}} \pi_i^\sigma(h),
+\end{equation}
+wobei $\pi_i^\sigma(h)$ die Wahrscheinlichkeit bezeichnet, dass Spieler $i$ in all seinen Entscheidungsknoten auf dem Pfad zu $h$ gemäß $\sigma$ die Aktionen gewählt hat, die zu $h$ führen.
+Das Produkt der Wahrscheinlichkeiten aller anderen Spieler (inklusive Zufallsereignisse) wird mit $\pi_{-i}^\sigma(h)$ bezeichnet.
+
+Für ein Informationset $I$ wird die Erreichbarkeitswahrscheinlichkeit definiert als:
+\begin{equation}
+\pi^\sigma(I) = \sum_{h \in I} \pi^\sigma(h).
+\end{equation}
+Analog sind $\pi_i^\sigma(I)$ und $\pi_{-i}^\sigma(I)$ als die Wahrscheinlichkeiten definiert, dass Spieler $i$ beziehungsweise die anderen Spieler das Informationset $I$ erreichen.
+
+Der erwartete Nutzen für Spieler $i$ unter Strategieprofil $\sigma$, auch \emph{Overall Value} genannt, wird wie folgt berechnet:
+\begin{equation}
+u_i(\sigma) = \sum_{h \in Z} u_i(h) \pi^\sigma(h),
+\end{equation}
+
+
+\subsubsection{Nash-Gleichgewicht}
+Ein Nash‑Gleichgewicht beschreibt ein Strategienprofil, bei dem kein Spieler durch eine einseitige Änderung seiner Strategie seinen erwarteten Nutzen erhöhen kann\\~\cite[Ch.~11, Sec.~11.5]{osborne1994course}.\\
+Ein Nash-Gleichgewicht für ein Zweispielernullsummenspiel ist ein Strategieprofil $\sigma = (\sigma_1, \sigma_2)$, das folgende Ungleichungen erfüllt:
+\begin{equation}
+u_1(\sigma) \ge \max_{\sigma_1' \in \Sigma_1} u_1(\sigma_1', \sigma_2),
+\qquad
+u_2(\sigma) \ge \max_{\sigma_2' \in \Sigma_2} u_2(\sigma_1, \sigma_2')
+\end{equation}
+(\cite[Eq.~1]{zinkevich2007regret}).
+
+Eine Approximation eines Nash-Gleichgewichts, auch $\varepsilon$-Nash-Gleichgewicht genannt, ist ein Strategieprofil $\sigma$, das folgende Ungleichungen erfüllt:
+\begin{equation}
+u_1(\sigma) + \varepsilon \ge \max_{\sigma_1' \in \Sigma_1} u_1(\sigma_1', \sigma_2),
+\qquad
+u_2(\sigma) + \varepsilon \ge \max_{\sigma_2' \in \Sigma_2} u_2(\sigma_1, \sigma_2')
+\end{equation}
+(\cite[Eq.~2]{zinkevich2007regret}).
