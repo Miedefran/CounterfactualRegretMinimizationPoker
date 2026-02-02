@@ -30,7 +30,7 @@ Bei alternierenden Updates wird zunächst der Spielbaum für Spieler 0 durchlauf
 Danach für Spieler 1 mit der bereits aktualisierten Strategie von Spieler 0.
 Bei simultanen Updates wird der Spielbaum für beide Spieler mit derselben Strategie durchlaufen, anschließend werden die Strategien beider Spieler aktualisiert.
 Nachdem der Spielbaum traversiert wurde, wird die Strategie für alle Informationsets mittels Regret Matching basierend auf den kumulierten Counterfactual Regrets aktualisiert.
-Hiermit endet eine Iteration.\\
+Hiermit endet eine Iteration.
 
 Optional kann während des Trainings eine Exploitability-Berechnung durchgeführt werden.
 Hierfür wird die durchschnittliche Strategie berechnet und anschließend eine Best-Response-Evaluation durchgeführt.\\
@@ -38,7 +38,7 @@ Dieser Prozess wird für die gewünschte Anzahl an Iterationen wiederholt und an
 Wichtig zu erwähnen ist, dass die Best-Response-Evaluation nicht bei jeder Iteration durchgeführt wird, sondern in regelmäßigen Abständen gemäß einer konfigurierbaren Evaluationsfrequenz.
 Diese Abstände werden so gewählt, dass aus den gesammelten Werten anschließend ein aussagekräftiger Konvergenzplot erstellt werden kann.
 
-Hier wird der eben wörtlich beschriebene Ablauf mithilfe eines UML-Aktivitätsdiagramms veranschaulicht.
+Auf der folgenden Seite wird der eben wörtlich beschriebene Ablauf mithilfe eines UML-Aktivitätsdiagramms veranschaulicht.
 
 \begin{figure}[htbp]
 \centering
@@ -48,7 +48,8 @@ Hier wird der eben wörtlich beschriebene Ablauf mithilfe eines UML-Aktivitätsd
 \end{figure}
 \newpage
 
-Auf dem UML Diagramm ist eine rekursive Traversierungsfunktion zu sehen; diese wird jetzt hier genauer erklärt und mit einem weiteren Aktivitätsdiagramm veranschaulicht.
+Auf dem UML Diagramm ist eine rekursive Traversierungsfunktion zu sehen.
+Diese wird hier genauer erklärt und mit einem weiteren Aktivitätsdiagramm veranschaulicht.
 Die rekursive Traversierungsfunktion berechnet den erwarteten Nutzen für einen gegebenen Spieler und aktualisiert dabei dessen Counterfactual Regrets.
 Als Parameter erhält sie die Spieler-ID, die Erreichbarkeitswahrscheinlichkeiten beider Spieler sowie die Zufallswahrscheinlichkeit.
 Die Erreichbarkeitswahrscheinlichkeiten beschreiben die Wahrscheinlichkeit, den aktuellen Knoten zu erreichen, während die Zufallswahrscheinlichkeit die kumulierte Wahrscheinlichkeit aller Zufallsereignisse entlang des Pfades beschreibt.
@@ -70,9 +71,13 @@ Bei einem \textbf{Spieler-Knoten} wird analog vorgegangen, jedoch wird der Nutze
 Nach der Berechnung des erwarteten Nutzens wird für jede Aktion der Counterfactual Regret berechnet und mit der Erreichbarkeitswahrscheinlichkeit des Gegners sowie der Zufallswahrscheinlichkeit multipliziert.
 Die kumulierten Regrets und die kumulierte Strategie werden für das Informationset aktualisiert.
 
-Die vollständige Implementierung der Traversierungsfunktion im dynamischen CFR-Solver ist im folgenden Listing wiedergegeben.
+Die Methode \texttt{traverse\_game\_tree} realisiert die rekursive CFR-Traversierung für einen Spieler.
+Sie berechnet den erwarteten Nutzen entlang des Baums und aktualisiert an jedem \emph{Spieler-Knoten} die kumulierten Regrets sowie die kumulierte Strategie für das zugehörige Informationsset.
+An Zufalls- und Gegner-Knoten wird nur der Nutzen propagiert; \texttt{reach\_probabilities} und \texttt{chance\_reach} entsprechen den Erreichbarkeitswahrscheinlichkeiten $\pi_i^\sigma(h)$ bzw.\ der kumulierten Zufallswahrscheinlichkeit und werden für die Gewichtung in \texttt{update\_regrets} und \texttt{update\_strategy\_sum} benötigt.
+\newpage
+Es folgt Quellcode der rekursiven Traversierungsfunktion des dynamischen CFR Solvers:
 
-\begin{lstlisting}[language=Python, basicstyle=\ttfamily\footnotesize, caption={Methode \texttt{traverse\_game\_tree} (dynamischer CFR-Solver)}, breaklines=true]
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\footnotesize, caption={\texttt{traverse\_game\_tree}}, breaklines=true]
 def traverse_game_tree(self, player_id, reach_probabilities, chance_reach: float = 1.0):
     """
     Traverse game tree and compute counterfactual regret for one player.
@@ -141,7 +146,42 @@ def traverse_game_tree(self, player_id, reach_probabilities, chance_reach: float
     return current_utility
 \end{lstlisting}
 
-Auf der folgenden Seite wird der Ablauf der rekursiven Traversierung mit einem UML-Aktivitätsdiagramm beschrieben.
+An Spielerknoten werden die Regretwerte sowie die Strategie akkumuliert. 
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\footnotesize, caption={\texttt{update\_regrets} und \texttt{update\_strategy\_sum}}, breaklines=true]
+    def update_regrets(self, info_set_key, legal_actions, action_utilities,
+                      current_utility, counterfactual_weight):
+        for action in legal_actions:
+            instantaneous_regret = counterfactual_weight * (
+                action_utilities[action] - current_utility)
+            self.regret_sum[info_set_key][action] += instantaneous_regret
+
+    def update_strategy_sum(self, info_set_key, legal_actions,
+                           current_strategy, player_reach):
+        weight = self._get_strategy_sum_weight()
+        for action in legal_actions:
+            self.strategy_sum[info_set_key][action] += (
+                weight * player_reach * current_strategy[action])
+\end{lstlisting}
+
+Die aktuelle Strategie wird für jedes Informationset mittels Regret Matching bestimmt.
+
+\begin{lstlisting}[language=Python, basicstyle=\ttfamily\footnotesize, caption={Regret Matching: \texttt{\_compute\_policy\_for\_infoset}}, breaklines=true]
+    def _get_values_for_current_policy(self, info_set_key, legal_actions):
+        regrets = self.regret_sum.get(info_set_key, {})
+        return {a: max(0.0, regrets.get(a, 0.0)) for a in legal_actions}
+
+    def _compute_policy_for_infoset(self, info_set_key, legal_actions):
+        values = self._get_values_for_current_policy(
+            info_set_key, legal_actions)
+        total = sum(values.values())
+        if total > 0:
+            return {a: values[a] / total for a in legal_actions}
+        return {a: 1.0 / len(legal_actions) for a in legal_actions}
+\end{lstlisting}
+
+\newpage
+Hier wird der Ablauf der rekursiven Traversierung mit einem UML-Aktivitätsdiagramm beschrieben.
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=1\textwidth]{chapters/04_systemarchitektur/sections/02_cfr_solver/Aktivitaetsdiagramm_traverse_game_tree_dynamic.pdf}
@@ -149,6 +189,7 @@ Auf der folgenden Seite wird der Ablauf der rekursiven Traversierung mit einem U
     \label{fig:traverse_game_tree_dynamic}
 \end{figure}
 
+    
 \newpage
 \subsection{Statischer Spielbaum}
 Es gibt zwei verschiedene Varianten eines statischen Spielbaums, die in dieser Arbeit umgesetzt wurden.
@@ -163,7 +204,7 @@ Die Struktur des Baums wird durch verschiedene Arrays repräsentiert.
 Für Entscheidungsknoten speichert \texttt{children} die Verbindungen zu ihren Kindknoten.
 Für Zufallsknoten werden die möglichen Outcomes und deren Wahrscheinlichkeiten in separaten Arrays gespeichert.
 Zusätzlich werden die Knoten nach ihrer Tiefe in Layern gruppiert (\texttt{layer\_terminal\_nodes}, \texttt{layer\_chance\_nodes}, \texttt{layer\_decision\_nodes}).
-
+Auf der folgenden Seite ist die Layer-basierte Traversierung in einem UML-Aktivitätsdiagramm dargestellt.
 
 \begin{figure}[htbp]
 \centering

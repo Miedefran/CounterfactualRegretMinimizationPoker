@@ -65,7 +65,7 @@ class MemrayPane(Container):
     thread_idx = reactive(0)
     threads = reactive(_DUMMY_THREAD_LIST, always_update=True)
     snapshot = reactive(_EMPTY_SNAPSHOT)
-    paused = reactive(False, init=False)
+    paused = reactive(True, init=False)  # Updates beim Start aus; mit "p" einschalten
     disconnected = reactive(False, init=False)
 
     def __init__(self, reader_client, pid: Optional[int], cmd_line: Optional[str]):

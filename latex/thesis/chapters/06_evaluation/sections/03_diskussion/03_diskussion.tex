@@ -1,28 +1,26 @@
 \section{Diskussion}
 
-Bei kleinen Spielen wie Kuhn Poker sind die Unterschiede zwischen den Algorithmen bereits deutlich sichtbar, bis auf den Unterschied zwischen CFR mit simultanen und alternierenden Updates.
-Die Art der Implementierung ist hier noch nicht sonderlich relevant.
-Der auf Layer-basierte Ansatz schneidet sogar schlechter ab als die anderen Ansätze.
+Bei kleinen Spielen wie Kuhn Poker sind die Unterschiede zwischen den Algorithmen noch nicht so klar sichtbar wie bei größeren Varianten.
+Der Unterschied zwischen CFR mit simultanen und alternierenden Updates zeigt sich jedoch schon stark.
+Der Layer-basierte Ansatz schneidet wegen Programmier-Overhead sogar schlechter ab als die anderen Ansätze.
 
-Bei Leduc Hold'em wird der Vorteil von alternierenden Updates deutlich sichtbar.
-Außerdem hält der Layer-basierte Ansatz ab hier mit dem rekursiven Tree mit.
+Bei Leduc Hold'em werden die Unterschiede zwischen DCFR/CFR+ und Vanilla CFR deutlich sichtbar.
+Außerdem hält der Layer-basierte Ansatz ab hier Schritt mit dem rekursiven Tree.
 
 Ab Twelve Card Poker zeigt sich der Vorteil der Layer-basierten Traversierung deutlich.
 Der dynamische Ansatz wird hier aus Laufzeitgründen bereits nicht mehr evaluiert, genauso wie CFR mit simultanen Updates.
 
-Ab Small Island Hold'em wurde aufgrund von Speicherproblemen nur noch der Flat Tree Ansatz evaluiert.
+Ab Small Island Hold'em wurde aufgrund von Speicherproblemen nur noch der Flat Tree-Ansatz evaluiert.
 Standard CFR mit alternierenden Updates ist auch hier noch in der Lage, eine hinreichende Strategie zu finden, jedoch ist fraglich, ob 45~Stunden bis zu einer Exploitability von knapp 2~mb/g noch als praktikabel gelten kann.
 
 Die Verhältnisse der benötigten Iterationen relativ zu Vanilla CFR mit alternierenden Updates (1,0) variieren über die Spielgrößen:\\
-Kuhn Poker: Discounted CFR 0,3\% (31 zu 11.111), CFR+ 1,5\% (161 zu 11.111).\\
+Kuhn Poker: Discounted CFR 23\% (211 zu 911), CFR+ 10\% (91 zu 911).\\
 Leduc Hold'em: Discounted CFR 1,3\% (411 zu 31.111), CFR+ 1,6\% (511 zu 31.111).\\
 Twelve Card Poker: Discounted CFR 0,6\% (911 zu 161.111), CFR+ 1,0\% (1611 zu 161.111).\\
 Small Island Hold'em: Discounted CFR 3,81\% (381 zu mindestens 10.000), CFR+ 7,81\% (781 zu mindestens 10.000).
 Die Small Island Hold'em Werte sind allerdings nicht repräsentativ, da Vanilla CFR nach 10.000 Iterationen und einer Exploitability von knapp 2~mb/g abgebrochen wurde.
 Dies geschah unabsichtlich und es gab keine Zeit, das Modell neu zu trainieren.
-Es ist jedoch zu erwarten, dass die Reduktion von knapp 2~mb/g auf unter 1~mb/g noch eine erhebliche Zeitspanne in Anspruch genommen hätte.
+Es ist jedoch zu erwarten, dass die Reduktion von knapp 2~mb/g auf unter 1~mb/g noch eine erhebliche Zeitspanne erfordert hätte.
 
 Über die größer werdenden Pokerspiele bleibt das Verhältnis von CFR mit alternierenden Updates und CFR+ nahezu identisch.
-Die Performance von Discounted CFR ist häufig abhängig vom Spieltyp.
-Bei Spielen, die Aktionen enthalten, die im Vergleich zu anderen einen deutlich kleineren Nutzen erzielen, schneidet Discounted CFR besser ab.
-Dies ist sowohl bei größer werdenden Spielen, als auch bei extrem kleinen Spielen wie Kuhn Poker der Fall.
+Die Performance von DCFR schwankt mehr und ist abhängiger vom Spieltyp.

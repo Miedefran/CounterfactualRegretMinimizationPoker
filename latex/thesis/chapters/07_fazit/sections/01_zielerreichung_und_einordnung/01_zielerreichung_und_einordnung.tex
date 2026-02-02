@@ -12,33 +12,33 @@ Im Exposé war vorgesehen, neben CFR+ auch Sampling-basierte Verfahren (MCCFR) p
 Diese Algorithmen konnten nicht evaluiert werden, hierfür wurde aber der Algorithmus DCFR als Vergleich hinzugezogen.
 Die Gründe hierfür wurden bereits in \hyperref[chap:entwicklungsvorgang]{Kapitel~5} erläutert.
 
-Die drei \hyperref[sec:zielsetzung]{Forschungsfragen aus Kapitel~1.2} können anhand der Ergebnisse beantwortet werden:
+Die drei \hyperref[sec:zielsetzung]{Forschungsfragen aus Kapitel~1.2} können anhand der erreichten Ergebnisse beantwortet werden:
 
 \begin{enumerate}
   \item \textbf{Algorithmusvergleich:} 
   Wie unterscheiden sich die verschiedenen CFR-Algorithmen in ihrem Konvergenzverhalten bei steigender Spielgröße, und ab welcher Spielgröße ist Vanilla CFR nicht mehr praktikabel?    
 
-  Die unterschiede im Konvergenzhalten der untersuchten Algorithmen bleiben bei steigender Spielgröße auf einer logarithmischen Skala ähnlich.
+  Die Unterschiede im Konvergenzverhalten der untersuchten Algorithmen bleiben bei steigender Spielgröße auf einer logarithmischen Skala ähnlich.
   Bei Small Island Hold'em ist Vanilla CFR mit alternierenden Updates nicht mehr praktikabel, da selbst nach 45~Stunden Training keine hinreichend niedrige Exploitability erreicht werden konnte.
   \item \textbf{Implementierungsoptimierungen:} 
   Welche Implementierungsoptimierungen sind erforderlich, damit das Training bei wachsender Spielgröße praktikabel bleibt?
 
-  Es gibt unzählige Implementierungsoptimierungen, die vorgenommen werden können, um die Laufzeit des Algorithmus zu beeinflussen.
-  Die meisten beruhen auf paralleler Berechnung.
-  In dieser Arbeit wurde eine Layer-basierte Implementierung gewählt, welche bei größer werdenden Spielen essenziell war.
-  Jedoch wird jede Methode, die einen statischen Spielbaum benutz, bei wachsender Spielgröße irgendwann durch den Speicherverbrauch beschränkt.
+  Um das Training bei wachsender Spielgröße praktikabel zu halten, sind verschiedene Implementierungsoptimierungen erforderlich.
+  Ein wichtiger Aspekt ist der Umstieg auf speichereffiziente Datenstrukturen, wie beispielsweise die Verwendung von NumPy-Arrays statt Python-Objekten.
+  Zudem wird irgendeine Form der parallelen Berechnung erforderlich.
+  In dieser Arbeit wurde die Layer-basierte Traversierung gewählt, welche eine gesamte Schicht gleichzeitig durch Vektoroperationen parallel verarbeitet.
+  Diese Optimierungen ermöglichen es, größere Spiele zu lösen, jedoch wird jede Methode, die einen statischen Spielbaum benutzt, bei wachsender Spielgröße irgendwann durch den Speicherverbrauch beschränkt.
   \item \textbf{Limitationen:} 
   Durch welche Komponenten wird die geplante Implementierung limitiert?
 
-  Die Skalierungsgrenzen sind je nach Implementierungsansatz unterschiedlich.
+Die Skalierungsgrenzen sind je nach Implementierungsansatz unterschiedlich.
 Die dynamische Implementierung ist durch ihre Laufzeit begrenzt.
 Die Layer-basierte Tree-Implementierung ist durch den Speicherverbrauch begrenzt.
 Ein weiterer Bottleneck, der bei weiterer Skalierung relevant wird, ist der Best Response Agent.
-Dies betrifft zum einen den Speicherbedarf des Public State Trees, aber viel mehr die Laufzeit.
+Dies betrifft zum einen den Speicherbedarf des Public State Trees sowie die Laufzeit.
 \end{enumerate}
 
-Diese Arbeit bietet einen Einstieg in das Thema \enquote{Computational Game Solving} mittels Counterfactual Regret Minimization.
-Die Implementierung bietet eine Pipeline zum Trainieren und Evaluieren von approximativen Nash-Equilibrium Strategien in verschiedenen Pokervarianten.
-Um die Ergebnisse greifbarer zu machen, wurde im Rahmen eines anderen Moduls eine grafische Benutzeroberfläche implementiert, in der ein Mensch gegen eine trainierte Strategie spielen kann.
-Diese Implementierung ist nicht Teil dieser Bachelorarbeit.
-Die Arbeit nutzt diese lediglich, um die Ergebnisse anschaulicher zu machen.
+Diese Arbeit bietet einen fundierten Einstieg in das Thema \enquote{Computational Game Solving} mittels Counterfactual Regret Minimization.
+Es wurde gezeigt, wie man extensive Spiele mit imperfekter Information mit spieltheoretischen Algorithmen löst.
+Darüber hinaus wurden die limitierenden Faktoren für eine weitere Skalierung der Spielgröße herausgearbeitet.
+Im folgenden Ausblick wird besprochen, welche Maßnahmen getroffen werden müssen, um die Implementierung weiter zu skalieren.

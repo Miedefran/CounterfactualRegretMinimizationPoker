@@ -1,6 +1,6 @@
 \section{Versuchsaufbau}
 
-Die Evaluation umfasst die in Kapitel~3 beschriebenen Solver-Varianten CFR, CFR+ und Discounted CFR, jeweils mit den Implementierungsansätzen Dynamic, Rekursiver Tree Ansatz und Layer-basiert.
+Die Evaluation umfasst die in Kapitel~3 beschriebenen Solver-Varianten CFR, CFR+ und Discounted CFR, jeweils mit den Implementierungsansätzen Dynamic, Rekursiver Tree-Ansatz und Layer-basiert.
 Zusätzlich wird CFR mit alternierenden Updates betrachtet.
 Discounted CFR wird dabei mit der Standardparameterkonfiguration DCFR$_{3/2,0,2}$ ($\alpha = 3/2$, $\beta = 0$, $\gamma = 2$) verwendet.
 Diese verschiedenen Algorithmen in Kombination mit den Implementierungsansätzen werden auf die in Kapitel~3 vorgestellten Pokervarianten angewendet: Kuhn Poker, Leduc Hold'em, Twelve Card Poker und Small Island Hold'em.
@@ -8,8 +8,7 @@ Diese verschiedenen Algorithmen in Kombination mit den Implementierungsansätzen
 Als primäre Evaluationsmetrik wird die Exploitability zur Bewertung der Strategiequalität verwendet.
 Als sekundäre Metrik wird die Trainingszeit betrachtet, um die Effizienz der verschiedenen Implementierungsansätze zu vergleichen.
 In der Literatur gilt eine Strategie als hinreichend gelöst, wenn die Exploitability unter 1~mb/g (Milli-Blinds pro Spiel) liegt~\cite{bowling2015heads}.
-Das Training wurde mit Abbruchkriterien durchgeführt, die je nach Spielgröße variieren.
-Für Kuhn Poker wurde bis zum Erreichen einer Exploitability von unter 0.1~mb/g trainiert, für Leduc Hold'em, Twelve Card Poker sowie Small Island Hold'em bis unter 1~mb/g.
+Das Training wurde mit einem Abbruchkriterium von 1~mb/g durchgeführt.
 Während des Trainings wurde die Strategie regelmäßig evaluiert, um den Konvergenzverlauf zu dokumentieren.
 Die Evaluationsfrequenz ist an die Spielgröße angepasst, da die Best-Response-Berechnung bei großen Spielen einen erheblichen Zeitaufwand erfordert.
 Es ist zu beachten, dass die finalen gemessenen Exploitability-Werte unter dem Abbruchkriterium liegen können, da die Strategie nicht in jeder Iteration, sondern nur in regelmäßigen Abständen evaluiert wird.
@@ -18,15 +17,15 @@ In den früheren Iterationen wurde häufiger evaluiert, da hier die stärksten �
 In späteren Iterationen waren die Unterschiede minimal, weshalb größere Abstände zwischen den Evaluationen gewählt wurden.
 Die Ergebnisse werden in logarithmischer Darstellung auf beiden Achsen dargestellt, um sowohl das frühe als auch das späte Konvergenzverhalten gut sichtbar zu machen.
 Für jedes Spiel werden verschiedene Graphen angefertigt.
-Diese verwenden grundlegend zwei Darstellungsformen.
+Diese verwenden grundsätzlich zwei Darstellungsformen.
 Exploitability über Iterationen ermöglicht den Vergleich der Algorithmen untereinander.
 Exploitability über Zeit veranschaulicht, wie sich die Implementierungsansätze verhalten.
 Zusätzlich wird für jedes Spiel ein Gesamtplot präsentiert, der alle Kombinationen aus Algorithmus und Implementierung zeigt.
 
-\paragraph{Determinismus Problem}
+\paragraph{Determinismus-Problem}
 
 Alle evaluierten CFR-Algorithmen sind von Grund auf deterministisch und verwenden eine uniforme Initialisierung der Strategie bei Regretwerten von 0.
-Während der Evaluation ist jedoch ein gravierender Fehler unterlaufen, der die Reproduzierbarkeit der Ergebnisse beeinträchtigt.
+Während der Evaluation wurde jedoch ein gravierender Fehler festgestellt, der die Reproduzierbarkeit der Ergebnisse beeinträchtigt.
 Da dieser Fehler zu spät festgestellt wurde, um alle Modelle neu zu trainieren, wird er im Folgenden erläutert.
 
 Solange keine expliziten Zufallsknoten verwendet wurden, waren die Solver-Ergebnisse vollständig reproduzierbar.

@@ -11,15 +11,47 @@ Ziel dieser Unterteilung war es, das Projekt später einfach erweiterbar für ne
 
 Dieses Kapitel gliedert sich in drei Hauptkomponenten: Game Environment, CFR-Solver und Evaluationsmethoden.
 Außerdem werden zwei verschiedene Arten der Implementierung des CFR-Solvers besprochen.
+
+\paragraph{Eigener und verwendeter Code}
+Die logische Struktur des Game Environment (Aufteilung in die Klassen Dealer, Player, Judger, Game und Round) wurde von der Bibliothek RL Card (\url{https://rlcard.org}) übernommen.
+Die CFR-Solver wurden initial anhand der zugrunde liegenden Paper implementiert.
+Zu diesem Entwicklungszeitpunkt wurde noch kaum auf Agentic Coding zurückgegriffen.
+OpenSpiel \cite{lanctot2019openspiel} diente später als Referenz zum Auffinden von Fehlern und für strukturelle Optimierungen.
+Ein Beispiel hierfür ist die Realisierung der CFR+ und DCFR Operationen mit Hooks nach jeder Traversierung.
+In späteren Entwicklungsphasen, vor allem bei dem Layer-basierten Ansatz wurde Agentic Coding deutlich mehr verwendet.
+Die TUI (Poker CFR Manager) verwendet die Bibliothek Memray von Bloomberg \url{https://github.com/bloomberg/memray}.
+Das GUI stammt aus dem Modul Advanced Python und wurde nicht im Rahmen dieser Arbeit implementiert.
+
 \newpage
 \input{chapters/04_systemarchitektur/sections/01_game_environment/01_game_environment}
 \input{chapters/04_systemarchitektur/sections/02_cfr_solver/02_cfr_solver}
 \input{chapters/04_systemarchitektur/sections/03_evaluationsmethoden/03_evaluationsmethoden}
 \newpage
 
+\paragraph{Text-based User Interface}
+Die Anwendung bietet eine textbasierte Benutzeroberfläche (TUI), den \emph{Poker CFR Manager}, zum Verwalten von Trainingsläufen, Anzeigen des Speicherverbrauchs sowie starten des GUI.
+Das Feature wurde gegen Ende des Projekts umgesetzt und ist daher nicht in allen Teilen ausgereift.
+Es erleichtert jedoch Nutzern des Projekts den Trainingsvorgang deutlich.
+Während der Entwicklung erfolgte das Training über die Kommandozeile mit vielen Parametern als Flags, was durch die TUI vereinfacht wird.
+Die TUI gliedert sich in vier Tabs.
+
+Im Tab \emph{Training Queue} lässt sich das Training von Modellen über Buttons konfigurieren.\\
+Im Tab \emph{Current Task} wird der Verlauf des aktuellen Trainings inklusive der Best-Response-Werte angezeigt.\\
+Im Tab \emph{Models} finden sich die trainierten Strategien.
+Von dort aus kann der Konvergenzverlauf mehrerer Strategien verglichen sowie das GUI gestartet werden, das im nächsten Abschnitt beschrieben wird.\\
+Der Tab \emph{Memory Profiler} zeigt den Speicherverbrauch zur Laufzeit.
+Dafür wird die Open-Source-Bibliothek Memray von Bloomberg eingesetzt \url{https://github.com/bloomberg/memray}.
+
+\paragraph{Graphical User Interface}\label{par:gui}
+Das GUI ermöglicht es, gegen eine trainierte Strategie zu spielen.
+Es wird aus der TUI im Tab \emph{Models} gestartet.
+Die Implementierung des GUI ist nicht Gegenstand dieser Bachelorarbeit, sondern gehört zum Modul Advanced Python.
+Diese Arbeit nutzt es lediglich dazu, eine greifbare Evaluation einer Strategie zu ermöglichen.
+
+ 
 In diesem Kapitel wurde die Unterteilung der Software in die Komponenten Spielumgebung, Solver und Evaluation mit UML Diagrammen beschrieben.
 Hierbei wurde genauer auf die Funktionsweise der rekursiven und Layer-basierten Traversierung eingegangen.
-Ausserdem wurde der Ablauf des Best Response Agents und die rekursive  näher beschrieben.
+Außerdem wurde der Ablauf des Best Response Agents und die rekursive Traversierung näher beschrieben.
 Im nächsten Kapitel wird der Entwicklungsvorgang beschrieben und anschließend auf die dabei entstandenen Probleme eingegangen.
 
 

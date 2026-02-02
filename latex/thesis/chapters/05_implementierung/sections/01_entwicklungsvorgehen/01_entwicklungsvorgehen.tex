@@ -15,7 +15,7 @@ Als initiale Evaluation wurde ein Nash-Equilibrium Test geschrieben, welcher nur
 
 Als nächste Evaluation wurde ein Skript erstellt, das den Erwartungswert einer Strategie im Self-Play berechnet.
 Es stellte sich jedoch schnell heraus, dass dies keine aussagekräftige Metrik ist.
-Dieser Wert ist einem nur von Nutzen, falls der Erwartungswert des betrachteten Spiels bekannt ist.
+Dieser Wert ist nur von Nutzen, falls der Erwartungswert des betrachteten Spiels bekannt ist.
 Dies ist für Spiele wie Kuhn Poker \cite{kuhn1951simplified} und Leduc Hold'em \cite{berns2024leducStackexchange} der Fall, jedoch sind solche Werte für größere Pokervarianten schwer zu finden.
 
 Im nächsten Schritt wurde zur Verifizierung der Strategiequalität mit der Implementierung des Accelerated-Best-Response-Agents begonnen.
@@ -32,9 +32,9 @@ Das zweite Problem ist direkt mit dem ersten verknüpft.
 Da es keine expliziten Zufallsknoten gibt, wird die Verteilung der Karten bereits vor dem Spiel festgelegt.
 Dies geschah durch die Klasse \enquote{Combination Generator}, die deterministisch alle möglichen Kartenkombinationen eines Spiels findet und dann vor dem Spiel das Deck in eine spezifische Reihenfolge mischt, damit die Game-Environment nach Rundenende die gewünschte Karte austeilt.
 Hierdurch wurde für jede mögliche Kombination also ein eigener Subtree aufgebaut.
-Dies ist problematisch, da dadurch bei jeder Iteration unnötig viele Pfade durchlaufen werden müssen, die schon durchlaufen wurden.
+Dies ist problematisch, da dadurch bei jeder Iteration unnötig viele Pfade durchlaufen werden, die bereits durchlaufen wurden.
 Dadurch ist die Anzahl an Knoten der Spiele fehlerhaft, wodurch die Komplexität nicht richtig eingeschätzt werden kann.
-Außerdem steigt die Laufzeit pro Iteration unnötig.
+Außerdem steigert sich die Laufzeit pro Iteration enorm.
 
 Diese Fehler waren zu diesem Zeitpunkt noch nicht erkannt, weshalb zunächst die Dokumentation der Arbeit in den Vordergrund gerückt ist.
 Anschließend wurde im Best-Response-Agent und Public State Tree sehr viel Workaround-Code geschrieben, um die vorher genannten Probleme zu umgehen.
@@ -43,7 +43,7 @@ Durch diese Workarounds wurde die Evaluation funktionsfähig, war jedoch extrem 
 Nachdem es dann möglich war, mittels des Best-Response-Agents die Exploitability einer Strategie zu berechnen, fielen einige Unstimmigkeiten im Konvergenzverhalten der Solver auf.
 Die Probleme an den Solvern CFR und CFR+ konnten relativ schnell behoben werden.
 Jedoch konnte für alle Sampling-basierten Ansätze kein erwartetes Konvergenzverhalten festgestellt werden.
-Zu diesem Zeitpunkt wurde vermutet, dass dies an der impliziten Zufallsknoten-Implementierung liege.
+Zu diesem Zeitpunkt wurde vermutet, dass dies an der impliziten Zufallsknoten-Implementierung läge.
 Später stellte sich jedoch heraus, dass dies andere Gründe hat.
 
 Da die Solver relativ langsam waren, fiel der Fokus in der folgenden Zeit nicht darauf, die Sampling-Solver zum Laufen zu bringen, sondern die bestehenden CFR- und CFR+ Implementierungen zu beschleunigen.
@@ -56,8 +56,8 @@ Dadurch wurde der gesamte Workaround-Code im Best-Response-Agent obsolet.
 
 Da die Sampling-Solver weiterhin nicht wie erwartet funktionierten, wurde zu diesem Zeitpunkt der DCFR Algorithmus hinzugezogen.
 
-Zusätzlich wurde noch ein neuer Ansatz mit einem statischen Spielbaum implementiert, der eine Layer-basierte Traversierung beinhaltet.
-Die Idee hierfür wurde aus den folgenden Papern \cite{kim2024gpu} \cite{reis2015gpu} entnommen.
+Zusätzlich wurde ein neuer Ansatz mit einem statischen Spielbaum implementiert, der eine Layer-basierte Traversierung beinhaltet.
+Die Idee hierfür wurde aus den folgenden Paper \cite{kim2024gpu} \cite{reis2015gpu} entnommen.
 Dieser Ansatz reduziert die Iterationszeit gegenüber dem rekursiven Verfahren enorm.
 
 Schließlich wurde am Ende des Projekts erkannt, warum die Sampling-Solver sich nicht wie erwartet verhalten.
@@ -65,11 +65,11 @@ Sampling-basierte Solver traversieren nur einen zufällig ausgewählten Teil des
 Dadurch ist die Strategie nach einer Iteration nur für die Pfade definiert, die besucht wurden.
 Der Best-Response-Agent evaluiert alle möglichen Informationsets eines Spielers.
 Wenn für ein Informationset keine Strategie vorhanden ist, fällt er auf eine uniforme Strategie zurück.
-Dadurch wird das Ergebnis natürlich stark verfälscht.
+Dadurch wird das Ergebnis stark verfälscht.
 Wenn man die Exploitability eines Sampling-basierten Solvers messen will, braucht man einen anderen Ansatz.
 Da diese Erkenntnis jedoch zu spät im Projektverlauf gewonnen wurde, werden die Sampling-basierten Ansätze nicht in der Evaluation betrachtet.
 
-Es wurden im Verlauf des Projekts auch Dinge wie Partial Pruning ausprobiert.
+Es wurden im Verlauf des Projekts auch Dinge wie Partial Pruning getestet.
 Dies ist eine Pruning-Technik, bei der alle Pfade, für die die Erreichbarkeitswahrscheinlichkeit des Gegners null ist, nicht weiter betrachtet werden.
 Dies kann erhebliche Laufzeitverbesserungen mit sich bringen, hat aber aufgrund des gleichen Problems wie die Sampling-Solver nicht zu den erwünschten Konvergenzverhalten geführt.
 

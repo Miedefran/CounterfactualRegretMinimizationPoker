@@ -3,7 +3,7 @@ In diesem Abschnitt wird der Aufbau der Spielumgebung mithilfe eines Klassendiag
 Die Spielumgebung ist für die Logik des Pokerspiels sowie die Verwaltung des Spielzustands zuständig.
 Eine Spielumgebung besteht aus den folgenden Komponenten: \texttt{Player} (repräsentiert die beiden Spieler), \texttt{Dealer} (verwaltet das Kartendeck), \texttt{Judger} (bestimmt den Gewinner) und \texttt{Game} (koordiniert die anderen Komponenten).
 Bei allen Varianten außer Kuhn Poker wird diese Architektur zusätzlich durch eine \texttt{Round}-Klasse erweitert, die den Übergang zwischen Setzrunden steuert.
-Diese Unterteilung der Funktionalitäten der Spielumgebung wurde von RLCard übernommen(\url{https://rlcard.org}).
+Diese Unterteilung der Funktionalitäten der Spielumgebung wurde von RLCard übernommen (\url{https://rlcard.org}).
 
 Abbildung~\ref{fig:gameenv_class} zeigt das Klassendiagramm der Game Environment für die Pokervarianten Kuhn Poker und Leduc Hold'em.
 Alle weiteren Spielvarianten basieren auf Leduc Hold'em und erweitern diese um zusätzliche Funktionalitäten.
