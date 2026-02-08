@@ -359,16 +359,13 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         if not result:
             return
 
-        winner_id = 0 if result[0] > result[1] else 1
         pot_amount = getattr(self.game, 'pot', 0)
-
-        if winner_id == self.human_player_id:
-            winner_name = self.player_bottom_widget.player_name
+        if result[0] == result[1]:
+            winner_name = "Tie"
+            winner_id = 0
         else:
-            winner_name = self.player_top_widget.player_name
-
-        # Prefer a readable name over numeric id in history
-        winner_name = "You" if winner_id == self.human_player_id else "Opponent"
+            winner_id = 0 if result[0] > result[1] else 1
+            winner_name = "You" if winner_id == self.human_player_id else "Opponent"
         self.history_view.add_game_result(winner_id, pot_amount, winner_name=winner_name)
 
         self.update_cards(reveal_all=True)

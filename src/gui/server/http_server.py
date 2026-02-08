@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request
 from typing import Optional
 import threading
 import time
+import random
 
 
 class PokerHTTPServer:
@@ -94,6 +95,55 @@ class PokerHTTPServer:
             self._reset_game(starting_player)
             return jsonify({'status': 'ok'})
 
+    def _apply_leduc_public_card_fallback(self) -> bool:
+        """Fallback wenn Chance-Knoten (öffentliche Karte) keine Outcomes liefert (nur Leduc)."""
+        if not hasattr(self.game, '_chance_targets') or not self.game._chance_targets:
+            return False
+        kind = self.game._chance_targets[0][0] if self.game._chance_targets else None
+        if kind != 'public':
+            return False
+        if not hasattr(self.game, 'public_card') or not hasattr(self.game, 'round'):
+            return False
+        full_deck = ['Js', 'Jh', 'Qs', 'Qh', 'Ks', 'Kh']
+        if getattr(self.game, 'abstract_suits', False):
+            full_deck = ['J', 'J', 'Q', 'Q', 'K', 'K']
+        used = []
+        for i in (0, 1):
+            c = getattr(self.game.players[i], 'private_card', None)
+            if c is not None:
+                used.append(c)
+        remaining = list(full_deck)
+        for c in used:
+            if c in remaining:
+                remaining.remove(c)
+        if not remaining:
+            return False
+        card = random.choice(remaining)
+        self.game._apply_public_card(card)
+        self.game._chance_targets.clear()
+        ctx = self.game._chance_context or {}
+        self.game._chance_context = None
+        if hasattr(self.game, '_after_public_deal'):
+            self.game._after_public_deal(ctx)
+        return True
+
+    def _drain_chance_nodes(self) -> None:
+        """Arbeitet Chance-Knoten (z.B. Karten austeilen, öffentliche Karte bei Leduc) ab,
+        bis ein Decision- oder Terminal-Knoten erreicht ist."""
+        if not hasattr(self.game, 'is_chance_node') or not self.game.is_chance_node():
+            return
+        while not self.game.done and self.game.is_chance_node():
+            outcomes = self.game.get_chance_outcomes_with_probs()
+            if outcomes:
+                keys = list(outcomes.keys())
+                weights = [outcomes[k] for k in keys]
+                outcome = random.choices(keys, weights=weights)[0]
+                self.game.step(outcome)
+                continue
+            if self._apply_leduc_public_card_fallback():
+                continue
+            break
+
     def _get_state_update(self, player_id):
         with self.lock:
             self._prune_stale_clients()
@@ -144,14 +194,29 @@ class PokerHTTPServer:
                 opponent_id = 1 - player_id
                 state['opponent_cards'] = self._get_private_cards(opponent_id)
 
+                # Judger erwartet den Spieler, der zuletzt gehandelt hat (bei Fold = der Folder).
+                # Nach step() hat proceed_round current_player bereits gewechselt → Gewinner.
+                history = getattr(self.game, 'history', [])
+                if history and history[-1] == 'fold':
+                    judge_player = 1 - self.game.current_player  # Folder
+                else:
+                    judge_player = self.game.current_player
                 payoffs = self.game.judger.judge(
                     self.game.players,
-                    self.game.history,
-                    self.game.current_player,
+                    history,
+                    judge_player,
                     self.game.pot,
                     state['player_bets']
                 )
-                state['payoffs'] = payoffs
+                # Wie bei Agent vs Human: anfragender Client bekommt [mein Payoff, Gegner-Payoff]
+                try:
+                    pid = int(player_id)
+                    if pid in (0, 1) and len(payoffs) >= 2:
+                        state['payoffs'] = [payoffs[pid], payoffs[1 - pid]]
+                    else:
+                        state['payoffs'] = list(payoffs)
+                except Exception:
+                    state['payoffs'] = list(payoffs)
 
             return state
 
@@ -208,6 +273,9 @@ class PokerHTTPServer:
                     except Exception:
                         pid_int = player_id
                     self.history_events.append({"type": "action", "player_id": pid_int, "action": entry})
+
+            # Nach Spieler-Aktion ggf. Chance-Nodes abarbeiten (z.B. Leduc: öffentliche Karte)
+            self._drain_chance_nodes()
             return True
 
     def _reset_game(self, starting_player):
@@ -216,7 +284,11 @@ class PokerHTTPServer:
             self.history_events = []
             self.game.reset(starting_player)
 
-            if hasattr(self.game, 'dealer'):
+            # Spiele mit Chance-Nodes (Kuhn, Leduc, …): Karten werden per _drain_chance_nodes verteilt
+            self._drain_chance_nodes()
+
+            # Spiele ohne Chance-Nodes: Karten manuell austeilen
+            if not hasattr(self.game, 'is_chance_node') and hasattr(self.game, 'dealer'):
                 for i, player in enumerate(self.game.players):
                     if hasattr(player, 'set_private_cards'):
                         if hasattr(self.game.dealer, 'deal_card') and len(self.game.dealer.deck) >= 2:

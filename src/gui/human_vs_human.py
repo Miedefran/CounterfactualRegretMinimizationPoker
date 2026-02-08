@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import QMessageBox
 from gui.layouts.agent_vs_human_layout import AgentVsHumanLayout
 from gui.server.http_client import HTTPClient
 from gui.components.visual_card import VisualCard
+from gui.components.result_overlay import ResultOverlay
 from gui.audio.sound_manager import SoundManager
 from gui.utils.hand_strength import hand_strength_text
 
@@ -35,6 +36,8 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         self.player_top_widget.set_player_name("Opponent")
 
         self.sound_manager = SoundManager()
+        self.result_overlay = ResultOverlay(self.poker_table)
+        self.result_overlay.hide()
 
         self.client = HTTPClient(server_url, parent=self, player_name=human_name)
         self.client.state_update_received.connect(self._on_state_update)
@@ -92,6 +95,8 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
             self.last_player_bets = [0, 0]
             self.last_pot_value = 0
             self.game_result_shown = False
+            if hasattr(self, 'result_overlay'):
+                self.result_overlay.hide()
 
         # Update displayed player names from server (so "Opponent" becomes real name).
         names_list = state.get("player_names") or []
@@ -241,13 +246,10 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
             self.last_player_bets = state['player_bets'].copy()
 
     def _add_new_history_events(self, events, player_bets, state):
-        names_list = state.get("player_names") or []
-
         def _name_for(pid: int) -> str:
-            if isinstance(names_list, list) and 0 <= pid < len(names_list) and names_list[pid]:
-                return str(names_list[pid])
+            # Wie Agent vs Human: einheitlich "You" / "Opponent" in der History
             if pid == self.player_id:
-                return self.human_name
+                return "You"
             return "Opponent"
 
         for ev in events:
@@ -282,13 +284,9 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
             self.history_view.add_action(pid_int, action, bet_size=bet_size, player_name=_name_for(pid_int))
 
     def _add_new_history_actions(self, actions, player_bets, state):
-        names_list = state.get("player_names") or []
-
         def _name_for(pid: int) -> str:
-            if isinstance(names_list, list) and 0 <= pid < len(names_list) and names_list[pid]:
-                return str(names_list[pid])
             if pid == self.player_id:
-                return self.human_name
+                return "You"
             return "Opponent"
 
         player_names = {
@@ -326,28 +324,25 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         if self.game_result_shown:
             return
 
-        pot = state.get('pot', 0)
+        # Server sendet payoffs anfragend-zentriert: [mein Payoff, Gegner-Payoff] (wie Agent vs Human: result[human_player_id])
         payoffs = state.get('payoffs', [0, 0])
+        if len(payoffs) < 2:
+            payoffs = [0, 0]
+        pot_amount = state.get('pot', 0)
+        my_payoff = payoffs[0]
+        opp_payoff = payoffs[1]
 
-        if payoffs[0] > payoffs[1]:
+        # Winner: wie agent_vs_human (höherer Payoff gewinnt)
+        if my_payoff == opp_payoff:
+            winner_name = "Tie"
             winner_id = 0
-        elif payoffs[1] > payoffs[0]:
-            winner_id = 1
         else:
-            winner_id = 0
+            winner_id = self.player_id if my_payoff > opp_payoff else self.opponent_id
+            winner_name = "You" if my_payoff > opp_payoff else "Opponent"
 
-        if winner_id == self.player_id:
-            winner_name = self.human_name
-        else:
-            names_list = state.get("player_names") or []
-            if isinstance(names_list, list) and 0 <= winner_id < len(names_list) and names_list[winner_id]:
-                winner_name = str(names_list[winner_id])
-            else:
-                winner_name = "Opponent"
+        self.history_view.add_game_result(winner_id, pot_amount, winner_name=winner_name)
 
-        self.history_view.add_game_result(winner_id, pot, winner_name=winner_name)
-
-        payoff_label = f"\nPayoff: {self.human_name}={payoffs[0]}, Opponent={payoffs[1]}"
+        payoff_label = f"\nPayoff: You={my_payoff}, Opponent={opp_payoff}"
         from PyQt6.QtWidgets import QLabel
         from PyQt6.QtGui import QFont
         label = QLabel(payoff_label)
@@ -361,7 +356,28 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         self.history_view.content_layout.addWidget(label)
         self.history_view.history_items.append(label)
 
+        # Result-Overlay: wie agent_vs_human (my_payoff = "mein" Gewinn/Verlust)
+        if hasattr(self, 'result_overlay'):
+            if my_payoff == opp_payoff:
+                self.result_overlay.show_tie()
+            elif my_payoff > 0:
+                self.result_overlay.show_result(is_winner=True, amount=my_payoff)
+            else:
+                self.result_overlay.show_result(is_winner=False, amount=abs(my_payoff))
+            self._position_result_overlay()
+
         self.game_result_shown = True
+
+    def _position_result_overlay(self):
+        if not hasattr(self, 'result_overlay'):
+            return
+        table_rect = self.poker_table.rect()
+        overlay_width = self.result_overlay.width()
+        overlay_height = self.result_overlay.height()
+        x = (table_rect.width() - overlay_width) // 2
+        y = (table_rect.height() - overlay_height) // 2
+        self.result_overlay.move(x, y)
+        self.result_overlay.raise_()
 
     def update_actions_final(self):
         if hasattr(self, 'action_buttons'):

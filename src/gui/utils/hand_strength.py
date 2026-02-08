@@ -122,8 +122,22 @@ def hand_strength_text(
         if len(pub) == 0:
             return ""
 
-        # Leduc (exactly 1 public card)
-        if len(pub) == 1:
+        # Check card ranks to distinguish game variants
+        ranks = {c[0] for c in (priv + pub) if isinstance(c, str) and len(c) >= 1}
+        suits = {c[1] for c in (priv + pub) if isinstance(c, str) and len(c) >= 2}
+
+        # Twelve-card poker (ranks JQKA, suits typically s/h/d)
+        # Check this BEFORE Leduc since Leduc only uses J/Q/K (no Ace)
+        if len(pub) >= 1 and ranks.issubset({"J", "Q", "K", "A"}) and "A" in ranks:
+            from envs.twelve_card_poker.judger import TwelveCardPokerJudger
+
+            judger = TwelveCardPokerJudger()
+            dummy = SimpleNamespace(private_card=priv[0], public_cards=pub)
+            value = judger.evaluate_hand(dummy)
+            return {2: "Three of a Kind", 1: "Pair", 0: "High Card"}.get(_first(value), "High Card")
+
+        # Leduc (exactly 1 public card, uses J/Q/K only)
+        if len(pub) == 1 and ranks.issubset({"J", "Q", "K"}):
             from envs.leduc_holdem.judger import LeducHoldemJudger
 
             judger = LeducHoldemJudger()
@@ -131,9 +145,7 @@ def hand_strength_text(
             value = judger.evaluate_hand(dummy)
             return {1: "Pair", 0: "High Card"}.get(_first(value), "High Card")
 
-        # Twelve-card poker (ranks JQKA, suits typically s/h/d)
-        ranks = {c[0] for c in (priv + pub) if isinstance(c, str) and len(c) >= 1}
-        suits = {c[1] for c in (priv + pub) if isinstance(c, str) and len(c) >= 2}
+        # Twelve-card poker fallback (ranks JQKA without Ace present, suits typically s/h/d)
         if len(pub) >= 1 and ranks.issubset({"J", "Q", "K", "A"}) and suits.issubset({"s", "h", "d"}):
             from envs.twelve_card_poker.judger import TwelveCardPokerJudger
 

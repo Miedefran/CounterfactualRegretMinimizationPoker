@@ -25,6 +25,14 @@ class LimitHoldemGame(RoyalHoldemGame):
         self.judger = LimitHoldemJudger()
         self.round = LimitHoldemRound(bet_sizes=self._bet_sizes, bet_limit=self._bet_limit)
 
+    @property
+    def small_blind(self) -> int:
+        return self._small_blind
+
+    @property
+    def big_blind(self) -> int:
+        return self._big_blind
+
     def get_big_blind_equivalent(self) -> int:
         return self._big_blind
 

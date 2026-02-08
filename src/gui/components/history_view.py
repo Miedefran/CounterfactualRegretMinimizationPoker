@@ -132,7 +132,11 @@ class HistoryView(QWidget):
     def add_game_result(self, winner_id, pot_amount, winner_name=None):
         if winner_name is None:
             winner_name = f"Player {winner_id}"
-        result_label = QLabel(f"{winner_name} wins {pot_amount}!")
+        if winner_name == "Tie":
+            text = f"Tie! Pot split. ({pot_amount})"
+        else:
+            text = f"{winner_name} wins {pot_amount}!"
+        result_label = QLabel(text)
         result_label.setFont(QFont("Arial", 12, QFont.Weight.Bold))
         result_label.setStyleSheet("""
             QLabel {
