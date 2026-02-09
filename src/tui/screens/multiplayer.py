@@ -46,6 +46,7 @@ class MultiplayerScreen(Vertical):
         self.server_process: Optional[subprocess.Popen] = None
         self.server_port: int = 8888
         self.server_game: str = "leduc"
+        self.server_host: str = "localhost"
         self.local_ip: str = ""
         self.status_timer: Optional[Timer] = None
 
@@ -60,6 +61,12 @@ class MultiplayerScreen(Vertical):
             with Horizontal():
                 yield Label("Port:", classes="field-label")
                 yield Input(value="8888", type="integer", id="input-port", classes="field-input")
+            with Horizontal():
+                yield Label("Host:", classes="field-label")
+                yield Select([
+                    ("localhost (nur lokal)", "localhost"),
+                    ("0.0.0.0 (alle Interfaces)", "0.0.0.0")
+                ], value="localhost", id="select-host", classes="field-input")
             with Horizontal():
                 yield Button("Start Server", id="btn-start-server", variant="primary")
                 yield Button("Stop Server", id="btn-stop-server", variant="error", disabled=True)
@@ -98,7 +105,7 @@ class MultiplayerScreen(Vertical):
         """Wird beim Mount aufgerufen - initialisiert lokale IP."""
         self.local_ip = get_local_ip()
         ip_label = self.query_one("#ip-label", Static)
-        ip_label.update(f"Local IP: {self.local_ip}")
+        ip_label.update(f"Local IP: {self.local_ip} (für Remote-Verbindung)")
         self._update_info_text()
 
     def on_unmount(self) -> None:
@@ -121,6 +128,15 @@ class MultiplayerScreen(Vertical):
             self.server_port = int(event.value) if event.value else 8888
         except ValueError:
             pass
+
+    @on(Select.Changed, "#select-host")
+    def on_host_changed(self, event: Select.Changed) -> None:
+        """Wird aufgerufen wenn Host geändert wird."""
+        if event.value != Select.BLANK:
+            self.server_host = str(event.value)
+            # Warnung wenn 0.0.0.0 gewählt wird
+            if event.value == "0.0.0.0":
+                self.notify("WARNING: 0.0.0.0 macht den Server von außen erreichbar!", severity="warning")
 
     @on(Button.Pressed, "#btn-start-server")
     def on_start_server(self) -> None:
@@ -163,7 +179,7 @@ class MultiplayerScreen(Vertical):
             str(script_path),
             "--game", self.server_game,
             "--port", str(self.server_port),
-            "--host", "0.0.0.0"
+            "--host", self.server_host
         ]
 
         try:
@@ -276,7 +292,11 @@ class MultiplayerScreen(Vertical):
             start_btn.disabled = True
             stop_btn.disabled = False
             status_label.update("Status: Running")
-            url_label.update(f"Connection URL: ws://{self.local_ip}:{self.server_port}")
+            # URL basierend auf gewähltem Host
+            if self.server_host == "localhost":
+                url_label.update(f"Connection URL: ws://localhost:{self.server_port}")
+            else:
+                url_label.update(f"Connection URL: ws://{self.local_ip}:{self.server_port}")
         else:
             start_btn.disabled = False
             stop_btn.disabled = True
@@ -305,7 +325,10 @@ class MultiplayerScreen(Vertical):
         """Aktualisiert Info-Text mit CLI-Befehl für Remote-Verbindung."""
         info_text = self.query_one("#info-text", Static)
         if self.server_process:
-            cmd = f"python src/gui/runner/run_ws_client.py --ip {self.local_ip} --port {self.server_port} --name Spieler2"
-            info_text.update(f"Remote clients connect with:\n{cmd}")
+            if self.server_host == "localhost":
+                info_text.update("Server läuft auf localhost (nur lokal erreichbar).\nFür Remote-Verbindung: Host auf 0.0.0.0 ändern.")
+            else:
+                cmd = f"python src/gui/runner/run_ws_client.py --ip {self.local_ip} --port {self.server_port} --name Spieler2"
+                info_text.update(f"Remote clients connect with:\n{cmd}")
         else:
             info_text.update("Start server to see connection command")

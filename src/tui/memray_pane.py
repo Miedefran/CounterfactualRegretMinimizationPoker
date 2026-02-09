@@ -1,6 +1,9 @@
 import dataclasses
 from datetime import datetime
 from typing import Optional, Dict
+import threading
+import memray
+from memray import SocketDestination
 
 # Memray imports
 from memray.reporters.tui import (
@@ -13,9 +16,10 @@ from memray.reporters.tui import (
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Container
+from textual.containers import Container, Vertical, Horizontal
 from textual.reactive import reactive
-from textual.widgets import Label, Footer
+from textual.widgets import Label, Footer, Button
+from textual import on
 
 # derived from https://github.com/bloomberg/memray/blob/main/src/memray/reporters/tui.py
 
@@ -58,6 +62,7 @@ class MemrayPane(Container):
         Binding("o", "memray_sort(3)", "Sort by Own"),
         Binding("a", "memray_sort(5)", "Sort by Allocations"),
         Binding("p", "toggle_pause", "Pause Memray"),
+        Binding("s", "start_tracker", "Start Tracker"),
     ]
 
     _DUMMY_THREAD_LIST = [0]
@@ -67,12 +72,16 @@ class MemrayPane(Container):
     snapshot = reactive(_EMPTY_SNAPSHOT)
     paused = reactive(True, init=False)  # Updates beim Start aus; mit "p" einschalten
     disconnected = reactive(False, init=False)
+    tracker_running = reactive(False, init=False)
 
-    def __init__(self, reader_client, pid: Optional[int], cmd_line: Optional[str]):
+    def __init__(self, reader_client, pid: Optional[int], cmd_line: Optional[str], 
+                 tracker_thread: Optional[threading.Thread] = None, tracker_port: Optional[int] = None):
         super().__init__()
         self.reader_client = reader_client
         self.pid = pid
         self.cmd_line = cmd_line
+        self._tracker_thread = tracker_thread
+        self.tracker_port = tracker_port
 
         self._name_by_tid: Dict[int, str] = {}
         self._max_memory_seen = 0
@@ -84,6 +93,10 @@ class MemrayPane(Container):
         self.set_interval(0.5, self.update_from_reader)
         self.action_toggle_merge_threads()
         self.action_toggle_merge_threads()
+        # Prüfe ob Tracker bereits läuft
+        if self._tracker_thread and self._tracker_thread.is_alive():
+            self.tracker_running = True
+        self._update_tracker_ui()
 
     def update_from_reader(self):
         # Poll the remote reader client for new data
@@ -103,8 +116,12 @@ class MemrayPane(Container):
         return self.threads[self.thread_idx]
 
     def compose(self) -> ComposeResult:
-        yield MemrayHeader(pid=self.pid, cmd_line=self.cmd_line)
-        yield MyAllocationTable()
+        with Vertical():
+            with Horizontal(id="tracker-control"):
+                yield Label("[yellow]Memray Tracker ist ausgeschaltet[/]", id="tracker-status")
+                yield Button("Tracker starten (s)", id="btn-start-tracker", variant="primary")
+            yield MemrayHeader(pid=self.pid, cmd_line=self.cmd_line)
+            yield MyAllocationTable()
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         """Check if an action may run."""
@@ -150,6 +167,56 @@ class MemrayPane(Container):
             self.paused = not self.paused
             if not self.paused:
                 self.display_snapshot()
+
+    def action_start_tracker(self) -> None:
+        """Startet den Memray Tracker manuell."""
+        if self.tracker_running:
+            return
+        
+        if not self.tracker_port:
+            self.notify("Tracker-Port nicht verfügbar", severity="error")
+            return
+        
+        def tracker_loop():
+            try:
+                with memray.Tracker(destination=SocketDestination(server_port=self.tracker_port)):
+                    # Tracker läuft bis der Thread gestoppt wird
+                    import time
+                    while True:
+                        time.sleep(1)
+            except Exception as e:
+                self.notify(f"Tracker Fehler: {e}", severity="error")
+        
+        self._tracker_thread = threading.Thread(target=tracker_loop, daemon=True)
+        self._tracker_thread.start()
+        self.tracker_running = True
+        self._update_tracker_ui()
+        self.notify("Memray Tracker gestartet", severity="success")
+
+    def _update_tracker_ui(self) -> None:
+        """Aktualisiert die Tracker-UI-Elemente."""
+        try:
+            status_label = self.query_one("#tracker-status", Label)
+            btn = self.query_one("#btn-start-tracker", Button)
+            if self.tracker_running:
+                status_label.update("[green]Memray Tracker läuft[/]")
+                btn.disabled = True
+                btn.label = "Tracker läuft"
+            else:
+                status_label.update("[yellow]Memray Tracker ist ausgeschaltet[/]")
+                btn.disabled = False
+                btn.label = "Tracker starten (s)"
+        except Exception:
+            pass
+
+    def watch_tracker_running(self, running: bool) -> None:
+        """Wird aufgerufen wenn tracker_running sich ändert."""
+        self._update_tracker_ui()
+
+    @on(Button.Pressed, "#btn-start-tracker")
+    def on_start_tracker_button(self) -> None:
+        """Button-Handler für Tracker-Start."""
+        self.action_start_tracker()
 
     def watch_thread_idx(self, thread_idx: int) -> None:
         self._populate_header_thread_labels(thread_idx)

@@ -41,7 +41,10 @@ class PokerGameLogic:
                 return False  # Server voll
             self.clients[player_id] = time.time()
             if isinstance(name, str) and name.strip():
-                self.client_names[player_id] = name.strip()
+                # HTML-Escape für XSS-Schutz
+                import html
+                sanitized_name = html.escape(name.strip())
+                self.client_names[player_id] = sanitized_name
             return True
 
     def unregister_client(self, player_id: int) -> None:
@@ -229,6 +232,14 @@ class PokerGameLogic:
     def handle_action(self, player_id, action, bet_size):
         """Verarbeitet eine Spieler-Aktion. Gibt True zurück wenn erfolgreich."""
         with self.lock:
+            # Input-Validierung
+            if not isinstance(player_id, int) or player_id not in (0, 1):
+                return False
+            if not isinstance(action, str):
+                return False
+            if not isinstance(bet_size, (int, float)) or bet_size < 0:
+                return False
+            
             # #region agent log
             done = getattr(self.game, "done", False)
             cur = getattr(self.game, "current_player", None)

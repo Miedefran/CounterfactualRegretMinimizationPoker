@@ -498,12 +498,13 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         QTimer.singleShot(2000, lambda: self.client.connect())
 
     def closeEvent(self, event):
+        """Wird aufgerufen wenn das Fenster geschlossen wird."""
         try:
             if hasattr(self, "client") and self.client is not None:
                 self.client.disconnect()
+        except Exception:
+            # Ignoriere Fehler beim Disconnect, um sicherzustellen dass das Fenster geschlossen wird
+            pass
         finally:
-            event.accept()
+            # super().closeEvent() akzeptiert das Event automatisch
             super().closeEvent(event)
-            app = QApplication.instance()
-            if app:
-                app.quit()

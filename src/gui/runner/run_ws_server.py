@@ -29,13 +29,17 @@ from gui.server.websocket_server import PokerWebSocketServer
 
 def main():
     parser = argparse.ArgumentParser(description='Start WebSocket Server for Human vs Human mode')
-    parser.add_argument('--host', default='0.0.0.0',
-                        help='Server IP (0.0.0.0 = alle Interfaces, default: 0.0.0.0)')
+    parser.add_argument('--host', default='localhost',
+                        help='Server IP (localhost = nur lokal, 0.0.0.0 = alle Interfaces, default: localhost)')
     parser.add_argument('--port', type=int, default=8888,
                         help='Server port (default: 8888)')
     parser.add_argument('--game', default='limit_holdem',
                         choices=['kuhn', 'leduc', 'twelve_card', 'rhode_island', 'royal_holdem', 'limit_holdem'],
                         help='Game type (default: limit_holdem)')
+    parser.add_argument('--cert', type=str, default=None,
+                        help='Path to SSL certificate file (for WSS)')
+    parser.add_argument('--key', type=str, default=None,
+                        help='Path to SSL private key file (for WSS)')
 
     args = parser.parse_args()
 
@@ -60,14 +64,36 @@ def main():
 
     local_ip = get_local_ip()
 
-    server = PokerWebSocketServer(game, host=args.host, port=args.port, game_id=args.game)
+    # Sicherheitshinweis wenn 0.0.0.0 verwendet wird
+    if args.host == '0.0.0.0':
+        print("⚠️  WARNING: Server bindet an alle Interfaces (0.0.0.0).")
+        print("   Dies macht den Server von außen erreichbar - nur für vertrauenswürdige Netzwerke verwenden!")
+
+    # SSL-Validierung und Context-Erstellung
+    ssl_context = None
+    if args.cert and args.key:
+        import ssl
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        try:
+            ssl_context.load_cert_chain(args.cert, args.key)
+            print(f"SSL enabled: Using certificate {args.cert}")
+        except Exception as e:
+            print(f"ERROR: Failed to load SSL certificate: {e}")
+            sys.exit(1)
+    elif args.cert or args.key:
+        print("ERROR: --cert und --key müssen beide angegeben werden für SSL")
+        sys.exit(1)
+
+    server = PokerWebSocketServer(game, host=args.host, port=args.port, game_id=args.game,
+                                  ssl_context=ssl_context)
     print(f"\n🎮 WebSocket Server gestartet!")
     print(f"📍 Lokale IP: {local_ip}")
     print(f"🔌 Port: {args.port}")
     print(f"🎲 Game: {args.game}")
+    protocol = "wss" if ssl_context else "ws"
     print(f"\n💻 Andere Spieler verbinden mit:")
     print(f"   python src/gui/runner/run_ws_client.py --ip {local_ip} --port {args.port} --name Spieler2")
-    print(f"   URL: ws://{local_ip}:{args.port}")
+    print(f"   URL: {protocol}://{local_ip}:{args.port}")
     print(f"\nPress Ctrl+C to stop the server\n")
 
     server.start()

@@ -37,9 +37,11 @@ class PokerCFRApp(App):
         ("ctrl+q", "quit", "Quit"),
     ]
 
-    def __init__(self, reader_client):
+    def __init__(self, reader_client, tracker_thread=None, tracker_port=None):
         super().__init__()
         self.reader_client = reader_client
+        self.tracker_thread = tracker_thread
+        self.tracker_port = tracker_port
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -53,18 +55,24 @@ class PokerCFRApp(App):
             with TabPane("Multiplayer", id="tab-multiplayer"):
                 yield MultiplayerScreen()
             with TabPane("Memory Profiler", id="tab-memray"):
-                yield MemrayPane(self.reader_client, pid=os.getpid(), cmd_line=" ".join(sys.argv))
+                yield MemrayPane(
+                    self.reader_client, 
+                    pid=os.getpid(), 
+                    cmd_line=" ".join(sys.argv),
+                    tracker_thread=self.tracker_thread,
+                    tracker_port=self.tracker_port
+                )
         yield Footer()
 
 
 if __name__ == "__main__":
     port = get_free_port()
-    print(f"Starting Memray setup on port {port}...")
+    print(f"Memray setup ready on port {port} (Tracker wird NICHT automatisch gestartet)")
 
     # Create communication queue
     queue = multiprocessing.Queue(maxsize=1)
 
-    # Start reader process
+    # Start reader process (wartet auf Tracker-Verbindung)
     reader_proc = multiprocessing.Process(target=reader_process_func, args=(port, queue))
     reader_proc.start()
 
@@ -72,15 +80,11 @@ if __name__ == "__main__":
     time.sleep(0.5)
 
     try:
-        # Tracker blocks here until reader connects
-        print("Waiting for Memray Tracker to connect...")
-        with memray.Tracker(destination=SocketDestination(server_port=port)):
-            print("Memray Tracker connected.")
-
-            # Initialize client for TUI
-            client = RemoteReaderClient(queue)
-            app = PokerCFRApp(client)
-            app.run()
+        # Tracker wird NICHT automatisch gestartet
+        # Initialize client for TUI
+        client = RemoteReaderClient(queue)
+        app = PokerCFRApp(client, tracker_thread=None, tracker_port=port)
+        app.run()
 
     except Exception as e:
         print(f"An error occurred: {e}")

@@ -3,10 +3,15 @@ import json
 import logging
 import signal
 import time
+import ssl
 from typing import Optional, Dict
 from websockets.server import serve
 from websockets.exceptions import ConnectionClosed
 from gui.server.game_logic import PokerGameLogic
+from gui.server.validation import (
+    validate_bet_size, validate_player_name, validate_starting_player
+)
+from gui.server.rate_limiter import WebSocketRateLimiter
 
 DEBUG_LOG = "/Users/friedemanndoll/CounterfactualRegretMinimizationPoker/.cursor/debug.log"
 
@@ -21,7 +26,8 @@ class PokerWebSocketServer:
     Push-basiert: State wird automatisch an beide Clients gesendet bei Änderungen.
     """
     
-    def __init__(self, game, host='0.0.0.0', port=8888, game_id: Optional[str] = None):
+    def __init__(self, game, host='localhost', port=8888, game_id: Optional[str] = None,
+                 ssl_context: Optional[ssl.SSLContext] = None):
         self.host = host
         self.port = port
         self.game_logic = PokerGameLogic(game, game_id=game_id)
@@ -29,6 +35,9 @@ class PokerWebSocketServer:
         self.connections: Dict[int, any] = {}
         self.server = None
         self.loop = None
+        self.ssl_context = ssl_context
+        # Rate Limiter
+        self.rate_limiter = WebSocketRateLimiter()
 
     async def _handle_connection(self, websocket, path):
         """Behandelt eine neue WebSocket-Verbindung.
@@ -74,21 +83,47 @@ class PokerWebSocketServer:
             # Empfange Nachrichten vom Client
             async for message in websocket:
                 try:
+                    # Rate Limiting: Max 50 Nachrichten pro 10 Sekunden
+                    if not self.rate_limiter.check_limit(player_id, max_messages=50, window=10.0):
+                        await websocket.send(json.dumps({
+                            "type": "error",
+                            "message": "Rate limit exceeded"
+                        }))
+                        await websocket.close(code=1008, reason="Rate limit exceeded")
+                        break
+                    
                     data = json.loads(message)
                     msg_type = data.get("type")
 
                     if msg_type == "register":
                         # Name setzen
                         name = data.get("name")
-                        if isinstance(name, str) and name.strip():
+                        is_valid, sanitized_name, error = validate_player_name(name)
+                        if is_valid and sanitized_name:
                             with self.game_logic.lock:
-                                self.game_logic.client_names[player_id] = name.strip()
+                                self.game_logic.client_names[player_id] = sanitized_name
+                        elif error:
+                            await websocket.send(json.dumps({
+                                "type": "error",
+                                "message": error
+                            }))
                         await self._broadcast_state()
 
                     elif msg_type == "action":
                         action = data.get("action")
                         bet_size = data.get("bet_size", 0)
-                        success = self.game_logic.handle_action(player_id, action, bet_size)
+                        
+                        # Validierung bet_size
+                        is_valid, bet_val, error = validate_bet_size(bet_size)
+                        if not is_valid:
+                            await websocket.send(json.dumps({
+                                "type": "error",
+                                "message": error
+                            }))
+                            continue
+                        
+                        # action wird in game_logic.handle_action gegen legal_actions validiert
+                        success = self.game_logic.handle_action(player_id, action, bet_val)
                         # #region agent log
                         try:
                             with open(DEBUG_LOG, "a") as f:
@@ -108,7 +143,14 @@ class PokerWebSocketServer:
                     elif msg_type == "reset":
                         # Spiel zurücksetzen
                         starting_player = data.get("starting_player", 0)
-                        self.game_logic.reset_game(starting_player)
+                        is_valid, sp, error = validate_starting_player(starting_player)
+                        if not is_valid:
+                            await websocket.send(json.dumps({
+                                "type": "error",
+                                "message": error
+                            }))
+                            continue
+                        self.game_logic.reset_game(sp)
                         await self._broadcast_state()
 
                     elif msg_type == "get_state":
@@ -140,6 +182,8 @@ class PokerWebSocketServer:
             if player_id is not None:
                 self.connections.pop(player_id, None)
                 self.game_logic.unregister_client(player_id)
+                # Rate Limiter zurücksetzen
+                self.rate_limiter.reset(player_id)
                 # Informiere anderen Client über Disconnect
                 await self._broadcast_state()
 
@@ -160,8 +204,10 @@ class PokerWebSocketServer:
 
     async def _run_server(self, stop_future: asyncio.Future):
         """Startet den WebSocket-Server. Beendet sich, wenn stop_future gesetzt wird."""
-        server = await serve(self._handle_connection, self.host, self.port)
-        logger.info(f"WebSocket Server läuft auf ws://{self.host}:{self.port}")
+        protocol = "wss" if self.ssl_context else "ws"
+        server = await serve(self._handle_connection, self.host, self.port,
+                            ssl=self.ssl_context, max_size=1024*1024)  # 1MB max message size
+        logger.info(f"WebSocket Server läuft auf {protocol}://{self.host}:{self.port}")
         try:
             await stop_future
         finally:

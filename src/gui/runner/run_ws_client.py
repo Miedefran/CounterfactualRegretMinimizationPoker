@@ -18,10 +18,13 @@ def main():
                         help='Server Port (default: 8888)')
     parser.add_argument('--name', default='Player',
                         help='Player name (default: Player)')
+    parser.add_argument('--ssl', action='store_true',
+                        help='Use WSS instead of WS')
 
     args = parser.parse_args()
 
-    server_url = f"ws://{args.ip}:{args.port}"
+    protocol = "wss" if args.ssl else "ws"
+    server_url = f"{protocol}://{args.ip}:{args.port}"
 
     app = QApplication(sys.argv)
 

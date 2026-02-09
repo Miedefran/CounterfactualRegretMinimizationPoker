@@ -29,13 +29,17 @@ from gui.server.http_server import PokerHTTPServer
 
 def main():
     parser = argparse.ArgumentParser(description='Start HTTP Server for Human vs Human mode')
-    parser.add_argument('--host', default='0.0.0.0',
-                        help='Server IP (0.0.0.0 = alle Interfaces, default: 0.0.0.0)')
+    parser.add_argument('--host', default='localhost',
+                        help='Server IP (localhost = nur lokal, 0.0.0.0 = alle Interfaces, default: localhost)')
     parser.add_argument('--port', type=int, default=8888,
                         help='Server port (default: 8888)')
     parser.add_argument('--game', default='limit_holdem',
                         choices=['kuhn', 'leduc', 'twelve_card', 'rhode_island', 'royal_holdem', 'limit_holdem'],
                         help='Game type (default: limit_holdem)')
+    parser.add_argument('--cert', type=str, default=None,
+                        help='Path to SSL certificate file (for HTTPS)')
+    parser.add_argument('--key', type=str, default=None,
+                        help='Path to SSL private key file (for HTTPS)')
 
     args = parser.parse_args()
 
@@ -60,7 +64,18 @@ def main():
 
     local_ip = get_local_ip()
 
-    server = PokerHTTPServer(game, host=args.host, port=args.port, game_id=args.game)
+    # Sicherheitshinweis wenn 0.0.0.0 verwendet wird
+    if args.host == '0.0.0.0':
+        print("⚠️  WARNING: Server bindet an alle Interfaces (0.0.0.0).")
+        print("   Dies macht den Server von außen erreichbar - nur für vertrauenswürdige Netzwerke verwenden!")
+
+    # SSL-Validierung
+    if (args.cert and not args.key) or (args.key and not args.cert):
+        print("ERROR: --cert und --key müssen beide angegeben werden für SSL")
+        sys.exit(1)
+
+    server = PokerHTTPServer(game, host=args.host, port=args.port, game_id=args.game,
+                             ssl_cert=args.cert, ssl_key=args.key)
     print(f"\n🎮 Server gestartet!")
     print(f"📍 Lokale IP: {local_ip}")
     print(f"🔌 Port: {args.port}")
