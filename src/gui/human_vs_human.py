@@ -1,3 +1,5 @@
+import json
+import time
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QMessageBox
 from gui.layouts.agent_vs_human_layout import AgentVsHumanLayout
@@ -7,10 +9,19 @@ from gui.components.result_overlay import ResultOverlay
 from gui.audio.sound_manager import SoundManager
 from gui.utils.hand_strength import hand_strength_text
 
+DEBUG_LOG = "/Users/friedemanndoll/CounterfactualRegretMinimizationPoker/.cursor/debug.log"
+
+def _dlog(loc, msg, data, hid):
+    try:
+        with open(DEBUG_LOG, "a") as f:
+            f.write(json.dumps({"location": loc, "message": msg, "data": data, "hypothesisId": hid, "timestamp": int(time.time() * 1000)}) + "\n")
+    except Exception:
+        pass
+
 
 class HumanVsHumanGUI(AgentVsHumanLayout):
 
-    def __init__(self, server_url, human_name="Player", parent=None):
+    def __init__(self, server_url, human_name="Player", client=None, parent=None):
         super().__init__(parent)
         self.server_url = server_url
         self.human_name = human_name
@@ -39,7 +50,12 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         self.result_overlay = ResultOverlay(self.poker_table)
         self.result_overlay.hide()
 
-        self.client = HTTPClient(server_url, parent=self, player_name=human_name)
+        # Verwende übergebenen Client oder erstelle HTTPClient
+        if client is not None:
+            self.client = client
+        else:
+            self.client = HTTPClient(server_url, parent=self, player_name=human_name)
+        
         self.client.state_update_received.connect(self._on_state_update)
         self.client.connection_error.connect(self._on_connection_error)
 
@@ -57,6 +73,39 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         # Verbinde dann den Click-Handler
         if hasattr(self, 'restart_button'):
             self.restart_button.clicked.connect(self.restart_hand)
+        self._setup_quit_button()
+
+    def _setup_quit_button(self):
+        """Beenden-Button (nur Human vs Human / Multiplayer)."""
+        if hasattr(self, 'quit_button') and self.quit_button is not None:
+            return
+        from PyQt6.QtWidgets import QPushButton
+        self.quit_button = QPushButton("Beenden")
+        self.quit_button.setFixedSize(100, 40)
+        self.quit_button.setStyleSheet("""
+            QPushButton { background-color: #5a2a2a; color: white; border: none; border-radius: 5px; font-size: 14px; }
+            QPushButton:hover { background-color: #7a3a3a; }
+            QPushButton:pressed { background-color: #4a1a1a; }
+        """)
+        self.quit_button.setParent(self)
+        self.quit_button.show()
+        self.quit_button.raise_()
+        self.quit_button.clicked.connect(self._quit_app)
+        QTimer.singleShot(250, self._position_quit_button)
+
+    def _position_quit_button(self):
+        if hasattr(self, 'quit_button') and hasattr(self, 'restart_button'):
+            self.quit_button.move(self.width() - self.restart_button.width() - 130, 20)
+            self.quit_button.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, '_position_quit_button'):
+            self._position_quit_button()
+
+    def _quit_app(self):
+        """Verbindung trennen und Anwendung beenden."""
+        self.close()
 
     def connect_to_server(self):
         if not self.client.connect():
@@ -86,6 +135,15 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
                     QTimer.singleShot(1000, lambda: self._auto_reset_if_needed())
 
     def _on_state_update(self, state):
+        # #region agent log
+        _dlog("human_vs_human:_on_state_update", "state received", {
+            "current_player": state.get("current_player"),
+            "legal_actions": state.get("legal_actions"),
+            "done": state.get("done"),
+            "player_id": self.player_id,
+            "has_action_buttons": hasattr(self, "action_buttons"),
+        }, "H1")
+        # #endregion
         # Clear history on BOTH clients when a new hand starts.
         reset_id = state.get("reset_id")
         if reset_id is not None and reset_id != self.last_reset_id:
@@ -192,15 +250,21 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         self.player_top_widget.set_current_player(is_opponent_turn)
 
     def update_actions_from_state(self, state):
+        # #region agent log
+        current_player = state.get('current_player', 0)
+        is_my_turn = (current_player == self.player_id)
+        legal_actions = state.get('legal_actions', [])
+        _dlog("human_vs_human:update_actions_from_state", "updating buttons", {
+            "current_player": current_player, "player_id": self.player_id,
+            "is_my_turn": is_my_turn, "legal_actions": legal_actions, "done": state.get("done"),
+        }, "H1")
+        # #endregion
         if state.get('done', False):
             if hasattr(self, 'action_buttons'):
                 self.action_buttons.disable_all()
             return
 
-        current_player = state.get('current_player', 0)
-
         if current_player == self.player_id:
-            legal_actions = state.get('legal_actions', [])
             if hasattr(self, 'action_buttons'):
                 self.action_buttons.update_legal_actions(legal_actions)
 
@@ -384,6 +448,20 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
             self.action_buttons.disable_all()
 
     def handle_action(self, action, bet_size):
+        # #region agent log
+        cur = self.last_state.get('current_player', -1) if self.last_state else -1
+        leg = self.last_state.get('legal_actions', []) if self.last_state else []
+        early = self.last_state and self.last_state.get('done', False)
+        if not early and self.last_state:
+            if cur != self.player_id:
+                early = "not_my_turn"
+            elif action not in leg:
+                early = "action_not_legal"
+        _dlog("human_vs_human:handle_action", "handler called", {
+            "action": action, "bet_size": bet_size, "current_player": cur, "player_id": self.player_id,
+            "legal_actions": leg, "early_exit": early,
+        }, "H2")
+        # #endregion
         if self.last_state and self.last_state.get('done', False):
             return
 
@@ -397,7 +475,10 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
                 return
 
         self.sound_manager.play_action(action)
-        self.client.send_action(action, bet_size)
+        sent = self.client.send_action(action, bet_size)
+        # #region agent log
+        _dlog("human_vs_human:handle_action", "send_action result", {"sent": sent}, "H3")
+        # #endregion
 
     def restart_hand(self):
         import random
@@ -417,9 +498,12 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         QTimer.singleShot(2000, lambda: self.client.connect())
 
     def closeEvent(self, event):
-        # Ensure the server frees our player slot (0/1) on restart.
         try:
             if hasattr(self, "client") and self.client is not None:
                 self.client.disconnect()
         finally:
+            event.accept()
             super().closeEvent(event)
+            app = QApplication.instance()
+            if app:
+                app.quit()
