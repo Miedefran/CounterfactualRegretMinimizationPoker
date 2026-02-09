@@ -13,6 +13,7 @@ from textual.widgets import Header, Footer, TabbedContent, TabPane
 
 from tui.screens.training import TrainingScreen
 from tui.screens.models import ModelBrowser
+from tui.screens.multiplayer import MultiplayerScreen
 from tui.memray_pane import MemrayPane
 from tui.memray_adapter import reader_process_func, RemoteReaderClient
 from tui.components.current_task_pane import CurrentTaskPane
@@ -49,6 +50,8 @@ class PokerCFRApp(App):
                 yield CurrentTaskPane()
             with TabPane("Models", id="tab-models"):
                 yield ModelBrowser()
+            with TabPane("Multiplayer", id="tab-multiplayer"):
+                yield MultiplayerScreen()
             with TabPane("Memory Profiler", id="tab-memray"):
                 yield MemrayPane(self.reader_client, pid=os.getpid(), cmd_line=" ".join(sys.argv))
         yield Footer()

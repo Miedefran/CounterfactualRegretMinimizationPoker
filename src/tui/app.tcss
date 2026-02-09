@@ -253,3 +253,71 @@ BRValuesTable .table-header {
 BRValuesTable DataTable {
     height: 1fr;
 }
+
+/* Multiplayer Screen Styling */
+MultiplayerScreen {
+    layout: vertical;
+    height: 100%;
+    padding: 1;
+}
+
+MultiplayerScreen .section-title {
+    text-style: bold;
+    margin-top: 1;
+    margin-bottom: 1;
+    border-bottom: solid $primary;
+}
+
+MultiplayerScreen .server-section,
+MultiplayerScreen .client-section,
+MultiplayerScreen .info-section {
+    padding: 1;
+    border: solid $primary;
+    margin-bottom: 1;
+    height: auto;
+    min-height: 5;
+}
+
+MultiplayerScreen .field-label {
+    width: 15;
+    margin-right: 1;
+    height: auto;
+}
+
+MultiplayerScreen .field-input {
+    width: 30;
+    height: auto;
+}
+
+MultiplayerScreen Horizontal {
+    height: auto;
+    margin-bottom: 1;
+    width: 100%;
+}
+
+MultiplayerScreen Button {
+    margin: 0 1;
+    height: 3;
+    min-width: 15;
+}
+
+MultiplayerScreen .spacer {
+    height: 1;
+}
+
+MultiplayerScreen .spacer-small {
+    height: 1;
+}
+
+MultiplayerScreen #status-label,
+MultiplayerScreen #ip-label,
+MultiplayerScreen #url-label {
+    margin-top: 1;
+    color: $text-muted;
+}
+
+MultiplayerScreen #info-text {
+    margin-top: 1;
+    color: $text;
+    text-style: italic;
+}
