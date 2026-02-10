@@ -1,0 +1,71 @@
+\section{Konzept \& Umsetzung}\label{sec:konzept}
+
+\subsection{Architektur-Übersicht}
+
+Die Spiel-Logik, bestehend aus Game-Environments und CFR-Solver, stammt aus der Bachelorarbeit und wird hier wiederverwendet. Die Architektur unterstützt zwei grundlegend verschiedene Modi, die unterschiedliche Kommunikationsmuster erfordern.
+
+Der \textbf{Lokale Modus} (Agent vs Human) ermöglicht es der GUI, direkt mit einem Game-Objekt zu kommunizieren, wobei ein StrategyAgent für die KI verwendet wird. In diesem Modus läuft alles lokal auf einem Rechner. Die GUI erstellt ein Game-Objekt und einen StrategyAgent, der die trainierte Strategie verwendet, um automatisch Aktionen für die KI zu generieren. Wenn der menschliche Spieler eine Aktion wählt, wird diese direkt an das Game-Objekt übergeben. Der Agent wartet dann auf seine Aktion und führt diese automatisch aus. Dieser Modus erfordert keine Netzwerk-Kommunikation und ist daher einfacher zu implementieren, da keine Thread-Safety oder Netzwerk-Protokolle benötigt werden.
+
+Der \textbf{Client-Server-Modus} (Human vs Human) funktioniert so, dass die GUI als Client agiert und über einen Server für die Spiel-Logik kommuniziert. Zwei Clients können sich mit dem Server verbinden und erhalten jeweils eine Player-ID (0 oder 1). Der Server verwaltet den Spielzustand und validiert alle Aktionen. Wenn ein Client eine Aktion sendet, wird diese vom Server validiert und ausgeführt, und der neue Spielzustand wird an beide Clients gesendet. Dieser Modus erfordert Thread-Safety, da mehrere Clients gleichzeitig auf die Spiel-Logik zugreifen können, und eine zuverlässige Netzwerk-Kommunikation.
+
+Die Architektur trennt klar zwischen verschiedenen Schichten. Die GUI-Schicht besteht aus PyQt6-Komponenten in \texttt{src/gui/components/} und \texttt{src/gui/layouts/}. Diese Komponenten sind wiederverwendbar für beide Modi. Die Client-Schicht umfasst HTTP- und WebSocket-Clients für die Kommunikation mit dem Server. Beide Client-Typen haben ein kompatibles Interface mit gleichen Signals, sodass zwischen den Protokollen gewechselt werden kann. Die Server-Schicht besteht aus HTTP- und WebSocket-Servern für Multiplayer-Spiele. Beide Server-Typen verwenden die gleiche Game-Logik-Klasse (\texttt{PokerGameLogic}), was Code-Wiederverwendung ermöglicht. Die Logik-Schicht enthält die geteilte Spiel-Logik für den Server sowie direktes Game-Objekt für lokale Spiele.
+
+Die Design-Prinzipien umfassen Wiederverwendbarkeit nach dem DRY-Prinzip, Trennung von Concerns und Thread-Safety. Beide Modi nutzen die gleichen UI-Komponenten, was Code-Duplikation vermeidet. Die klare Trennung zwischen GUI, Client, Server und Logik ermöglicht es, Komponenten unabhängig voneinander zu entwickeln und zu testen.
+
+\subsection{Designentscheidungen}
+
+\subsubsection{Framework-Wahl}
+
+Die Framework-Wahl wurde bereits im Hintergrund-Kapitel begründet. \textbf{PyQt6} wurde als mature Framework mit Signal-Slot-Pattern gewählt, was lose Kopplung zwischen Komponenten ermöglicht. \textbf{Flask} wurde für den HTTP-Server verwendet, da es leichtgewichtig ist, eine REST-API bietet und einfach zu verwenden ist. Die \textbf{websockets-Bibliothek} wurde gewählt, da sie asyncio-basiert ist und kompatibel mit asyncio ist, was die Integration mit der Qt Event Loop erleichtert.
+
+\subsubsection{Architektur-Entscheidungen}
+
+Wichtige Architektur-Entscheidungen umfassen eine getrennte Game-Logik-Klasse (\texttt{PokerGameLogic}), die wiederverwendbar für HTTP und WebSocket ist. Diese Klasse kapselt alle Spiel-Logik-Funktionen ohne Transport-spezifische Details. Sie verwaltet Client-Registrierung, State-Management und Action-Handling und verwendet Thread-Safety mit \texttt{threading.Lock} für kritische Operationen.
+
+HTTPClient und WebSocketClient haben ein kompatibles Interface mit gleichen Signals (\texttt{state\_update\_received}, \texttt{connection\_error}), was einfaches Wechseln zwischen den Protokollen ermöglicht. Dies ermöglicht es, die GUI unabhängig vom verwendeten Protokoll zu entwickeln. Das Signal-Slot-Pattern ermöglicht lose Kopplung zwischen Komponenten, sodass Komponenten Signale emittieren können, ohne zu wissen, wer diese empfängt.
+
+\subsection{Code-Struktur, Tools und Frameworks}
+
+Die Projektstruktur ist modular organisiert. \texttt{src/gui/components/} enthält wiederverwendbare UI-Komponenten wie \texttt{ActionButtons}, \texttt{PokerTable}, \texttt{PlayerWidget} und \texttt{VisualCard}. \texttt{src/gui/layouts/} enthält die Layout-Hierarchie mit \texttt{BasePokerLayout} als Basis-Layout und \texttt{AgentVsHumanLayout} als erweitertes Layout für beide Spielmodi. \texttt{src/gui/server/} enthält Server- und Client-Implementierungen, wobei \texttt{game\_logic.py} die gemeinsame Spiel-Logik enthält. \texttt{src/gui/runner/} enthält CLI-Runner-Skripte für einfachen Start der verschiedenen Modi.
+
+Die wichtigsten verwendeten Tools und Frameworks sind \textbf{PyQt6} (Version >=6.0.0) als GUI-Framework, \textbf{Flask} (Version >=2.0.0) als HTTP-Server, \textbf{websockets} (Version >=12.0) als WebSocket-Server, \textbf{pytest} (Version >=9.0.2) als Testing-Framework und \textbf{pytest-asyncio} (Version >=0.24.0) für Async-Test-Support.
+
+\subsection{GUI-Komponenten (PyQt6)}
+
+Die Layout-Hierarchie folgt dem Muster \texttt{BasePokerLayout} $\rightarrow$ \texttt{AgentVsHumanLayout} $\rightarrow$ \texttt{AgentVsHumanGUI}/\texttt{HumanVsHumanGUI}. \texttt{BasePokerLayout} stellt die Basis-Funktionalität bereit, wie Poker-Tisch, Community-Cards, Pot-Display und grundlegende UI-Elemente. \texttt{AgentVsHumanLayout} erweitert dieses Layout für beide Spielmodi und fügt Action-Buttons und andere spiel-spezifische Komponenten hinzu. \texttt{AgentVsHumanGUI} und \texttt{HumanVsHumanGUI} implementieren dann die spezifische Logik für ihren jeweiligen Modus.
+
+Beide Modi nutzen die gleichen UI-Komponenten, was dem DRY-Prinzip entspricht. Beispielsweise verwenden beide Modi die \texttt{ActionButtons}-Komponente, die Poker-Tisch-Darstellung und die Player-Widgets. Dies reduziert Code-Duplikation erheblich und erleichtert die Wartung.
+
+Das \textbf{Advanced Python Konzept: Signal-Slot-Pattern} implementiert das Observer-Pattern durch Signals. Die \texttt{ActionButtons}-Klasse definiert ein Signal \texttt{action\_selected}, das emittiert wird, wenn ein Spieler eine Aktion wählt. Die GUI-Klasse verbindet dieses Signal mit einem Handler, der die Aktion verarbeitet. Dies ermöglicht lose Kopplung zwischen Komponenten, da die \texttt{ActionButtons}-Komponente nicht wissen muss, wie die Aktion verarbeitet wird. Ein Code-Beispiel findet sich im Anhang A.1.
+
+\subsection{Agent vs Human Modus}
+
+\texttt{AgentVsHumanGUI} implementiert ein lokales Spiel ohne Server. Die Klasse erbt von \texttt{AgentVsHumanLayout} und fügt die Logik für die Integration des StrategyAgent hinzu. Bei der Initialisierung wird eine Strategie-Datei geladen, falls angegeben, und ein StrategyAgent erstellt. Der Agent kann zufällig als Player 0 oder 1 zugewiesen werden, sodass der menschliche Spieler nicht immer derselbe Spieler ist.
+
+Das \textbf{Advanced Python Konzept: Pickle und Kompression} wird durch die Methode \texttt{load\_strategy()} demonstriert, die \texttt{gzip} und \texttt{pickle} verwendet. Die Methode öffnet eine komprimierte Datei mit \texttt{gzip.open()}, lädt die Daten mit \texttt{pickle.load()} und unterstützt verschiedene Strategie-Formate (\texttt{average\_strategy} oder \texttt{strategy\_sum}). Die Kompression reduziert die Dateigröße erheblich, was besonders bei großen Strategie-Dateien wichtig ist. Ein Code-Beispiel findet sich im Anhang A.2.
+
+Die Strategie-Integration ermöglicht die Wiederverwendung von Strategien aus der Bachelorarbeit. Die Strategien werden als komprimierte Pickle-Dateien gespeichert und können direkt geladen werden, ohne dass eine Konvertierung erforderlich ist.
+
+\subsection{Human vs Human Modus (Multiplayer)}
+
+\texttt{HumanVsHumanGUI} implementiert ein Server-basiertes Multiplayer-Spiel. Die Klasse erbt ebenfalls von \texttt{AgentVsHumanLayout} und fügt die Logik für die Client-Server-Kommunikation hinzu. Bei der Initialisierung wird ein Client erstellt (HTTPClient oder WebSocketClient), der sich mit dem Server verbindet. Der Client empfängt State-Updates über Signals und sendet Aktionen an den Server.
+
+HTTP- und WebSocket-Clients bieten ein kompatibles Interface, sodass zwischen den Protokollen gewechselt werden kann. Beide Client-Typen haben die gleichen Signals (\texttt{state\_update\_received}, \texttt{connection\_error}), sodass die GUI unabhängig vom verwendeten Protokoll entwickelt werden kann. Der HTTP-Client verwendet Polling mit einem QTimer, während der WebSocket-Client Push-basierte Kommunikation verwendet.
+
+\subsection{Server-Komponenten}
+
+Die \textbf{Game Logic} wird durch \texttt{PokerGameLogic} implementiert und verwendet Thread-Safety mit \texttt{threading.Lock}. Diese Klasse kapselt alle Spiel-Logik-Funktionen ohne Transport-spezifische Details. Sie verwaltet Client-Registrierung, State-Management und Action-Handling. Kritische Operationen wie \texttt{register\_client()} und \texttt{handle\_action()} verwenden \texttt{with self.lock:}, um Thread-Safety zu gewährleisten. Dies stellt sicher, dass nur ein Thread gleichzeitig auf die Spiel-Logik zugreifen kann, was Race Conditions verhindert. Ein Code-Beispiel findet sich im Anhang A.3.
+
+Der \textbf{HTTP-Server} basiert auf Flask und verwendet einen Rate Limiting Decorator. Der Server bietet REST-Endpoints wie \texttt{GET /player\_id} für Client-Registrierung, \texttt{GET /state} für State-Abfrage, \texttt{POST /action} für Action-Verarbeitung und \texttt{POST /reset} für Spiel-Reset. Rate Limiting wird als Decorator implementiert, der die Anzahl der Requests pro Zeitfenster begrenzt. Dies folgt dem Decorator-Pattern und macht Rate Limiting wiederverwendbar. Ein Code-Beispiel findet sich im Anhang A.4.
+
+Der \textbf{WebSocket-Server} ist asyncio-basiert und bietet Push-basierte Kommunikation. Der Server sendet State-Updates automatisch an alle verbundenen Clients, wenn sich der Spielzustand ändert. Dies eliminiert die Notwendigkeit für Polling und reduziert die Latenz erheblich. Der Server verwendet die gleiche \texttt{PokerGameLogic}-Klasse wie der HTTP-Server, was Code-Wiederverwendung ermöglicht.
+
+Sicherheitsfeatures umfassen Input-Validierung, Rate Limiting und optional SSL/TLS Support. Input-Validierung stellt sicher, dass alle Eingaben korrekt formatiert sind und keine bösartigen Daten enthalten. Rate Limiting schützt vor Missbrauch durch zu viele Requests. SSL/TLS Support ermöglicht verschlüsselte Verbindungen für erhöhte Sicherheit.
+
+\subsection{Client-Komponenten}
+
+Der \textbf{HTTP-Client} verwendet Polling mit einem QTimer, um regelmäßig den Spielzustand abzurufen. Der Client sendet regelmäßig GET-Requests an den Server und empfängt State-Updates. PyQt6 Signals informieren die GUI über Updates oder Fehler. Dieser Ansatz ist einfach zu implementieren, hat jedoch höhere Latenz als WebSocket, da Updates nur beim nächsten Polling-Intervall empfangen werden.
+
+Der \textbf{WebSocket-Client} verwendet \texttt{WebSocketWorker} als QThread mit asyncio-Event-Loop. Der Worker startet eine eigene asyncio-Event-Loop in einem separaten Thread und verbindet sich mit dem WebSocket-Server. Async-Events werden über PyQt6 Signals an den GUI-Thread übertragen, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird. Ein Code-Beispiel findet sich im Anhang A.5.
+
+Das \textbf{Advanced Python Konzept: Asyncio + QThread Integration} ermöglicht eine Bridge zwischen asyncio und Qt Event Loop, was Push-basierte Kommunikation statt Polling ermöglicht. Das Problem entsteht, weil asyncio eine eigene Event-Loop verwendet, während Qt eine eigene Event-Loop für GUI-Updates verwendet. Die Lösung ist die Verwendung eines \texttt{QThread} mit einer eigenen asyncio-Event-Loop. Die \texttt{WebSocketWorker}-Klasse erbt von \texttt{QThread} und startet in der \texttt{run()}-Methode eine neue asyncio-Event-Loop. Async-Events werden dann über PyQt6 Signals an den GUI-Thread übertragen, wodurch die GUI nicht blockiert wird und Updates sofort empfangen werden können.

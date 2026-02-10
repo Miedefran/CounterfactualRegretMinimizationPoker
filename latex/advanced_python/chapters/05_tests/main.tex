@@ -1,0 +1,37 @@
+\section{Tests}\label{sec:tests}
+
+\subsection{Beschreibung der Teststrategie}
+
+Die Tests folgen einem szenarien-basierten Ansatz mit Fokus auf Verhalten statt Edge-Cases. Dies macht die Tests aussagekräftiger und verständlicher. Alle Tests laufen ohne GUI-Fenster, sodass sie in CI/CD-Pipelines integriert werden können. Das Ziel ist es, Tests zu schreiben, die das Verhalten des Systems validieren, nicht nur einzelne Edge-Cases.
+
+Der szenarien-basierte Ansatz bedeutet, dass Tests typische Anwendungsfälle abdecken, wie sie in der Praxis auftreten würden. Beispielsweise testet ein Test, ob zwei Clients sich erfolgreich mit dem Server verbinden können und jeweils eine Player-ID erhalten. Ein anderer Test prüft, ob ein Reset korrekt funktioniert und beide Clients den neuen Spielzustand erhalten. Diese Tests sind verständlicher als viele kleine Edge-Case-Tests und geben besseren Aufschluss über die tatsächliche Funktionalität des Systems.
+
+\subsection{Verwendete Tools oder Frameworks}
+
+\textbf{pytest} wird als Framework für Test-Organisation und -Ausführung verwendet. Es bietet Fixtures für wiederverwendbare Test-Setups, die beispielsweise für Server-Instanzen verwendet werden können, die in mehreren Tests benötigt werden. Ein Code-Beispiel für eine pytest-Fixture findet sich im Anhang A.6. Fixtures ermöglichen es, komplexe Setup-Logik einmal zu definieren und in mehreren Tests zu verwenden, was Code-Duplikation vermeidet.
+
+Parametrisierung ermöglicht verschiedene Test-Szenarien mit verschiedenen Eingabewerten. Beispielsweise kann derselbe Test mit verschiedenen Spiel-Typen (Kuhn, Leduc) ausgeführt werden, ohne dass der Test-Code dupliziert werden muss. Dies erhöht die Test-Abdeckung ohne Code-Duplikation.
+
+\textbf{pytest-asyncio} wird für asynchrone WebSocket-Tests verwendet. Es ermöglicht \texttt{async def} Test-Funktionen und verwaltet die asyncio-Event-Loop automatisch. Dies ist essentiell für WebSocket-Tests, die asynchrone Operationen verwenden, wie das Verbinden mit dem Server und das Empfangen von Nachrichten.
+
+\textbf{unittest.mock} wird für Mocking von Zeit-abhängigen Tests verwendet. Beispielsweise kann die Zeit-Funktion gemockt werden, um deterministische Tests zu ermöglichen, die nicht von der tatsächlichen Systemzeit abhängen.
+
+\subsection{Was wurde automatisiert, was manuell geprüft?}
+
+\subsubsection{Automatisierte Tests}
+
+Die automatisierten Tests umfassen \textbf{HTTP-Server Tests} (\texttt{test\_http\_server.py}), die Client-Registrierung, Reset, State-Updates und Action-Verarbeitung validieren. Ein typischer Test prüft, ob zwei Clients sich erfolgreich registrieren können und unterschiedliche Player-IDs erhalten. Ein anderer Test prüft, ob ein Reset korrekt funktioniert und ein neuer Spielzustand zurückgegeben wird.
+
+\textbf{WebSocket-Server Tests} (\texttt{test\_websocket\_server.py}) validieren Client-Verbindung, Reset-Broadcast und Fehlerbehandlung. Diese Tests verwenden \texttt{pytest-asyncio} für asynchrone Operationen. Ein typischer Test prüft, ob zwei Clients sich erfolgreich verbinden können und State-Updates empfangen. Ein anderer Test prüft, ob ein Reset korrekt an beide Clients gesendet wird.
+
+\textbf{Game Logic Tests} (\texttt{test\_game\_logic.py}) validieren Client-Registrierung, Name-Sanitization, Action-Handling und State-Updates. Diese Tests prüfen die zentrale Spiel-Logik unabhängig vom Transport-Protokoll. Ein Test prüft beispielsweise, ob Name-Sanitization korrekt funktioniert und XSS-Angriffe verhindert.
+
+\textbf{Rate Limiter Tests} (\texttt{test\_rate\_limiter.py}) validieren Rate-Limit-Überschreitung. Diese Tests prüfen, ob Rate Limiting korrekt funktioniert und Clients, die zu viele Requests senden, abgelehnt werden.
+
+\textbf{Validation Tests} (\texttt{test\_validation.py}) validieren Input-Validierung. Diese Tests prüfen, ob verschiedene Eingaben korrekt validiert werden und ungültige Eingaben abgelehnt werden.
+
+\textbf{Hand Strength Tests} (\texttt{test\_hand\_strength.py}) validieren Hand-Stärke-Berechnung für verschiedene Poker-Varianten. Diese Tests prüfen, ob die Hand-Stärke-Berechnung für verschiedene Poker-Varianten korrekt funktioniert.
+
+\subsubsection{Manuell geprüft}
+
+Die folgenden Aspekte wurden manuell geprüft, da sie schwer automatisiert werden können: GUI-Darstellung und Animationen, Benutzerfreundlichkeit der UI, visuelle Korrektheit der Karten-Darstellung und Performance bei großen Strategie-Dateien. Diese Aspekte erfordern visuelle Inspektion und subjektive Bewertung, die nicht einfach automatisiert werden können.
