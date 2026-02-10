@@ -1,141 +1,92 @@
-import sys
-import requests
-import time
-import threading
-from pathlib import Path
+"""Tests für den HTTP-Server."""
 
-project_root = Path(__file__).parent.parent
-sys.path.insert(0, str(project_root))
+import socket
+import threading
+import time
+
+import pytest
+import requests
 
 from envs.kuhn_poker.game import KuhnPokerGame
 from gui.server.http_server import PokerHTTPServer
 
 
-def test_server():
-    print("=" * 50)
-    print("HTTP SERVER TEST")
-    print("=" * 50)
+def _free_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        return s.getsockname()[1]
 
+
+@pytest.fixture(scope="module")
+def http_server_url():
+    """Startet HTTP-Server auf freiem Port, liefert Base-URL."""
+    port = _free_port()
     game = KuhnPokerGame()
-    server = PokerHTTPServer(game, host='localhost', port=8889)
-
-    server_thread = threading.Thread(target=server.start, daemon=True)
-    server_thread.start()
-
-    time.sleep(1)
-
-    base_url = "http://localhost:8889"
-
-    print("\n1. Test: GET /player_id")
-    try:
-        response = requests.get(f"{base_url}/player_id", timeout=2)
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.json()}")
-        player_id_1 = response.json()['player_id']
-        assert player_id_1 == 0, f"Expected player_id 0, got {player_id_1}"
-        print("   ✅ Player ID 1 erhalten")
-    except Exception as e:
-        print(f"   ❌ Fehler: {e}")
-        return False
-
-    print("\n2. Test: GET /player_id (zweiter Client)")
-    try:
-        response = requests.get(f"{base_url}/player_id", timeout=2)
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.json()}")
-        player_id_2 = response.json()['player_id']
-        assert player_id_2 == 1, f"Expected player_id 1, got {player_id_2}"
-        print("   ✅ Player ID 2 erhalten")
-    except Exception as e:
-        print(f"   ❌ Fehler: {e}")
-        return False
-
-    print("\n3. Test: POST /reset (startet neues Spiel)")
-    try:
-        response = requests.post(
-            f"{base_url}/reset",
-            json={'starting_player': 0},
-            timeout=2
-        )
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.json()}")
-        assert response.status_code == 200
-        print("   ✅ Reset erfolgreich")
-    except Exception as e:
-        print(f"   ❌ Fehler: {e}")
-        return False
-
-    print("\n4. Test: GET /state (nach Reset, sollte Karten haben)")
-    try:
-        response = requests.get(f"{base_url}/state?player_id=0", timeout=2)
-        print(f"   Status: {response.status_code}")
-        state = response.json()
-        print(f"   Response Keys: {list(state.keys())}")
-        print(f"   Private Cards: {state.get('private_cards')}")
-        print(f"   Current Player: {state.get('current_player')}")
-        print(f"   Legal Actions: {state.get('legal_actions')}")
-        assert 'current_player' in state
-        assert 'done' in state
-        assert 'pot' in state
-        assert 'private_cards' in state
-        assert len(state['private_cards']) > 0, "Sollte Karten nach Reset haben"
-        print("   ✅ State mit Karten erhalten")
-    except Exception as e:
-        print(f"   ❌ Fehler: {e}")
-        return False
-
-    print("\n5. Test: POST /action (gültige Action)")
-    try:
-        response = requests.post(
-            f"{base_url}/action",
-            json={'player_id': 0, 'action': 'bet', 'bet_size': 0},
-            timeout=2
-        )
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.json()}")
-        assert response.status_code == 200
-        print("   ✅ Action gesendet")
-    except Exception as e:
-        print(f"   ❌ Fehler: {e}")
-        return False
-
-    print("\n6. Test: GET /state (nach Action, sollte sich geändert haben)")
-    try:
-        response = requests.get(f"{base_url}/state?player_id=0", timeout=2)
-        state = response.json()
-        print(f"   Current Player: {state.get('current_player')} (sollte jetzt 1 sein)")
-        print(f"   History: {state.get('history')}")
-        assert state.get('current_player') == 1, "Current Player sollte nach Action wechseln"
-        print("   ✅ State nach Action aktualisiert")
-    except Exception as e:
-        print(f"   ❌ Fehler: {e}")
-        return False
-
-    print("\n7. Test: POST /action (ungültige Action - falscher Player)")
-    try:
-        response = requests.post(
-            f"{base_url}/action",
-            json={'player_id': 0, 'action': 'bet', 'bet_size': 0},
-            timeout=2
-        )
-        print(f"   Status: {response.status_code}")
-        print(f"   Response: {response.json()}")
-        assert response.status_code == 400, "Sollte 400 sein, da Player 0 nicht mehr dran ist"
-        print("   ✅ Ungültige Action korrekt abgelehnt")
-    except Exception as e:
-        print(f"   ❌ Fehler: {e}")
-        return False
-
-    print("\n" + "=" * 50)
-    print("✅ ALLE TESTS BESTANDEN")
-    print("=" * 50)
-    return True
+    server = PokerHTTPServer(game, host="localhost", port=port)
+    thread = threading.Thread(target=server.start, daemon=True)
+    thread.start()
+    time.sleep(0.5)
+    yield f"http://localhost:{port}"
+    # Daemon-Thread endet mit Prozess, kein explizites Stoppen nötig
 
 
-if __name__ == "__main__":
-    success = test_server()
-    if success:
-        print("\n✅ Alle Tests erfolgreich!")
-    else:
-        print("\n❌ Tests fehlgeschlagen!")
-        sys.exit(1)
+def test_player_id_first(http_server_url):
+    r = requests.get(f"{http_server_url}/player_id", timeout=2)
+    assert r.status_code == 200
+    assert r.json()["player_id"] == 0
+
+
+def test_player_id_second(http_server_url):
+    r = requests.get(f"{http_server_url}/player_id", timeout=2)
+    assert r.status_code == 200
+    assert r.json()["player_id"] == 1
+
+
+def test_reset(http_server_url):
+    r = requests.post(
+        f"{http_server_url}/reset",
+        json={"starting_player": 0},
+        timeout=2,
+    )
+    assert r.status_code == 200
+
+
+def test_state_after_reset_has_cards(http_server_url):
+    requests.post(f"{http_server_url}/reset", json={"starting_player": 0}, timeout=2)
+    r = requests.get(f"{http_server_url}/state?player_id=0", timeout=2)
+    assert r.status_code == 200
+    state = r.json()
+    assert "current_player" in state
+    assert "done" in state
+    assert "pot" in state
+    assert "private_cards" in state
+    assert len(state["private_cards"]) > 0
+
+
+def test_action_then_state_updates(http_server_url):
+    requests.post(f"{http_server_url}/reset", json={"starting_player": 0}, timeout=2)
+    r1 = requests.post(
+        f"{http_server_url}/action",
+        json={"player_id": 0, "action": "bet", "bet_size": 0},
+        timeout=2,
+    )
+    assert r1.status_code == 200
+    r2 = requests.get(f"{http_server_url}/state?player_id=0", timeout=2)
+    assert r2.status_code == 200
+    assert r2.json().get("current_player") == 1
+
+
+def test_action_wrong_player_rejected(http_server_url):
+    requests.post(f"{http_server_url}/reset", json={"starting_player": 0}, timeout=2)
+    requests.post(
+        f"{http_server_url}/action",
+        json={"player_id": 0, "action": "bet", "bet_size": 0},
+        timeout=2,
+    )
+    r = requests.post(
+        f"{http_server_url}/action",
+        json={"player_id": 0, "action": "bet", "bet_size": 0},
+        timeout=2,
+    )
+    assert r.status_code == 400

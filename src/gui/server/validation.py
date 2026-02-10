@@ -8,6 +8,8 @@ def validate_player_id(player_id) -> Tuple[bool, Optional[int], Optional[str]]:
     """Validiert player_id. Gibt (is_valid, int_value, error_msg) zurück."""
     if player_id is None:
         return False, None, "player_id is required"
+    if isinstance(player_id, float):
+        return False, None, "player_id must be an integer"
     try:
         pid = int(player_id)
         if pid not in (0, 1):

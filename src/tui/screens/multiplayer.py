@@ -6,7 +6,7 @@ from typing import Optional
 from pathlib import Path
 
 from textual.app import ComposeResult
-from textual.containers import Vertical, Horizontal
+from textual.containers import Vertical, Horizontal, ScrollableContainer
 from textual.widgets import Button, Input, Label, Select, Static
 from textual import on
 from textual.timer import Timer
@@ -52,54 +52,56 @@ class MultiplayerScreen(Vertical):
 
     def compose(self) -> ComposeResult:
         """Erstellt die UI-Komponenten."""
-        # Server-Sektion
-        yield Label("Server", classes="section-title")
-        with Vertical(classes="server-section"):
-            with Horizontal():
-                yield Label("Game:", classes="field-label")
-                yield Select(SERVER_GAMES, value="leduc", id="select-game", classes="field-input")
-            with Horizontal():
-                yield Label("Port:", classes="field-label")
-                yield Input(value="8888", type="integer", id="input-port", classes="field-input")
-            with Horizontal():
-                yield Label("Host:", classes="field-label")
-                yield Select([
-                    ("localhost (nur lokal)", "localhost"),
-                    ("0.0.0.0 (alle Interfaces)", "0.0.0.0")
-                ], value="localhost", id="select-host", classes="field-input")
-            with Horizontal():
-                yield Button("Start Server", id="btn-start-server", variant="primary")
-                yield Button("Stop Server", id="btn-stop-server", variant="error", disabled=True)
-            yield Label("", classes="spacer-small")  # Abstand nach Buttons
-            yield Static("Status: Not running", id="status-label")
-            yield Static("Local IP: -", id="ip-label")
-            yield Static("Connection URL: -", id="url-label")
+        # Wrappe den gesamten Inhalt in einen ScrollableContainer für Scroll-Funktionalität
+        with ScrollableContainer():
+            # Server-Sektion
+            yield Label("Server", classes="section-title")
+            with Vertical(classes="server-section"):
+                with Horizontal():
+                    yield Label("Game:", classes="field-label")
+                    yield Select(SERVER_GAMES, value="leduc", id="select-game", classes="field-input")
+                with Horizontal():
+                    yield Label("Port:", classes="field-label")
+                    yield Input(value="8888", type="integer", id="input-port", classes="field-input")
+                with Horizontal():
+                    yield Label("Host:", classes="field-label")
+                    yield Select([
+                        ("localhost (nur lokal)", "localhost"),
+                        ("0.0.0.0 (alle Interfaces)", "0.0.0.0")
+                    ], value="localhost", id="select-host", classes="field-input")
+                with Horizontal():
+                    yield Button("Start Server", id="btn-start-server", variant="primary")
+                    yield Button("Stop Server", id="btn-stop-server", variant="error", disabled=True)
+                yield Label("", classes="spacer-small")  # Abstand nach Buttons
+                yield Static("Status: Not running", id="status-label")
+                yield Static("Local IP: -", id="ip-label")
+                yield Static("Connection URL: -", id="url-label")
 
-        yield Label("", classes="spacer")  # Abstand
+            yield Label("", classes="spacer")  # Abstand
 
-        # Client-Sektion
-        yield Label("Client", classes="section-title")
-        with Vertical(classes="client-section"):
-            yield Button("Start Local Client", id="btn-start-local", variant="success")
-            yield Label("", classes="spacer-small")
-            yield Label("Remote Connection:", classes="field-label")
-            with Horizontal():
-                yield Label("Server IP:", classes="field-label")
-                yield Input(placeholder="192.168.0.131", id="input-remote-ip", classes="field-input")
-            with Horizontal():
-                yield Label("Port:", classes="field-label")
-                yield Input(value="8888", type="integer", id="input-remote-port", classes="field-input")
-            with Horizontal():
-                yield Label("Player Name:", classes="field-label")
-                yield Input(value="Player", id="input-player-name", classes="field-input")
-            yield Button("Start Remote Client", id="btn-start-remote", variant="primary")
+            # Client-Sektion
+            yield Label("Client", classes="section-title")
+            with Vertical(classes="client-section"):
+                yield Button("Start Local Client", id="btn-start-local", variant="success")
+                yield Label("", classes="spacer-small")
+                yield Label("Remote Connection:", classes="field-label")
+                with Horizontal():
+                    yield Label("Server IP:", classes="field-label")
+                    yield Input(placeholder="192.168.0.131", id="input-remote-ip", classes="field-input")
+                with Horizontal():
+                    yield Label("Port:", classes="field-label")
+                    yield Input(value="8888", type="integer", id="input-remote-port", classes="field-input")
+                with Horizontal():
+                    yield Label("Player Name:", classes="field-label")
+                    yield Input(value="Player", id="input-player-name", classes="field-input")
+                yield Button("Start Remote Client", id="btn-start-remote", variant="primary")
 
-        yield Label("", classes="spacer")  # Abstand
+            yield Label("", classes="spacer")  # Abstand
 
-        # Info-Box
-        yield Label("Connection Info", classes="section-title")
-        with Vertical(classes="info-section"):
-            yield Static("", id="info-text")
+            # Info-Box
+            yield Label("Connection Info", classes="section-title")
+            with Vertical(classes="info-section"):
+                yield Static("", id="info-text")
 
     def on_mount(self) -> None:
         """Wird beim Mount aufgerufen - initialisiert lokale IP."""

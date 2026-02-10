@@ -33,6 +33,7 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         self.last_pot_value = 0
         self.game_result_shown = False
         self.last_reset_id = None
+        self.is_closing = False  # Flag um Reconnection beim Schließen zu verhindern
 
         for card_widget in self.community_cards:
             self.community_cards_layout.removeWidget(card_widget)
@@ -490,15 +491,19 @@ class HumanVsHumanGUI(AgentVsHumanLayout):
         self.client.send_reset_request(starting_player)
 
     def _on_connection_error(self, error_message):
+        # Keine Reconnection wenn Fenster geschlossen wird
+        if self.is_closing:
+            return
         QMessageBox.warning(
             self,
             "Connection Error",
             f"Connection error: {error_message}\n\nTrying to reconnect..."
         )
-        QTimer.singleShot(2000, lambda: self.client.connect())
+        QTimer.singleShot(2000, lambda: self.client.connect() if not self.is_closing else None)
 
     def closeEvent(self, event):
         """Wird aufgerufen wenn das Fenster geschlossen wird."""
+        self.is_closing = True  # Verhindere Reconnection beim Schließen
         try:
             if hasattr(self, "client") and self.client is not None:
                 self.client.disconnect()
