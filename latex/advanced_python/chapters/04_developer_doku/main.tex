@@ -2,7 +2,8 @@
 
 \subsection{Installation und Start}
 
-Das Projekt erfordert Python Version >= 3.13 und läuft auf Windows, macOS und Linux (Cross-Platform). Die Installation erfolgt durch Klonen des Repositories und Installation der Dependencies mit \texttt{uv sync} oder \texttt{pip install -e .}.
+Das Projekt erfordert Python Version >= 3.13 und läuft auf Windows, macOS und Linux (Cross-Platform).
+Die Installation erfolgt durch Klonen des Repositories und Installation der Dependencies mit \texttt{uv sync} oder \texttt{pip install -e .}.
 
 \begin{lstlisting}[language=bash]
 git clone <repository-url>
@@ -30,8 +31,12 @@ python src/gui/runner/run_ws_client.py --ip localhost --port 8888 --name Spieler
 
 \subsection{Systemvoraussetzungen \& benötigte Bibliotheken}
 
-Die Hauptdependencies aus \texttt{pyproject.toml} umfassen \texttt{pyqt6>=6.0.0} als GUI-Framework, \texttt{flask>=2.0.0} als HTTP-Server, \texttt{websockets>=12.0} als WebSocket-Server, \texttt{pytest>=9.0.2} als Testing-Framework, \texttt{pytest-asyncio>=0.24.0} für Async-Test-Support und \texttt{requests>=2.28.0} als HTTP-Client. Weitere Dependencies wie \texttt{numpy}, \texttt{pandas}, \texttt{matplotlib} und \texttt{torch} werden für die Game-Logik aus der Bachelorarbeit benötigt.
+Die Hauptdependencies aus \texttt{pyproject.toml} umfassen \texttt{pyqt6>=6.0.0} als GUI-Framework, \texttt{flask>=2.0.0} als HTTP-Server, \texttt{websockets>=12.0} als WebSocket-Server, \texttt{pytest>=9.0.2} als Testing-Framework, \texttt{pytest-asyncio>=0.24.0} für Async-Test-Support und \texttt{requests>=2.28.0} als HTTP-Client.
+Weitere Dependencies wie \texttt{numpy}, \texttt{pandas}, \texttt{matplotlib} und \texttt{torch} werden für die Game-Logik aus der Bachelorarbeit benötigt.
 
 \subsection{Reproduzierbarkeit}
 
-Alle Dependencies sind in \texttt{pyproject.toml} spezifiziert. Die Game-Logik aus der Bachelorarbeit wird wiederverwendet. Strategien werden als \texttt{.pkl.gz} Dateien geladen. Tests können mit \texttt{pytest} ausgeführt werden.
+Alle Dependencies sind in \texttt{pyproject.toml} spezifiziert.
+Die Game-Logik aus der Bachelorarbeit wird wiederverwendet.
+Strategien werden als \texttt{.pkl.gz} Dateien geladen.
+Tests können mit \texttt{pytest} ausgeführt werden.

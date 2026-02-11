@@ -1,49 +1,56 @@
-\section{Hintergrund / Theoretischer Rahmen}\label{sec:hintergrund}
+\section{Theoretische Grundlagen}\label{sec:hintergrund}
 
 \subsection{Relevante Technologien, Frameworks und Forschung}
 
-\subsubsection{GUI-Frameworks}
+\subsubsection{PyQt6}
 
-\textbf{PyQt6} wurde als GUI-Framework gewählt aufgrund seiner Cross-Platform-Fähigkeiten für Windows, macOS und Linux, des Signal-Slot-Patterns für lose Kopplung zwischen Komponenten, einer reifen und gut dokumentierten Codebasis sowie modernerer API und besserer Performance im Vergleich zu Alternativen wie Tkinter oder wxPython.
+\textbf{PyQt6} wurde als GUI-Framework gewählt, da es das Signal-Slot-Pattern unterstützt, welches lose Kopplung zwischen Komponenten ermöglicht.
+Ein weiterer Grund für die Wahl war, dass Ich im Rahmen eines anderen Moduls bereits mit QT in C++ gearbeitet habe und aus diesem Grund viele Konzepte bereits bekannt waren.
 
-Das Signal-Slot-Pattern ist ein zentrales Konzept von PyQt6 und implementiert das Observer-Pattern. Signale werden mit \texttt{pyqtSignal} definiert und können von Komponenten emittiert werden, ohne zu wissen, wer diese empfängt. Slots sind Methoden, die mit Signalen verbunden werden können. Diese lose Kopplung ermöglicht es, Komponenten unabhängig voneinander zu entwickeln und zu testen. Beispielsweise definiert die \texttt{ActionButtons}-Klasse ein Signal \texttt{action\_selected}, das emittiert wird, wenn ein Spieler eine Aktion wählt. Die GUI-Klasse verbindet dieses Signal mit einem Handler, der die Aktion verarbeitet. Dies ermöglicht es, die \texttt{ActionButtons}-Komponente in verschiedenen Kontexten zu verwenden, ohne dass sie Details über die Verarbeitung der Aktionen kennen muss.
+Das Signal-Slot-Pattern ist ein zentrales Konzept von PyQt6 und implementiert das Observer-Pattern.
+Signale werden mit \texttt{pyqtSignal} definiert und können von Komponenten emittiert werden, ohne zu wissen, wer diese empfängt.
+Slots sind Methoden, die mit Signalen verbunden werden können.
+Diese lose Kopplung ermöglicht es, Komponenten unabhängig voneinander zu entwickeln und zu testen.
+
+\textbf{QTimer} wird für verzögerte Ausführung verwendet, ohne die GUI zu blockieren.
+Dies wird beispielsweise verwendet, um Initialisierungsschritte zu verzögern oder um Agent-Aktionen mit einer kurzen Pause auszuführen.
+
+\textbf{QPainter} wird für Custom Painting verwendet, um eigene Grafiken zu zeichnen, wie beispielsweise der Poker-Tisch, der über die \texttt{paintEvent()}-Methode implementiert wird.
+
+Widgets können zudem über \texttt{setStyleSheet()} mit CSS-ähnlicher Syntax gestylt werden, um Farben, Borders und andere visuelle Eigenschaften zu definieren.
+Die Spielkarten verwenden Stylesheets für das Widget-Styling, während der Inhalt über HTML gerendert wird.
 
 \subsubsection{Netzwerk-Kommunikation}
 
-Für die Echtzeit-Kommunikation im Multiplayer-Modus wurde \textbf{WebSocket} gegenüber HTTP gewählt. WebSocket bietet Push-basierte, bidirektionale Kommunikation mit niedriger Latenz, während HTTP Polling erfordert und höhere Latenz aufweist. WebSocket wurde daher für den Multiplayer-Modus implementiert, während HTTP als Fallback-Option bereitgestellt wurde.
+Für die Echtzeit-Kommunikation im Multiplayer-Modus wurden zunächst \textbf{HTTP} mit Polling verwendet.
+Bei HTTP-Polling muss der Client regelmäßig den Server abfragen, um Updates zu erhalten.
+Dies führt zu einer Mindestlatenz von der Polling-Intervall-Zeit (z.B. 100ms) und erzeugt unnötigen Netzwerk-Traffic, auch wenn keine Updates vorhanden sind.
+Zudem ist die Kommunikation unidirektional: Der Client fragt an, der Server antwortet, aber der Server kann nicht proaktiv Updates senden.
 
-Der entscheidende Unterschied liegt in der Kommunikationsrichtung. Bei HTTP muss der Client regelmäßig den Server abfragen (Polling), um Updates zu erhalten. Dies führt zu einer Mindestlatenz von der Polling-Intervall-Zeit (z.B. 100ms) und erzeugt unnötigen Netzwerk-Traffic, auch wenn keine Updates vorhanden sind. WebSocket hingegen ermöglicht es dem Server, Updates direkt an Clients zu senden, sobald sie verfügbar sind. Dies reduziert die Latenz erheblich und verbessert die Spielerfahrung, da State-Updates praktisch sofort übertragen werden.
+Als Verbesserung wurde \textbf{WebSocket} implementiert, welches nun als Standard verwendet wird.
+WebSocket bietet Push-basierte, bidirektionale Kommunikation mit niedriger Latenz.
+Der Server kann Updates direkt an Clients senden, sobald sie verfügbar sind, ohne dass Clients regelmäßig anfragen müssen.
+Dies reduziert die Latenz erheblich und verbessert die Spielerfahrung, da State-Updates praktisch sofort übertragen werden.
+HTTP bleibt als Fallback-Option verfügbar.
 
 \subsubsection{Asynchrone Programmierung}
 
-Die Integration von \textbf{asyncio}, das auf Event-Loops basiert, mit \textbf{QThread}, dem Threading-Mechanismus in Qt-Anwendungen, stellt eine Herausforderung dar, da beide ihre eigenen Event-Loops verwenden. Die Lösung besteht in einer Bridge zwischen asyncio und Qt Event Loop, die es ermöglicht, asynchrone WebSocket-Kommunikation in eine Qt-Anwendung zu integrieren, ohne die GUI zu blockieren.
+Die Integration von \textbf{asyncio}, das auf Event-Loops basiert, mit \textbf{QThread}, dem Threading-Mechanismus in Qt-Anwendungen, stellt eine Herausforderung dar, da beide ihre eigenen Event-Loops verwenden.
+Die Lösung besteht in einer Bridge zwischen asyncio und Qt Event Loop, die es ermöglicht, asynchrone WebSocket-Kommunikation in eine Qt-Anwendung zu integrieren, ohne die GUI zu blockieren.
 
-Das Problem entsteht, weil asyncio eine eigene Event-Loop verwendet, die für asynchrone Operationen wie WebSocket-Verbindungen benötigt wird. Qt-Anwendungen verwenden jedoch eine eigene Event-Loop für GUI-Updates. Wenn man asyncio direkt im GUI-Thread verwendet, würde dies die GUI blockieren. Die Lösung ist die Verwendung eines \texttt{QThread} mit einer eigenen asyncio-Event-Loop. Die \texttt{WebSocketWorker}-Klasse erbt von \texttt{QThread} und startet in der \texttt{run()}-Methode eine neue asyncio-Event-Loop. Async-Events werden dann über PyQt6 Signals an den GUI-Thread übertragen, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
+Das Problem entsteht, weil asyncio eine eigene Event-Loop verwendet, die für asynchrone Operationen wie WebSocket-Verbindungen benötigt wird.
+Qt-Anwendungen verwenden jedoch eine eigene Event-Loop für GUI-Updates.
+Wenn man asyncio direkt im GUI-Thread verwendet, würde dies die GUI blockieren.
+Die Lösung ist die Verwendung eines \texttt{QThread} mit einer eigenen asyncio-Event-Loop.
+Die \texttt{WebSocketWorker}-Klasse erbt von \texttt{QThread} und startet in der \texttt{run()}-Methode eine neue asyncio-Event-Loop.
+Async-Events werden dann über PyQt6 Signals an den GUI-Thread übertragen, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
 
 \subsubsection{Testing}
 
 \textbf{pytest} wurde als Testing-Framework gewählt, da es Fixtures für wiederverwendbare Test-Setups bietet, Parametrisierung für verschiedene Test-Szenarien ermöglicht und im Vergleich zu unittest eine bessere Test-Organisation und lesbarere Syntax bietet.
 
-Fixtures ermöglichen es, wiederverwendbare Test-Setups zu erstellen, die in mehreren Tests verwendet werden können. Beispielsweise kann eine Fixture einen Server auf einem dynamischen Port starten und diesen für mehrere Tests bereitstellen. Parametrisierung ermöglicht es, denselben Test mit verschiedenen Eingabewerten auszuführen, was die Test-Abdeckung erhöht ohne Code-Duplikation. Die Syntax von pytest ist lesbarer als unittest, da Tests als normale Funktionen geschrieben werden können und Assertions direkt verwendet werden können, ohne dass spezielle Assert-Methoden benötigt werden.
+Fixtures ermöglichen es, wiederverwendbare Test-Setups zu erstellen, die in mehreren Tests verwendet werden können.
+Beispielsweise kann eine Fixture einen Server auf einem dynamischen Port starten und diesen für mehrere Tests bereitstellen.
+Parametrisierung ermöglicht es, denselben Test mit verschiedenen Eingabewerten auszuführen, was die Test-Abdeckung erhöht ohne Code-Duplikation.
+Die Syntax von pytest ist lesbarer als unittest, da Tests als normale Funktionen geschrieben werden können und Assertions direkt verwendet werden können, ohne dass spezielle Assert-Methoden benötigt werden.
 
-\subsubsection{Serialisierung}
-
-\textbf{Pickle} in Kombination mit \textbf{gzip} wird für die effiziente Speicherung trainierter Strategien verwendet. Die Kompression reduziert den Speicherbedarf erheblich, was besonders bei großen Strategie-Dateien wichtig ist.
-
-Pickle ermöglicht es, komplexe Python-Objekte wie Dictionaries mit Strategien direkt zu serialisieren, ohne dass eine manuelle Konvertierung erforderlich ist. Die Kombination mit gzip reduziert die Dateigröße erheblich, da Strategien oft große Datenstrukturen enthalten, die gut komprimierbar sind. Eine unkomprimierte Strategie-Datei kann mehrere hundert MB groß sein, während die komprimierte Version oft unter 50 MB liegt, bei akzeptablen Ladezeiten.
-
-\subsection{Vergleich ähnlicher Ansätze}
-
-\subsubsection{Poker-GUI-Implementierungen}
-
-Ein Vergleich mit bestehenden Poker-GUI-Projekten zeigt, dass sich diese Arbeit durch die Integration mit CFR-Strategien und Multiplayer über WebSocket auszeichnet. Die meisten bestehenden Projekte konzentrieren sich auf Standard-Poker-Varianten und bieten keine Integration mit CFR-basierten Strategien. Diese Arbeit ermöglicht es, gegen trainierte CFR-Strategien zu spielen, die in der Bachelorarbeit entwickelt wurden, und bietet gleichzeitig Multiplayer-Funktionalität über WebSocket für Echtzeit-Kommunikation.
-
-\subsubsection{Multiplayer-Server-Architekturen}
-
-Die Client-Server-Architektur wurde gegenüber Peer-to-Peer gewählt, um eine zentrale Spiel-Logik-Verwaltung zu ermöglichen. Dies gewährleistet Konsistenz und verhindert Cheating, da die Spiel-Logik nicht auf Client-Seite manipuliert werden kann. Der Server verwaltet den vollständigen Spielzustand und validiert alle Aktionen, bevor sie ausgeführt werden. Dies ermöglicht zudem einfache Erweiterungen wie Turniere oder Replay-Funktionalität, da der Server den vollständigen Spielzustand verwaltet.
-
-\subsubsection{Thread-Safety-Patterns}
-
-\textbf{threading.Lock} wurde als einfache und effektive Lösung für Thread-Safety gewählt, gegenüber komplexeren Ansätzen wie Actor-Model oder Queue-basierten Patterns. Es wird mit Kontext-Managern verwendet, um automatisches Lock-Management zu gewährleisten und Thread-Safety bei gleichzeitigen Zugriffen auf gemeinsame Datenstrukturen sicherzustellen.
-
-Das Problem entsteht, weil mehrere Clients gleichzeitig auf die Game-Logik zugreifen können. Ohne Thread-Safety könnten Race Conditions auftreten, wenn zwei Clients gleichzeitig versuchen, eine Aktion auszuführen oder den Spielzustand zu ändern. \texttt{threading.Lock} mit Kontext-Managern (\texttt{with self.lock:}) stellt sicher, dass kritische Abschnitte nur von einem Thread gleichzeitig ausgeführt werden können. Die Lock-Hold-Zeit ist kurz, da kritische Abschnitte auf das Minimum beschränkt wurden, was den Performance-Overhead minimiert.

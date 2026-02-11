@@ -297,8 +297,10 @@
         dem Fachbereich \thefachbereich\\
         der Berliner Hochschule für Technik Berlin\\
         vorgelegte \thethesistyp\xspace \\
-        zur Erlangung des akademischen Grades\\[1ex]
-        \textbf{\theabschluss}\\[1ex]
+        \ifthenelse{\equal{\thethesistyp}{Hausarbeit}}
+          {}
+          {zur Erlangung des akademischen Grades\\[1ex]
+           \textbf{\theabschluss}\\[1ex]}
         im Studiengang\\[1ex]
         \textbf{\thestudiengang}  \\[2ex]                
         Tag der Abgabe \thedatum \\[2ex]
@@ -359,10 +361,13 @@
           {\Large\theautor}\\[2ex]
           EDV.Nr.:\theedvnr\\[2ex]
           dem Fachbereich \thefachbereich\\
-          der Berliner Hochschule für Technik Berlin
+          der Berliner Hochschule für Technik Berlin\\
           vorgelegte \thethesistyp\xspace \\
-          zur Erlangung des akademischen Grades\\
-          \textbf{\theabschluss}\\
+          \ifthenelse{\equal{\thethesistyp}{Hausarbeit}}
+            {}
+            {zur Erlangung des akademischen Grades\\
+             \textbf{\theabschluss}\\
+            }
           im Studiengang\\
           \textbf{\thestudiengang}
         \end{hsfont}

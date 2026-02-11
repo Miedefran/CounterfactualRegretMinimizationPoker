@@ -4,54 +4,99 @@
 
 \subsubsection{Performance}
 
-Die Implementierung zeigt gute Performance-Charakteristika. WebSocket ermöglicht Push-basierte Kommunikation, die deutlich effizienter ist als Polling. Die Latenz ist minimal, da Updates sofort übertragen werden, ohne dass Clients regelmäßig anfragen müssen. Dies verbessert die Spielerfahrung erheblich, da State-Updates praktisch sofort übertragen werden. Im Vergleich zu HTTP-Polling mit 100ms Intervall reduziert WebSocket die Latenz erheblich.
+Die Implementierung zeigt gute Performance-Charakteristika.
+WebSocket ermöglicht Push-basierte Kommunikation, die deutlich effizienter ist als Polling.
+Die Latenz ist minimal, da Updates sofort übertragen werden, ohne dass Clients regelmäßig anfragen müssen.
+Dies verbessert die Spielerfahrung erheblich, da State-Updates praktisch sofort übertragen werden.
+Im Vergleich zu HTTP-Polling mit 100ms Intervall reduziert WebSocket die Latenz erheblich.
 
-Pickle in Kombination mit Kompression reduziert den Speicherbedarf für Strategien erheblich. Große Strategie-Dateien werden von mehreren hundert MB auf unter 50 MB komprimiert, bei akzeptablen Ladezeiten von wenigen Sekunden. Dies ermöglicht effiziente Speicherung und schnelles Laden großer Strategie-Dateien, die in der Bachelorarbeit trainiert wurden.
+Pickle in Kombination mit Kompression reduziert den Speicherbedarf für Strategien erheblich.
+Große Strategie-Dateien werden von mehreren hundert MB auf unter 50 MB komprimiert, bei akzeptablen Ladezeiten von wenigen Sekunden.
+Dies ermöglicht effiziente Speicherung und schnelles Laden großer Strategie-Dateien, die in der Bachelorarbeit trainiert wurden.
 
-\texttt{threading.Lock} hat minimalen Performance-Overhead. Die Lock-Hold-Zeit ist kurz, da kritische Abschnitte auf das Minimum beschränkt wurden. Selbst bei vielen gleichzeitigen Requests wurde keine merkbare Verlangsamung beobachtet. Dies bestätigt, dass \texttt{threading.Lock} eine effektive Lösung für Thread-Safety in diesem Anwendungsfall ist.
+\texttt{threading.Lock} hat minimalen Performance-Overhead.
+Die Lock-Hold-Zeit ist kurz, da kritische Abschnitte auf das Minimum beschränkt wurden.
+Selbst bei vielen gleichzeitigen Requests wurde keine merkbare Verlangsamung beobachtet.
+Dies bestätigt, dass \texttt{threading.Lock} eine effektive Lösung für Thread-Safety in diesem Anwendungsfall ist.
 
-Die GUI bleibt auch während Netzwerk-Operationen responsiv, da \texttt{QThread} für WebSocket-Kommunikation verwendet wird und die GUI-Thread nicht blockiert wird. Dies ermöglicht eine flüssige Benutzererfahrung, auch wenn Netzwerk-Operationen im Hintergrund stattfinden.
+Die GUI bleibt auch während Netzwerk-Operationen responsiv, da \texttt{QThread} für WebSocket-Kommunikation verwendet wird und die GUI-Thread nicht blockiert wird.
+Dies ermöglicht eine flüssige Benutzererfahrung, auch wenn Netzwerk-Operationen im Hintergrund stattfinden.
 
 \subsubsection{Wartbarkeit}
 
-Die modulare Architektur mit klarer Trennung von GUI, Client, Server und Logik erleichtert die Wartung erheblich. Änderungen in einer Schicht beeinflussen andere Schichten minimal. Beispielsweise kann die Game-Logik geändert werden, ohne dass die GUI oder die Client-Implementierungen angepasst werden müssen. Dies ermöglicht unabhängige Entwicklung und Wartung der verschiedenen Komponenten.
+Die modulare Architektur mit klarer Trennung von GUI, Client, Server und Logik erleichtert die Wartung erheblich.
+Änderungen in einer Schicht beeinflussen andere Schichten minimal.
+Beispielsweise kann die Game-Logik geändert werden, ohne dass die GUI oder die Client-Implementierungen angepasst werden müssen.
+Dies ermöglicht unabhängige Entwicklung und Wartung der verschiedenen Komponenten.
 
-Wiederverwendbare Komponenten folgen dem DRY-Prinzip, was Code-Duplikation vermeidet und die Wartung erleichtert. Beide Spielmodi nutzen die gleichen UI-Komponenten, sodass Änderungen an diesen Komponenten automatisch für beide Modi gelten. Dies reduziert den Wartungsaufwand erheblich.
+Wiederverwendbare Komponenten folgen dem DRY-Prinzip, was Code-Duplikation vermeidet und die Wartung erleichtert.
+Beide Spielmodi nutzen die gleichen UI-Komponenten, sodass Änderungen an diesen Komponenten automatisch für beide Modi gelten.
+Dies reduziert den Wartungsaufwand erheblich.
 
-Szenarien-basierte Tests sind verständlicher als viele Edge-Case-Tests und geben besseren Aufschluss über das tatsächliche Verhalten. Die Tests decken typische Anwendungsfälle ab, wie sie in der Praxis auftreten würden, was das Debugging erleichtert. Die Verwendung von Fixtures ermöglicht wiederverwendbare Test-Setups, was Code-Duplikation vermeidet.
+Szenarien-basierte Tests sind verständlicher als viele Edge-Case-Tests und geben besseren Aufschluss über das tatsächliche Verhalten.
+Die Tests decken typische Anwendungsfälle ab, wie sie in der Praxis auftreten würden, was das Debugging erleichtert.
+Die Verwendung von Fixtures ermöglicht wiederverwendbare Test-Setups, was Code-Duplikation vermeidet.
 
-Thread-Safety, Input-Validierung und Rate Limiting erhöhen die Robustheit des Systems und reduzieren die Wahrscheinlichkeit von Bugs. Die Verwendung von Kontext-Managern für Thread-Safety stellt sicher, dass Locks auch bei Exceptions korrekt freigegeben werden. Input-Validierung verhindert Fehler durch ungültige Eingaben, und Rate Limiting schützt vor Missbrauch.
+Thread-Safety, Input-Validierung und Rate Limiting erhöhen die Robustheit des Systems und reduzieren die Wahrscheinlichkeit von Bugs.
+Die Verwendung von Kontext-Managern für Thread-Safety stellt sicher, dass Locks auch bei Exceptions korrekt freigegeben werden.
+Input-Validierung verhindert Fehler durch ungültige Eingaben, und Rate Limiting schützt vor Missbrauch.
 
 \subsubsection{Begründete Entscheidungen}
 
-Die wichtigsten Design-Entscheidungen wurden bewusst getroffen. PyQt6 wurde als mature Framework mit Signal-Slot-Pattern gewählt, was lose Kopplung zwischen Komponenten ermöglicht. Dies erleichtert die Wartung und Erweiterung erheblich, da Komponenten unabhängig voneinander entwickelt werden können.
+Die wichtigsten Design-Entscheidungen wurden bewusst getroffen.
+PyQt6 wurde als mature Framework mit Signal-Slot-Pattern gewählt, was lose Kopplung zwischen Komponenten ermöglicht.
+Dies erleichtert die Wartung und Erweiterung erheblich, da Komponenten unabhängig voneinander entwickelt werden können.
 
-WebSocket wurde für Push-basierte Kommunikation für Echtzeit-Multiplayer gewählt, da es deutlich effizienter ist als HTTP-Polling. Die niedrige Latenz verbessert die Spielerfahrung erheblich, und die Push-basierte Kommunikation reduziert den Netzwerk-Traffic.
+WebSocket wurde für Push-basierte Kommunikation für Echtzeit-Multiplayer gewählt, da es deutlich effizienter ist als HTTP-Polling.
+Die niedrige Latenz verbessert die Spielerfahrung erheblich, und die Push-basierte Kommunikation reduziert den Netzwerk-Traffic.
 
-pytest wurde gegenüber unittest gewählt, da es bessere Test-Organisation bietet. Fixtures ermöglichen wiederverwendbare Test-Setups, und Parametrisierung ermöglicht verschiedene Test-Szenarien ohne Code-Duplikation. Die Syntax ist lesbarer als unittest, was die Wartung der Tests erleichtert.
+pytest wurde gegenüber unittest gewählt, da es bessere Test-Organisation bietet.
+Fixtures ermöglichen wiederverwendbare Test-Setups, und Parametrisierung ermöglicht verschiedene Test-Szenarien ohne Code-Duplikation.
+Die Syntax ist lesbarer als unittest, was die Wartung der Tests erleichtert.
 
-\texttt{threading.Lock} wurde als einfache, effektive Thread-Safety-Lösung gewählt. Es ist einfach zu verwenden, hat minimalen Performance-Overhead und ist für die Anforderungen dieses Projekts ausreichend. Komplexere Ansätze wie Actor-Model oder Queue-basierte Patterns wären für diesen Anwendungsfall Overkill gewesen.
+\texttt{threading.Lock} wurde als einfache, effektive Thread-Safety-Lösung gewählt.
+Es ist einfach zu verwenden, hat minimalen Performance-Overhead und ist für die Anforderungen dieses Projekts ausreichend.
+Komplexere Ansätze wie Actor-Model oder Queue-basierte Patterns wären für diesen Anwendungsfall Overkill gewesen.
 
 \subsection{Lessons Learned (Erkenntnisse und Advanced Python Konzepte)}
 
-Die Implementierung demonstriert mehrere wichtige Advanced Python Konzepte. PyQt6 Signals/Slots ermöglichen lose Kopplung zwischen Komponenten und implementieren das Observer-Pattern. Komponenten können Signale emittieren, ohne zu wissen, wer diese empfängt, was die Wartbarkeit und Erweiterbarkeit erheblich verbessert. Die Verwendung von Signals ermöglicht es, Komponenten unabhängig voneinander zu entwickeln und zu testen.
+Die Implementierung demonstriert mehrere wichtige Advanced Python Konzepte.
+PyQt6 Signals/Slots ermöglichen lose Kopplung zwischen Komponenten und implementieren das Observer-Pattern.
+Komponenten können Signale emittieren, ohne zu wissen, wer diese empfängt, was die Wartbarkeit und Erweiterbarkeit erheblich verbessert.
+Die Verwendung von Signals ermöglicht es, Komponenten unabhängig voneinander zu entwickeln und zu testen.
 
-Wiederverwendbare GUI-Komponenten folgen dem DRY-Prinzip für verschiedene Spielmodi. Beide Modi nutzen die gleichen UI-Komponenten, was Code-Duplikation vermeidet und die Wartung erleichtert. Dies zeigt, wie wichtig eine gute Architektur für Code-Wiederverwendung ist.
+Wiederverwendbare GUI-Komponenten folgen dem DRY-Prinzip für verschiedene Spielmodi.
+Beide Modi nutzen die gleichen UI-Komponenten, was Code-Duplikation vermeidet und die Wartung erleichtert.
+Dies zeigt, wie wichtig eine gute Architektur für Code-Wiederverwendung ist.
 
-Pickle in Kombination mit Kompression ermöglicht effiziente Serialisierung von trainierten Strategien. Die Kombination reduziert den Speicherbedarf erheblich, während die Ladezeiten akzeptabel bleiben. Dies zeigt, wie Standard-Bibliotheken effektiv kombiniert werden können, um komplexe Probleme zu lösen.
+Pickle in Kombination mit Kompression ermöglicht effiziente Serialisierung von trainierten Strategien.
+Die Kombination reduziert den Speicherbedarf erheblich, während die Ladezeiten akzeptabel bleiben.
+Dies zeigt, wie Standard-Bibliotheken effektiv kombiniert werden können, um komplexe Probleme zu lösen.
 
-Asyncio + QThread Integration ermöglicht eine Bridge zwischen async und Qt Event Loop, was Push-basierte Kommunikation statt Polling ermöglicht. Die Lösung mit \texttt{WebSocketWorker} als \texttt{QThread} mit eigener asyncio-Event-Loop zeigt, wie verschiedene Event-Loop-Systeme integriert werden können. Die Signal-Bridge überträgt Async-Events via PyQt6 Signals an den GUI-Thread, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
+Asyncio + QThread Integration ermöglicht eine Bridge zwischen async und Qt Event Loop, was Push-basierte Kommunikation statt Polling ermöglicht.
+Die Lösung mit \texttt{WebSocketWorker} als \texttt{QThread} mit eigener asyncio-Event-Loop zeigt, wie verschiedene Event-Loop-Systeme integriert werden können.
+Die Signal-Bridge überträgt Async-Events via PyQt6 Signals an den GUI-Thread, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
 
-Thread-Safety mit \texttt{threading.Lock} und Kontext-Managern stellt sicher, dass kritische Operationen Thread-Safe sind. Die Verwendung von Kontext-Managern (\texttt{with self.lock:}) stellt sicher, dass Locks auch bei Exceptions korrekt freigegeben werden. Dies ist essentiell für Multiplayer-Server, bei denen mehrere Clients gleichzeitig auf gemeinsame Datenstrukturen zugreifen.
+Thread-Safety mit \texttt{threading.Lock} und Kontext-Managern stellt sicher, dass kritische Operationen Thread-Safe sind.
+Die Verwendung von Kontext-Managern (\texttt{with self.lock:}) stellt sicher, dass Locks auch bei Exceptions korrekt freigegeben werden.
+Dies ist essentiell für Multiplayer-Server, bei denen mehrere Clients gleichzeitig auf gemeinsame Datenstrukturen zugreifen.
 
-Decorators ermöglichen Rate Limiting als wiederverwendbare Funktionalität. Die Implementierung als Decorator folgt dem Decorator-Pattern und macht Rate Limiting einfach anwendbar. Dies demonstriert die Mächtigkeit von Python-Decorators für Cross-Cutting Concerns wie Sicherheit und Performance.
+Decorators ermöglichen Rate Limiting als wiederverwendbare Funktionalität.
+Die Implementierung als Decorator folgt dem Decorator-Pattern und macht Rate Limiting einfach anwendbar.
+Dies demonstriert die Mächtigkeit von Python-Decorators für Cross-Cutting Concerns wie Sicherheit und Performance.
 
-pytest ermöglicht szenarien-basierte Tests, die verständlicher sind als viele Edge-Cases. Fixtures ermöglichen wiederverwendbare Test-Setups, und Parametrisierung ermöglicht verschiedene Test-Szenarien ohne Code-Duplikation. Dies zeigt, wie moderne Testing-Frameworks die Test-Organisation verbessern können.
+pytest ermöglicht szenarien-basierte Tests, die verständlicher sind als viele Edge-Cases.
+Fixtures ermöglichen wiederverwendbare Test-Setups, und Parametrisierung ermöglicht verschiedene Test-Szenarien ohne Code-Duplikation.
+Dies zeigt, wie moderne Testing-Frameworks die Test-Organisation verbessern können.
 
-Die erfolgreiche Wiederverwendung der Game-Logik aus der Bachelorarbeit zeigt, dass modulare Architekturen Wiederverwendung ermöglichen. Die Game-Logik wurde erfolgreich in eine separate Klasse gekapselt, die sowohl von HTTP- als auch von WebSocket-Servern verwendet werden kann. Dies bestätigt die Wichtigkeit einer guten Architektur für Code-Wiederverwendung.
+Die erfolgreiche Wiederverwendung der Game-Logik aus der Bachelorarbeit zeigt, dass modulare Architekturen Wiederverwendung ermöglichen.
+Die Game-Logik wurde erfolgreich in eine separate Klasse gekapselt, die sowohl von HTTP- als auch von WebSocket-Servern verwendet werden kann.
+Dies bestätigt die Wichtigkeit einer guten Architektur für Code-Wiederverwendung.
 
 \subsection{Ausblick}
 
 Mögliche Erweiterungen für zukünftige Versionen umfassen Unterstützung für mehr Spieler, einen Turnier-Modus mit mehreren Runden, Replay-Funktionalität zur Aufzeichnung und Wiedergabe von Spielen, Performance-Optimierungen wie Strategie-Caching und Lazy Loading, erweiterte Sicherheitsfeatures wie Authentifizierung und Verschlüsselung sowie UI-Verbesserungen wie bessere Animationen und Themes.
 
-Die modulare Architektur ermöglicht diese Erweiterungen ohne größere Umstrukturierungen. Die klare Trennung zwischen GUI, Client, Server und Logik ermöglicht es, einzelne Komponenten zu erweitern, ohne andere Komponenten zu beeinflussen. Dies zeigt, wie wichtig eine gute Architektur für die langfristige Wartbarkeit und Erweiterbarkeit eines Systems ist.
+Die modulare Architektur ermöglicht diese Erweiterungen ohne größere Umstrukturierungen.
+Die klare Trennung zwischen GUI, Client, Server und Logik ermöglicht es, einzelne Komponenten zu erweitern, ohne andere Komponenten zu beeinflussen.
+Dies zeigt, wie wichtig eine gute Architektur für die langfristige Wartbarkeit und Erweiterbarkeit eines Systems ist.
