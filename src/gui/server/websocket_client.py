@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import ssl
 import time
 from typing import Optional
 from PyQt6.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
@@ -45,7 +46,14 @@ class WebSocketWorker(QThread):
     async def _connect_and_listen(self):
         """Verbindet zum Server und lauscht auf Nachrichten."""
         try:
-            self.websocket = await connect(self.server_url)
+            # SSL-Context für selbstsignierte Zertifikate (keine Verifizierung)
+            ssl_context = None
+            if self.server_url.startswith("wss://"):
+                ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                ssl_context.check_hostname = False
+                ssl_context.verify_mode = ssl.CERT_NONE
+            
+            self.websocket = await connect(self.server_url, ssl=ssl_context)
             self.running = True
 
             # Empfange player_id (oder error z.B. Server full)

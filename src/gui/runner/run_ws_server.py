@@ -25,6 +25,7 @@ from envs.rhode_island.game import RhodeIslandGame
 from envs.royal_holdem.game import RoyalHoldemGame
 from envs.limit_holdem.game import LimitHoldemGame
 from gui.server.websocket_server import PokerWebSocketServer
+from gui.server.ssl_utils import get_or_create_ssl_certificates
 
 
 def main():
@@ -36,10 +37,12 @@ def main():
     parser.add_argument('--game', default='limit_holdem',
                         choices=['kuhn', 'leduc', 'twelve_card', 'rhode_island', 'royal_holdem', 'limit_holdem'],
                         help='Game type (default: limit_holdem)')
+    parser.add_argument('--no-ssl', action='store_true',
+                        help='Deaktiviert SSL/WSS (verwendet unverschlüsseltes WS)')
     parser.add_argument('--cert', type=str, default=None,
-                        help='Path to SSL certificate file (for WSS)')
+                        help='Path to SSL certificate file (for WSS, optional - verwendet Standard-Zertifikat wenn nicht angegeben)')
     parser.add_argument('--key', type=str, default=None,
-                        help='Path to SSL private key file (for WSS)')
+                        help='Path to SSL private key file (for WSS, optional - verwendet Standard-Zertifikat wenn nicht angegeben)')
 
     args = parser.parse_args()
 
@@ -71,18 +74,28 @@ def main():
 
     # SSL-Validierung und Context-Erstellung
     ssl_context = None
-    if args.cert and args.key:
+    if not args.no_ssl:
         import ssl
+        # Verwende benutzerdefinierte Zertifikate falls angegeben, sonst Standard-Zertifikate
+        if args.cert and args.key:
+            cert_path = args.cert
+            key_path = args.key
+        elif args.cert or args.key:
+            print("ERROR: --cert und --key müssen beide angegeben werden für SSL")
+            sys.exit(1)
+        else:
+            # Generiere oder verwende Standard-Zertifikate
+            cert_path, key_path = get_or_create_ssl_certificates()
+            print(f"SSL enabled: Using auto-generated certificate")
+        
         ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         try:
-            ssl_context.load_cert_chain(args.cert, args.key)
-            print(f"SSL enabled: Using certificate {args.cert}")
+            ssl_context.load_cert_chain(cert_path, key_path)
+            if args.cert and args.key:
+                print(f"SSL enabled: Using certificate {cert_path}")
         except Exception as e:
             print(f"ERROR: Failed to load SSL certificate: {e}")
             sys.exit(1)
-    elif args.cert or args.key:
-        print("ERROR: --cert und --key müssen beide angegeben werden für SSL")
-        sys.exit(1)
 
     server = PokerWebSocketServer(game, host=args.host, port=args.port, game_id=args.game,
                                   ssl_context=ssl_context)

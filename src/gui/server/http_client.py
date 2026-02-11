@@ -1,6 +1,10 @@
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 import requests
 from requests.exceptions import Timeout
+import urllib3
+
+# Unterdrücke Warnungen für selbstsignierte Zertifikate
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 class HTTPClient(QObject):
@@ -23,7 +27,7 @@ class HTTPClient(QObject):
                 params = {}
                 if isinstance(self.player_name, str) and self.player_name.strip():
                     params["name"] = self.player_name.strip()
-                response = requests.get(f"{self.server_url}/player_id", params=params, timeout=2)
+                response = requests.get(f"{self.server_url}/player_id", params=params, timeout=2, verify=False)
                 self.player_id = response.json()['player_id']
             except Exception as e:
                 self.connection_error.emit(str(e))
@@ -41,7 +45,8 @@ class HTTPClient(QObject):
             response = requests.get(
                 f"{self.server_url}/state",
                 params={'player_id': self.player_id},
-                timeout=1
+                timeout=1,
+                verify=False
             )
             state = response.json()
             self.state_update_received.emit(state)
@@ -65,7 +70,8 @@ class HTTPClient(QObject):
                     'action': action,
                     'bet_size': bet_size
                 },
-                timeout=2
+                timeout=2,
+                verify=False
             )
             return True
         except Exception as e:
@@ -80,7 +86,8 @@ class HTTPClient(QObject):
             response = requests.post(
                 f"{self.server_url}/reset",
                 json={'starting_player': starting_player},
-                timeout=2
+                timeout=2,
+                verify=False
             )
 
             if response.status_code == 200:
@@ -99,6 +106,7 @@ class HTTPClient(QObject):
                     f"{self.server_url}/disconnect",
                     json={'player_id': int(self.player_id)},
                     timeout=1,
+                    verify=False
                 )
             except Exception:
                 pass

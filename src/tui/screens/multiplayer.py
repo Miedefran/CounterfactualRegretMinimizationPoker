@@ -294,11 +294,11 @@ class MultiplayerScreen(Vertical):
             start_btn.disabled = True
             stop_btn.disabled = False
             status_label.update("Status: Running")
-            # URL basierend auf gewähltem Host
+            # URL basierend auf gewähltem Host (Standard ist WSS)
             if self.server_host == "localhost":
-                url_label.update(f"Connection URL: ws://localhost:{self.server_port}")
+                url_label.update(f"Connection URL: wss://localhost:{self.server_port}")
             else:
-                url_label.update(f"Connection URL: ws://{self.local_ip}:{self.server_port}")
+                url_label.update(f"Connection URL: wss://{self.local_ip}:{self.server_port}")
         else:
             start_btn.disabled = False
             stop_btn.disabled = True
@@ -328,9 +328,9 @@ class MultiplayerScreen(Vertical):
         info_text = self.query_one("#info-text", Static)
         if self.server_process:
             if self.server_host == "localhost":
-                info_text.update("Server läuft auf localhost (nur lokal erreichbar).\nFür Remote-Verbindung: Host auf 0.0.0.0 ändern.")
+                info_text.update("Server läuft auf localhost (nur lokal erreichbar).\nFür Remote-Verbindung: Host auf 0.0.0.0 ändern.\nSSL/WSS ist standardmäßig aktiviert.")
             else:
                 cmd = f"python src/gui/runner/run_ws_client.py --ip {self.local_ip} --port {self.server_port} --name Spieler2"
-                info_text.update(f"Remote clients connect with:\n{cmd}")
+                info_text.update(f"Remote clients connect with:\n{cmd}\n\nSSL/WSS ist standardmäßig aktiviert.")
         else:
             info_text.update("Start server to see connection command")

@@ -17,12 +17,12 @@ def main():
                         help='Server Port (default: 8888)')
     parser.add_argument('--name', default='Player',
                         help='Player name (default: Player)')
-    parser.add_argument('--ssl', action='store_true',
-                        help='Use HTTPS instead of HTTP')
+    parser.add_argument('--no-ssl', action='store_true',
+                        help='Deaktiviert SSL/HTTPS (verwendet unverschlüsseltes HTTP)')
 
     args = parser.parse_args()
 
-    protocol = "https" if args.ssl else "http"
+    protocol = "http" if args.no_ssl else "https"
     server_url = f"{protocol}://{args.ip}:{args.port}"
 
     app = QApplication(sys.argv)

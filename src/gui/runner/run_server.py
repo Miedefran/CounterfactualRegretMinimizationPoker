@@ -25,6 +25,7 @@ from envs.rhode_island.game import RhodeIslandGame
 from envs.royal_holdem.game import RoyalHoldemGame
 from envs.limit_holdem.game import LimitHoldemGame
 from gui.server.http_server import PokerHTTPServer
+from gui.server.ssl_utils import get_or_create_ssl_certificates
 
 
 def main():
@@ -36,10 +37,12 @@ def main():
     parser.add_argument('--game', default='limit_holdem',
                         choices=['kuhn', 'leduc', 'twelve_card', 'rhode_island', 'royal_holdem', 'limit_holdem'],
                         help='Game type (default: limit_holdem)')
+    parser.add_argument('--no-ssl', action='store_true',
+                        help='Deaktiviert SSL/HTTPS (verwendet unverschlüsseltes HTTP)')
     parser.add_argument('--cert', type=str, default=None,
-                        help='Path to SSL certificate file (for HTTPS)')
+                        help='Path to SSL certificate file (for HTTPS, optional - verwendet Standard-Zertifikat wenn nicht angegeben)')
     parser.add_argument('--key', type=str, default=None,
-                        help='Path to SSL private key file (for HTTPS)')
+                        help='Path to SSL private key file (for HTTPS, optional - verwendet Standard-Zertifikat wenn nicht angegeben)')
 
     args = parser.parse_args()
 
@@ -69,19 +72,32 @@ def main():
         print("⚠️  WARNING: Server bindet an alle Interfaces (0.0.0.0).")
         print("   Dies macht den Server von außen erreichbar - nur für vertrauenswürdige Netzwerke verwenden!")
 
-    # SSL-Validierung
-    if (args.cert and not args.key) or (args.key and not args.cert):
-        print("ERROR: --cert und --key müssen beide angegeben werden für SSL")
-        sys.exit(1)
+    # SSL-Validierung und Context-Erstellung
+    ssl_cert = None
+    ssl_key = None
+    if not args.no_ssl:
+        # Verwende benutzerdefinierte Zertifikate falls angegeben, sonst Standard-Zertifikate
+        if args.cert and args.key:
+            ssl_cert = args.cert
+            ssl_key = args.key
+        elif args.cert or args.key:
+            print("ERROR: --cert und --key müssen beide angegeben werden für SSL")
+            sys.exit(1)
+        else:
+            # Generiere oder verwende Standard-Zertifikate
+            ssl_cert, ssl_key = get_or_create_ssl_certificates()
+            print(f"SSL enabled: Using auto-generated certificate")
 
     server = PokerHTTPServer(game, host=args.host, port=args.port, game_id=args.game,
-                             ssl_cert=args.cert, ssl_key=args.key)
+                             ssl_cert=ssl_cert, ssl_key=ssl_key)
+    protocol = "https" if ssl_cert else "http"
     print(f"\n🎮 Server gestartet!")
     print(f"📍 Lokale IP: {local_ip}")
     print(f"🔌 Port: {args.port}")
     print(f"🎲 Game: {args.game}")
     print(f"\n💻 Andere Spieler verbinden mit:")
-    print(f"   python gui/run_client.py --ip {local_ip}")
+    print(f"   python src/gui/runner/run_client.py --ip {local_ip} --port {args.port}")
+    print(f"   URL: {protocol}://{local_ip}:{args.port}")
     print(f"\nPress Ctrl+C to stop the server\n")
 
     server.start()

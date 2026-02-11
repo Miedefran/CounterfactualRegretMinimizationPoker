@@ -33,6 +33,9 @@ ENV/
 # Trained models
 data/
 
+# SSL certificates (auto-generated)
+config/ssl/
+
 # Development files
 PROMPT_CURSOR.md
 UML_CONTEXT_PROMPT.md
