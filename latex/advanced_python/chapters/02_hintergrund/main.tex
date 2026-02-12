@@ -1,8 +1,7 @@
 \section{Theoretische Grundlagen}\label{sec:hintergrund}
 
-\subsection{Relevante Technologien, Frameworks und Forschung}
 
-\subsubsection{PyQt6}
+\subsection{PyQt6}
 
 \textbf{PyQt6} wurde als GUI-Framework gewählt, da es das Signal-Slot-Pattern unterstützt, welches lose Kopplung zwischen Komponenten ermöglicht.
 Ein weiterer Grund für die Wahl war, dass Ich im Rahmen eines anderen Moduls bereits mit QT in C++ gearbeitet habe und aus diesem Grund viele Konzepte bereits bekannt waren.
@@ -20,7 +19,7 @@ Dies wird beispielsweise verwendet, um Initialisierungsschritte zu verzögern od
 Widgets können zudem über \texttt{setStyleSheet()} mit CSS-ähnlicher Syntax gestylt werden, um Farben, Borders und andere visuelle Eigenschaften zu definieren.
 Die Spielkarten verwenden Stylesheets für das Widget-Styling, während der Inhalt über HTML gerendert wird.
 
-\subsubsection{Netzwerk-Kommunikation}
+\subsection{Netzwerk-Kommunikation}
 
 Für die Echtzeit-Kommunikation im Multiplayer-Modus wurden zunächst \textbf{HTTP} mit Polling verwendet.
 Bei HTTP-Polling muss der Client regelmäßig den Server abfragen, um Updates zu erhalten.
@@ -33,24 +32,28 @@ Der Server kann Updates direkt an Clients senden, sobald sie verfügbar sind, oh
 Dies reduziert die Latenz erheblich und verbessert die Spielerfahrung, da State-Updates praktisch sofort übertragen werden.
 HTTP bleibt als Fallback-Option verfügbar.
 
-\subsubsection{Asynchrone Programmierung}
+Für beide Protokolle wird \textbf{SSL/TLS-Verschlüsselung} unterstützt, um die Kommunikation zu schützen.
+HTTPS für HTTP und WSS für WebSocket ermöglichen verschlüsselte Verbindungen, die verhindern, dass Daten während der Übertragung abgefangen oder manipuliert werden können.
+Dies ist besonders wichtig, wenn der Server über das Internet erreichbar ist.
 
-Die Integration von \textbf{asyncio}, das auf Event-Loops basiert, mit \textbf{QThread}, dem Threading-Mechanismus in Qt-Anwendungen, stellt eine Herausforderung dar, da beide ihre eigenen Event-Loops verwenden.
-Die Lösung besteht in einer Bridge zwischen asyncio und Qt Event Loop, die es ermöglicht, asynchrone WebSocket-Kommunikation in eine Qt-Anwendung zu integrieren, ohne die GUI zu blockieren.
+\subsection{Asynchrone Programmierung}
 
-Das Problem entsteht, weil asyncio eine eigene Event-Loop verwendet, die für asynchrone Operationen wie WebSocket-Verbindungen benötigt wird.
-Qt-Anwendungen verwenden jedoch eine eigene Event-Loop für GUI-Updates.
+\textbf{asyncio} wird für die WebSocket-Kommunikation verwendet, da die \texttt{websockets}-Bibliothek asyncio-basiert ist.
+Asynchrone Programmierung ermöglicht es, Netzwerk-Operationen nicht-blockierend auszuführen, sodass der Thread nicht auf Antworten warten muss.
+Stattdessen wird die Kontrolle an die Event-Loop zurückgegeben, bis die Operation abgeschlossen ist.
+
+Das Problem entsteht, weil Qt-Anwendungen eine eigene Event-Loop für GUI-Updates verwenden, während asyncio eine separate Event-Loop benötigt.
 Wenn man asyncio direkt im GUI-Thread verwendet, würde dies die GUI blockieren.
 Die Lösung ist die Verwendung eines \texttt{QThread} mit einer eigenen asyncio-Event-Loop.
 Die \texttt{WebSocketWorker}-Klasse erbt von \texttt{QThread} und startet in der \texttt{run()}-Methode eine neue asyncio-Event-Loop.
 Async-Events werden dann über PyQt6 Signals an den GUI-Thread übertragen, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
 
-\subsubsection{Testing}
+\subsection{Testing}
 
-\textbf{pytest} wurde als Testing-Framework gewählt, da es Fixtures für wiederverwendbare Test-Setups bietet, Parametrisierung für verschiedene Test-Szenarien ermöglicht und im Vergleich zu unittest eine bessere Test-Organisation und lesbarere Syntax bietet.
-
+\textbf{pytest} wurde als Testing-Framework gewählt, da es Fixtures für wiederverwendbare Test-Setups bietet und im Vergleich zu unittest eine bessere Test-Organisation und lesbarere Syntax bietet.
 Fixtures ermöglichen es, wiederverwendbare Test-Setups zu erstellen, die in mehreren Tests verwendet werden können.
-Beispielsweise kann eine Fixture einen Server auf einem dynamischen Port starten und diesen für mehrere Tests bereitstellen.
-Parametrisierung ermöglicht es, denselben Test mit verschiedenen Eingabewerten auszuführen, was die Test-Abdeckung erhöht ohne Code-Duplikation.
-Die Syntax von pytest ist lesbarer als unittest, da Tests als normale Funktionen geschrieben werden können und Assertions direkt verwendet werden können, ohne dass spezielle Assert-Methoden benötigt werden.
+Beispielsweise startet eine Fixture einen Server auf einem dynamischen Port und stellt diesen für mehrere Tests bereit.
+
+Für asynchrone WebSocket-Tests wird \textbf{pytest-asyncio} verwendet, welches \texttt{async def} Test-Funktionen ermöglicht und die asyncio-Event-Loop automatisch verwaltet.
+Zudem wird \textbf{unittest.mock} für Mocking verwendet, beispielsweise um Zeit-abhängige Tests deterministisch zu machen.
 

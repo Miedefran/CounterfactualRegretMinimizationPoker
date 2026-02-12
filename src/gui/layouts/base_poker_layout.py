@@ -139,7 +139,7 @@ class BasePokerLayout(QMainWindow):
         history_layout.setContentsMargins(0, 0, 0, 0)
         history_layout.setSpacing(5)
         history_layout.addWidget(history_toggle_btn)
-        history_layout.addWidget(self.history_view)
+        history_layout.addWidget(self.history_view, 1)  # Stretch factor für flexible Höhe
 
         self.history_toggle_btn = history_toggle_btn
         self.history_toggle_btn.clicked.connect(self.toggle_history)
@@ -192,6 +192,13 @@ class BasePokerLayout(QMainWindow):
 
         self.position_pot_chips()
 
+        # Setze maximale Höhe der History View auf 80% der Fensterhöhe
+        if hasattr(self, 'history_view'):
+            window_height = self.height()
+            # 80% der Fensterhöhe, minus Platz für Button oben (ca. 60px)
+            max_height = int(window_height * 0.8) - 60
+            self.history_view.setMaximumHeight(max_height)
+
         if hasattr(self, 'restart_button'):
             button_x = self.width() - self.restart_button.width() - 20
             button_y = 20
@@ -202,6 +209,11 @@ class BasePokerLayout(QMainWindow):
         self.history_view.setVisible(not self.history_view.isVisible())
         if self.history_view.isVisible():
             self.history_toggle_btn.setText("History ▲")
+            # Setze maximale Höhe der History View auf 80% der Fensterhöhe
+            window_height = self.height()
+            # 80% der Fensterhöhe, minus Platz für Button oben (ca. 60px)
+            max_height = int(window_height * 0.8) - 60
+            self.history_view.setMaximumHeight(max_height)
         else:
             self.history_toggle_btn.setText("History ▼")
 
@@ -337,4 +349,10 @@ class BasePokerLayout(QMainWindow):
             button_x = self.width() - self.restart_button.width() - 20
             button_y = 20
             self.restart_button.move(button_x, button_y)
+        # Setze maximale Höhe der History View auf 80% der Fensterhöhe
+        if hasattr(self, 'history_view'):
+            window_height = self.height()
+            # 80% der Fensterhöhe, minus Platz für Button oben (ca. 60px)
+            max_height = int(window_height * 0.8) - 60
+            self.history_view.setMaximumHeight(max_height)
         QTimer.singleShot(50, self.position_components)

@@ -74,6 +74,7 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         # Verbinde dann den Click-Handler
         if hasattr(self, 'restart_button'):
             self.restart_button.clicked.connect(self.restart_hand)
+        self._setup_quit_button()
 
     def _apply_leduc_public_card_fallback(self):
         """Fallback wenn Chance-Knoten (öffentliche Karte) keine Outcomes liefert: Karte aus verbleibenden setzen (nur Leduc)."""
@@ -390,6 +391,38 @@ class AgentVsHumanGUI(AgentVsHumanLayout):
         y = (table_rect.height() - overlay_height) // 2
         self.result_overlay.move(x, y)
         self.result_overlay.raise_()
+
+    def _setup_quit_button(self):
+        """Beenden-Button (nur Human vs Human / Multiplayer)."""
+        if hasattr(self, 'quit_button') and self.quit_button is not None:
+            return
+        from PyQt6.QtWidgets import QPushButton
+        self.quit_button = QPushButton("Beenden")
+        self.quit_button.setFixedSize(100, 40)
+        self.quit_button.setStyleSheet("""
+            QPushButton { background-color: #5a2a2a; color: white; border: none; border-radius: 5px; font-size: 14px; }
+            QPushButton:hover { background-color: #7a3a3a; }
+            QPushButton:pressed { background-color: #4a1a1a; }
+        """)
+        self.quit_button.setParent(self)
+        self.quit_button.show()
+        self.quit_button.raise_()
+        self.quit_button.clicked.connect(self._quit_app)
+        QTimer.singleShot(250, self._position_quit_button)
+
+    def _position_quit_button(self):
+        if hasattr(self, 'quit_button') and hasattr(self, 'restart_button'):
+            self.quit_button.move(self.width() - self.restart_button.width() - 130, 20)
+            self.quit_button.raise_()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, 'quit_button') and self.quit_button is not None:
+            self._position_quit_button()
+
+    def _quit_app(self):
+        """Verbindung trennen und Anwendung beenden."""
+        self.close()
 
     def restart_hand(self):
         # Hide result overlay

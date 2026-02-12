@@ -1,0 +1,162 @@
+\section{Ergebnisse, Diskussion \& Fazit}\label{sec:ergebnisse_diskussion_fazit}
+
+\subsection{Ergebnisse \& Evaluation}
+
+\subsubsection{Was funktioniert}
+
+Die Implementierung zeigt mehrere erfolgreiche Aspekte.
+Der \textbf{Agent vs Human Modus} ermöglicht eine erfolgreiche Integration von trainierten Strategien aus der Bachelorarbeit.
+Strategien werden korrekt geladen und der Agent spielt automatisch basierend auf der trainierten Strategie.
+Die zufällige Zuweisung von Player-IDs sorgt dafür, dass der menschliche Spieler nicht immer derselbe Spieler ist, was die Spielerfahrung verbessert.
+Die Integration funktioniert nahtlos, da die Strategien direkt aus der Bachelorarbeit wiederverwendet werden können, ohne dass eine Konvertierung erforderlich ist.
+
+Der \textbf{Human vs Human Modus} funktioniert zuverlässig, wobei der WebSocket-Server Echtzeit-Multiplayer-Spiele ermöglicht.
+Zwei Clients können sich verbinden und ohne merkbare Latenz gegeneinander spielen.
+Die Push-basierte Kommunikation funktioniert wie erwartet, und State-Updates werden sofort an beide Clients gesendet.
+Die automatische Wiederverbindung bei Verbindungsfehlern sorgt für eine robuste Verbindung.
+
+Die \textbf{Wiederverwendung} der Game-Logik aus der Bachelorarbeit funktioniert ohne Änderungen, was die modulare Architektur bestätigt.
+Die Game-Logik wurde erfolgreich in eine separate Klasse (\texttt{PokerGameLogic}) gekapselt, die sowohl von HTTP- als auch von WebSocket-Servern verwendet werden kann.
+Dies ermöglicht Code-Wiederverwendung und vereinfacht die Wartung erheblich.
+
+Die \textbf{Tests} bieten umfassende Test-Abdeckung für Server und Game-Logik, wobei alle automatisierten Tests bestehen.
+Die szenarien-basierten Tests sind verständlich und geben guten Aufschluss über die Funktionalität des Systems.
+Die Tests können ohne GUI-Fenster ausgeführt werden, was die Integration in CI/CD-Pipelines ermöglicht.
+
+Die \textbf{Thread-Safety} wurde erfolgreich implementiert, wobei keine Race Conditions bei Multiplayer-Server beobachtet wurden.
+\texttt{threading.Lock} verhindert erfolgreich gleichzeitige Zugriffe auf kritische Datenstrukturen.
+Die Lock-Hold-Zeit ist kurz, da kritische Abschnitte auf das Minimum beschränkt wurden, was den Performance-Overhead minimiert.
+
+\textbf{Sicherheitsfeatures} wie Input-Validierung und Rate Limiting funktionieren wie erwartet.
+Input-Validierung verhindert erfolgreich XSS-Angriffe durch HTML-Escaping, und Rate Limiting schützt vor Missbrauch durch zu viele Requests.
+
+\subsubsection{Einschränkungen}
+
+Es gibt jedoch auch Einschränkungen.
+Der Multiplayer-Modus unterstützt aktuell nur Heads-Up (2 Spieler).
+Eine Erweiterung auf mehr Spieler würde Änderungen an der Game-Logik erfordern, da die aktuelle Implementierung für zwei Spieler optimiert ist.
+
+Spielstände werden nicht gespeichert, sodass nach einem Neustart des Servers alle Spielzustände verloren gehen.
+Dies ist eine bewusste Design-Entscheidung für diese Version, da Persistenz zusätzliche Komplexität erfordern würde.
+
+Es gibt keine Replay-Funktionalität, sodass Spiele nicht nachträglich angeschaut werden können.
+Dies wäre eine nützliche Funktion für Analyse und Lernen, würde jedoch zusätzliche Implementierung erfordern.
+
+Große Strategie-Dateien benötigen Zeit zum Laden, was besonders bei Strategien mit vielen Iterationen spürbar ist.
+Die Kompression hilft zwar, die Dateigröße zu reduzieren, aber das Laden und Dekomprimieren großer Dateien kann einige Sekunden dauern.
+Dies ist jedoch akzeptabel, da Strategien nur einmal beim Start geladen werden.
+
+Der Server hat keine Authentifizierung implementiert, sodass jeder sich verbinden kann, solange der Server nicht voll ist.
+Dies ist für lokale Tests ausreichend, würde jedoch für Produktions-Einsatz zusätzliche Sicherheitsfeatures erfordern.
+
+\subsubsection{Performance-Beobachtungen}
+
+WebSocket zeigt deutlich niedrigere Latenz als HTTP-Polling.
+Bei HTTP-Polling mit 100ms Intervall ist die Latenz mindestens 100ms, da Updates nur beim nächsten Polling-Intervall empfangen werden.
+WebSocket hingegen ermöglicht sofortige Übertragung von Updates, was die Latenz praktisch eliminiert.
+Dies verbessert die Spielerfahrung erheblich, da State-Updates sofort übertragen werden.
+
+Komprimierte \texttt{.pkl.gz} Dateien reduzieren den Speicherbedarf erheblich.
+Eine unkomprimierte Strategie-Datei kann mehrere hundert MB groß sein, während die komprimierte Version oft unter 50 MB liegt.
+Die Ladezeit bleibt akzeptabel (wenige Sekunden), da Strategien nur einmal beim Start geladen werden.
+
+\texttt{threading.Lock} verhindert Race Conditions effektiv und hat minimalen Performance-Overhead.
+Die Lock-Hold-Zeit ist kurz, da kritische Abschnitte auf das Minimum beschränkt wurden.
+Selbst bei vielen gleichzeitigen Requests wurde keine merkbare Verlangsamung beobachtet.
+
+Die GUI bleibt auch während Netzwerk-Operationen responsiv, da \texttt{QThread} für WebSocket-Kommunikation verwendet wird und die GUI-Thread nicht blockiert wird.
+Dies ermöglicht eine flüssige Benutzererfahrung, auch wenn Netzwerk-Operationen im Hintergrund stattfinden.
+
+\subsubsection{Test-Ergebnisse}
+
+Alle automatisierten Tests bestehen zuverlässig.
+Während der Testphase wurden keine Bugs in der Server-Logik gefunden.
+Die Input-Validierung und Rate Limiting funktionieren wie erwartet.
+Die HTML-Escaping-Funktionalität verhindert erfolgreich XSS-Angriffe.
+Tests mit bösartigen Eingaben (z.B. \texttt{<script>alert('XSS')</script>}) werden korrekt escaped und stellen keine Sicherheitsrisiko dar.
+
+Rate Limiting funktioniert korrekt.
+Clients, die zu viele Requests senden, werden abgelehnt, während normale Nutzung nicht beeinträchtigt wird.
+Dies schützt den Server vor Missbrauch und stellt sicher, dass die Ressourcen fair verteilt werden.
+
+Die Tests decken die wichtigsten Szenarien ab: Client-Registrierung, State-Updates, Action-Verarbeitung, Reset-Funktionalität, Fehlerbehandlung und Sicherheitsfeatures.
+Die szenarien-basierten Tests sind verständlich und geben guten Aufschluss über die Funktionalität des Systems.
+
+\subsection{Diskussion}
+
+\subsubsection{Technische Bewertung}
+
+Die modulare Architektur mit klarer Trennung von GUI, Client, Server und Logik erleichtert die Wartung erheblich.
+Änderungen in einer Schicht beeinflussen andere Schichten minimal.
+Beispielsweise kann die Game-Logik geändert werden, ohne dass die GUI oder die Client-Implementierungen angepasst werden müssen.
+Dies ermöglicht unabhängige Entwicklung und Wartung der verschiedenen Komponenten.
+
+Wiederverwendbare Komponenten folgen dem DRY-Prinzip, was Code-Duplikation vermeidet und die Wartung erleichtert.
+Beide Spielmodi nutzen die gleichen UI-Komponenten, sodass Änderungen an diesen Komponenten automatisch für beide Modi gelten.
+Dies reduziert den Wartungsaufwand erheblich.
+
+Szenarien-basierte Tests sind verständlicher als viele Edge-Case-Tests und geben besseren Aufschluss über das tatsächliche Verhalten.
+Die Tests decken typische Anwendungsfälle ab, wie sie in der Praxis auftreten würden, was das Debugging erleichtert.
+Die Verwendung von Fixtures ermöglicht wiederverwendbare Test-Setups, was Code-Duplikation vermeidet.
+
+Thread-Safety, Input-Validierung und Rate Limiting erhöhen die Robustheit des Systems und reduzieren die Wahrscheinlichkeit von Bugs.
+Die Verwendung von Kontext-Managern für Thread-Safety stellt sicher, dass Locks auch bei Exceptions korrekt freigegeben werden.
+
+\subsubsection{Design-Entscheidungen}
+
+Die wichtigsten Design-Entscheidungen wurden bewusst getroffen.
+PyQt6 wurde als mature Framework mit Signal-Slot-Pattern gewählt, was lose Kopplung zwischen Komponenten ermöglicht.
+Dies erleichtert die Wartung und Erweiterung erheblich, da Komponenten unabhängig voneinander entwickelt werden können.
+
+WebSocket wurde für Push-basierte Kommunikation für Echtzeit-Multiplayer gewählt, da es deutlich effizienter ist als HTTP-Polling.
+Die niedrige Latenz verbessert die Spielerfahrung erheblich, und die Push-basierte Kommunikation reduziert den Netzwerk-Traffic.
+
+pytest wurde gegenüber unittest gewählt, da es bessere Test-Organisation bietet.
+Fixtures ermöglichen wiederverwendbare Test-Setups, und die Syntax ist lesbarer als unittest, was die Wartung der Tests erleichtert.
+
+\texttt{threading.Lock} wurde als einfache, effektive Thread-Safety-Lösung gewählt.
+Es ist einfach zu verwenden, hat minimalen Performance-Overhead und ist für die Anforderungen dieses Projekts ausreichend.
+Komplexere Ansätze wie Actor-Model oder Queue-basierte Patterns wären für diesen Anwendungsfall Overkill gewesen.
+
+\subsubsection{Erkenntnisse und Advanced Python Konzepte}
+
+Die Implementierung demonstriert mehrere wichtige Advanced Python Konzepte.
+PyQt6 Signals/Slots ermöglichen lose Kopplung zwischen Komponenten und implementieren das Observer-Pattern.
+Komponenten können Signale emittieren, ohne zu wissen, wer diese empfängt, was die Wartbarkeit und Erweiterbarkeit erheblich verbessert.
+
+Wiederverwendbare GUI-Komponenten folgen dem DRY-Prinzip für verschiedene Spielmodi.
+Beide Modi nutzen die gleichen UI-Komponenten, was Code-Duplikation vermeidet und die Wartung erleichtert.
+
+Asyncio + QThread Integration ermöglicht eine Bridge zwischen async und Qt Event Loop, was Push-basierte Kommunikation statt Polling ermöglicht.
+Die Lösung mit \texttt{WebSocketWorker} als \texttt{QThread} mit eigener asyncio-Event-Loop zeigt, wie verschiedene Event-Loop-Systeme integriert werden können.
+Die Signal-Bridge überträgt Async-Events via PyQt6 Signals an den GUI-Thread, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
+
+Thread-Safety mit \texttt{threading.Lock} und Kontext-Managern stellt sicher, dass kritische Operationen Thread-Safe sind.
+Die Verwendung von Kontext-Managern (\texttt{with self.lock:}) stellt sicher, dass Locks auch bei Exceptions korrekt freigegeben werden.
+Dies ist essentiell für Multiplayer-Server, bei denen mehrere Clients gleichzeitig auf gemeinsame Datenstrukturen zugreifen.
+
+Decorators ermöglichen Rate Limiting als wiederverwendbare Funktionalität.
+Die Implementierung als Decorator folgt dem Decorator-Pattern und macht Rate Limiting einfach anwendbar.
+Dies demonstriert die Mächtigkeit von Python-Decorators für Cross-Cutting Concerns wie Sicherheit und Performance.
+
+Die erfolgreiche Wiederverwendung der Game-Logik aus der Bachelorarbeit zeigt, dass modulare Architekturen Wiederverwendung ermöglichen.
+Die Game-Logik wurde erfolgreich in eine separate Klasse gekapselt, die sowohl von HTTP- als auch von WebSocket-Servern verwendet werden kann.
+Dies bestätigt die Wichtigkeit einer guten Architektur für Code-Wiederverwendung.
+
+\subsection{Fazit}
+
+Die Implementierung einer Poker-GUI mit PyQt6 für Agent vs Human und Multiplayer-Modi wurde erfolgreich abgeschlossen.
+Beide Spielmodi funktionieren zuverlässig und bieten eine gute Spielerfahrung.
+Die modulare Architektur ermöglicht Wiederverwendung von Code aus der Bachelorarbeit und erleichtert die Wartung erheblich.
+
+Die Verwendung von WebSocket für Echtzeit-Kommunikation reduziert die Latenz erheblich im Vergleich zu HTTP-Polling.
+Thread-Safety wurde erfolgreich implementiert, und alle automatisierten Tests bestehen zuverlässig.
+Die Implementierung demonstriert mehrere wichtige Advanced Python Konzepte wie Signals/Slots, asyncio-Integration, Thread-Safety und Decorators.
+
+\subsubsection{Ausblick}
+
+Mögliche Erweiterungen für zukünftige Versionen umfassen Unterstützung für mehr Spieler, einen Turnier-Modus mit mehreren Runden, Replay-Funktionalität zur Aufzeichnung und Wiedergabe von Spielen, Performance-Optimierungen wie Strategie-Caching und Lazy Loading, erweiterte Sicherheitsfeatures wie Authentifizierung und Verschlüsselung sowie UI-Verbesserungen wie bessere Animationen und Themes.
+
+Die modulare Architektur ermöglicht diese Erweiterungen ohne größere Umstrukturierungen.
+Die klare Trennung zwischen GUI, Client, Server und Logik ermöglicht es, einzelne Komponenten zu erweitern, ohne andere Komponenten zu beeinflussen.
+Dies zeigt, wie wichtig eine gute Architektur für die langfristige Wartbarkeit und Erweiterbarkeit eines Systems ist.

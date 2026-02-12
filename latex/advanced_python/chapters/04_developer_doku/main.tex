@@ -1,42 +1,162 @@
 \section{Developer-Dokumentation}\label{sec:developer_doku}
 
-\subsection{Installation und Start}
+Die folgende Anleitung beschreibt, wie das Projekt installiert und die verschiedenen Komponenten ausgeführt werden können.
+Ziel ist es, das Projekt reproduzierbar und verständlich für Dritte zu machen.
 
-Das Projekt erfordert Python Version >= 3.13 und läuft auf Windows, macOS und Linux (Cross-Platform).
-Die Installation erfolgt durch Klonen des Repositories und Installation der Dependencies mit \texttt{uv sync} oder \texttt{pip install -e .}.
+\subsection{Installation}
+
+Das Projekt kann durch Klonen des Repositories und Installation der Dependencies gestartet werden.
 
 \begin{lstlisting}[language=bash]
 git clone <repository-url>
 cd CounterfactualRegretMinimizationPoker
+\end{lstlisting}
+
+Die Dependencies werden mit \texttt{uv sync} installiert:
+
+\begin{lstlisting}[language=bash]
 uv sync
 \end{lstlisting}
 
-Der Agent vs Human Modus wird mit folgendem Befehl gestartet:
+\subsection{Ausführung}
 
+Über die TUI (Text User Interface) können die verschiedenen Komponenten des Projekts gestartet werden.
+Die Ausführung unterscheidet sich je nachdem, ob \texttt{mise} installiert ist oder nicht.
+
+Mit \texttt{mise}:
 \begin{lstlisting}[language=bash]
-python src/gui/runner/run_agent_vs_human.py --game leduc
+mise run tui
 \end{lstlisting}
 
-Für den Multiplayer-Modus muss zunächst ein Server gestartet werden:
-
+Ohne \texttt{mise}:
 \begin{lstlisting}[language=bash]
-python src/gui/runner/run_ws_server.py --host localhost --port 8888 --game leduc
+uv run python src/tui/app.py
 \end{lstlisting}
 
-Dann können sich Clients verbinden:
+\subsection{Human vs Human Modus}
 
-\begin{lstlisting}[language=bash]
-python src/gui/runner/run_ws_client.py --ip localhost --port 8888 --name Spieler1
-\end{lstlisting}
+Im Human vs Human Modus können zwei Spieler über einen Server gegeneinander spielen.
+Nach dem Start der TUI wird der Multiplayer-Tab geöffnet, welcher die Konfiguration von Server und Client ermöglicht.
 
-\subsection{Systemvoraussetzungen \& benötigte Bibliotheken}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{tui_multiplayer.png}
+\caption{TUI Multiplayer-Interface mit Server- und Client-Konfiguration}
+\label{fig:tui_multiplayer}
+\end{figure}
 
-Die Hauptdependencies aus \texttt{pyproject.toml} umfassen \texttt{pyqt6>=6.0.0} als GUI-Framework, \texttt{flask>=2.0.0} als HTTP-Server, \texttt{websockets>=12.0} als WebSocket-Server, \texttt{pytest>=9.0.2} als Testing-Framework, \texttt{pytest-asyncio>=0.24.0} für Async-Test-Support und \texttt{requests>=2.28.0} als HTTP-Client.
-Weitere Dependencies wie \texttt{numpy}, \texttt{pandas}, \texttt{matplotlib} und \texttt{torch} werden für die Game-Logik aus der Bachelorarbeit benötigt.
+Die TUI-Oberfläche ist in zwei Bereiche unterteilt: Server und Client.
+Im Server-Bereich können das Spiel (Dropdown-Menü), der Port (Eingabefeld) und der Host (Dropdown-Menü) konfiguriert werden.
+Mit den Buttons "Start Server" und "Stop Server" wird der Server gestartet beziehungsweise gestoppt.
+Der Status-Bereich zeigt an, ob der Server läuft, die lokale IP-Adresse für Remote-Verbindungen und die Connection URL.
+Im Client-Bereich ermöglicht der Button "Start Local Client" das Starten eines lokalen Clients.
+Für Remote-Verbindungen können die Server-IP, der Port und der Spielername in den entsprechenden Eingabefeldern eingegeben werden.
+Der Button "Start Remote Client" startet dann den Remote-Client mit den konfigurierten Parametern.
 
-\subsection{Reproduzierbarkeit}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.6\textwidth]{connection_info.png}
+\caption{Connection Info mit Server-Konfiguration und SSL/WSS-Status}
+\label{fig:connection_info}
+\end{figure}
 
-Alle Dependencies sind in \texttt{pyproject.toml} spezifiziert.
-Die Game-Logik aus der Bachelorarbeit wird wiederverwendet.
-Strategien werden als \texttt{.pkl.gz} Dateien geladen.
-Tests können mit \texttt{pytest} ausgeführt werden.
+Nach dem Start von Server und Client öffnet sich für jeden Spieler ein GUI-Fenster.
+Das GUI zeigt die gleiche Poker-Tisch-Oberfläche wie im Agent vs Human Modus, jedoch mit zwei menschlichen Spielern.
+Das Layout ist identisch: Board Cards in der Mitte, Pot-Anzeige, Spielerkarten oben und unten, Aktions-Buttons, History-View und Steuerungs-Buttons.
+Jeder Spieler sieht das Spiel aus seiner eigenen Perspektive mit seinen eigenen Karten und Aktions-Buttons.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{multiplayer_perspective1.png}
+\caption{Multiplayer GUI - Perspektive Spieler 1 (verlierende Hand)}
+\label{fig:multiplayer_p1}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{multiplayer_perspective2.png}
+\caption{Multiplayer GUI - Perspektive Spieler 2 (gewinnende Hand)}
+\label{fig:multiplayer_p2}
+\end{figure}
+
+\subsection{Agent vs Human Modus}
+
+Im Agent vs Human Modus spielt ein menschlicher Spieler gegen einen trainierten Agenten.
+Bevor ein Spiel gegen den Agenten gestartet werden kann, muss zunächst eine Strategie für das gewählte Spiel trainiert werden.
+Für das Training kann ein beliebiger Algorithmus verwendet werden.
+Als Empfehlung gilt der Algorithmus \texttt{discounted\_cfr\_with\_flat\_tree}, da dieser die leistungsstärksten Ergebnisse liefert.
+
+Für die Auswahl des Spiels gibt es zwei Empfehlungen:
+Bei wenig verfügbarer Zeit sollte \texttt{twelve\_card\_poker} verwendet werden, da dieses Spiel schneller trainiert werden kann.
+Bei mehr verfügbarer Zeit empfiehlt sich \texttt{small\_island\_holdem}, welches komplexer ist und längere Trainingszeiten erfordert.
+Beide Spiele wurden im Rahmen dieser Arbeit entwickelt.
+Die detaillierten Regeln können im Anhang der Bachelorarbeit im Ordner \texttt{latex/thesis} nachgeschlagen werden.
+
+Das Training wird über die TUI im Tab "Training Queue" konfiguriert.
+Dort kann ein neuer Training Task erstellt werden, bei dem das Spiel, der Algorithmus, die Anzahl der Iterationen und weitere Parameter festgelegt werden können.
+Das Feld "Early Stop Exploitability" ermöglicht es, das Training automatisch zu beenden, sobald ein bestimmter Exploitability-Wert erreicht wird.
+Dies kann Zeit sparen, wenn bereits eine ausreichend gute Strategie erreicht wurde.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.8\textwidth]{training_task.png}
+\caption{TUI-Dialog zur Erstellung eines neuen Training Tasks}
+\label{fig:training_task}
+\end{figure}
+
+Nach dem Start des Trainings kann der Trainingsverlauf im Tab "Current Task" überwacht werden.
+Dieses Fenster zeigt wichtige Informationen wie den aktuellen Fortschritt, die verstrichene Zeit, die geschätzte verbleibende Zeit sowie eine Tabelle mit Best Response Evaluations.
+Anhand dieser Metriken kann überprüft werden, ob das Training wie erwartet funktioniert und ob die Exploitability-Werte sinken.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{current_task.png}
+\caption{TUI Current Task Fenster zur Überwachung des Trainingsverlaufs}
+\label{fig:current_task}
+\end{figure}
+
+Nach Abschluss des Trainings kann im Tab "Models" ein trainiertes Modell ausgewählt werden, um gegen den Agenten zu spielen.
+Falls die Liste der Modelle nicht aktuell ist, kann sie mit der Taste \texttt{r} aktualisiert werden.
+Nach der Auswahl eines Modells durch Anklicken kann mit der Taste \texttt{g} ein Spiel gegen den Agenten gestartet werden.
+Daraufhin öffnet sich automatisch das GUI-Fenster.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{models_tab.png}
+\caption{TUI Models Tab zur Auswahl eines trainierten Modells}
+\label{fig:models_tab}
+\end{figure}
+
+Das GUI zeigt eine Poker-Tisch-Oberfläche mit grünem Filz-Hintergrund.
+In der Mitte des Tisches werden die Board Cards (Community Cards) angezeigt, die von allen Spielern geteilt werden.
+Links neben den Board Cards wird der aktuelle Pot-Wert als Zahl angezeigt, begleitet von visuellen Chip-Stapeln, die den Pot-Betrag darstellen.
+
+Am oberen Rand des Fensters befindet sich der Gegenspieler (im Agent vs Human Modus der "Strategy Agent", im Multiplayer Modus der andere menschliche Spieler).
+Die Karten des Gegenspielers werden angezeigt, sobald die Hand beendet ist.
+Unter den Karten wird die Hand-Stärke des Gegenspielers angezeigt (z.B. "High Card", "Pair", "Two Pair", "Straight").
+
+Am unteren Rand befindet sich der eigene Spieler mit seinen Hole Cards.
+Auch hier wird die Hand-Stärke unter den eigenen Karten angezeigt.
+Darunter befinden sich die Aktions-Buttons: "Check", "Bet", "Call" (mit dem zu zahlenden Betrag) und "Fold".
+Diese Buttons sind nur aktiv, wenn der Spieler am Zug ist.
+
+Im oberen rechten Bereich befinden sich die Steuerungs-Buttons: "New Hand" zum Starten einer neuen Hand und "Beenden" zum Beenden des Spiels.
+Darunter befindet sich der History-View, der alle Aktionen während der aktuellen Hand chronologisch auflistet.
+Am Ende jeder Hand wird das Ergebnis angezeigt (z.B. "You wins 100!" oder "Opponent wins 100!") sowie die Payoff-Informationen.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{gui_agent_vs_human.png}
+\caption{GUI für Agent vs Human Modus mit abgeschlossenem Spiel}
+\label{fig:gui_agent_vs_human}
+\end{figure}
+
+Das GUI ermöglicht es dem menschlichen Spieler, verschiedene Strategien zu testen, einschließlich Bluffs.
+Das History-Log dokumentiert alle Aktionen und zeigt das Ergebnis jeder Hand an.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{gui_bluff.png}
+\caption{GUI mit erfolgreichem Bluff: Der menschliche Spieler gewinnt durch einen Bet, der den Agenten zum Folden bringt}
+\label{fig:gui_bluff}
+\end{figure}
