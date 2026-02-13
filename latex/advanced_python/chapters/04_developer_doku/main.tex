@@ -8,8 +8,7 @@ Ziel ist es, das Projekt reproduzierbar und verständlich für Dritte zu machen.
 Das Projekt kann durch Klonen des Repositories und Installation der Dependencies gestartet werden.
 
 \begin{lstlisting}[language=bash]
-git clone <repository-url>
-cd CounterfactualRegretMinimizationPoker
+git clone https://github.com/Miedefran/CounterfactualRegretMinimizationPoker
 \end{lstlisting}
 
 Die Dependencies werden mit \texttt{uv sync} installiert:
@@ -37,21 +36,21 @@ uv run python src/tui/app.py
 
 Im Human vs Human Modus können zwei Spieler über einen Server gegeneinander spielen.
 Nach dem Start der TUI wird der Multiplayer-Tab geöffnet, welcher die Konfiguration von Server und Client ermöglicht.
-
+\newpage
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.9\textwidth]{tui_multiplayer.png}
+\includegraphics[width=0.85\textwidth]{tui_multiplayer.png}
 \caption{TUI Multiplayer-Interface mit Server- und Client-Konfiguration}
 \label{fig:tui_multiplayer}
 \end{figure}
 
 Die TUI-Oberfläche ist in zwei Bereiche unterteilt: Server und Client.
 Im Server-Bereich können das Spiel (Dropdown-Menü), der Port (Eingabefeld) und der Host (Dropdown-Menü) konfiguriert werden.
-Mit den Buttons "Start Server" und "Stop Server" wird der Server gestartet beziehungsweise gestoppt.
+Mit den Buttons \enquote{Start Server} und \enquote{Stop Server} wird der Server gestartet beziehungsweise gestoppt.
 Der Status-Bereich zeigt an, ob der Server läuft, die lokale IP-Adresse für Remote-Verbindungen und die Connection URL.
-Im Client-Bereich ermöglicht der Button "Start Local Client" das Starten eines lokalen Clients.
+Im Client-Bereich ermöglicht der Button \enquote{Start Local Client} das Starten eines lokalen Clients.
 Für Remote-Verbindungen können die Server-IP, der Port und der Spielername in den entsprechenden Eingabefeldern eingegeben werden.
-Der Button "Start Remote Client" startet dann den Remote-Client mit den konfigurierten Parametern.
+Der Button \enquote{Start Remote Client} startet dann den Remote-Client mit den konfigurierten Parametern.
 
 \begin{figure}[h]
 \centering
@@ -59,26 +58,41 @@ Der Button "Start Remote Client" startet dann den Remote-Client mit den konfigur
 \caption{Connection Info mit Server-Konfiguration und SSL/WSS-Status}
 \label{fig:connection_info}
 \end{figure}
-
+\newpage
 Nach dem Start von Server und Client öffnet sich für jeden Spieler ein GUI-Fenster.
-Das GUI zeigt die gleiche Poker-Tisch-Oberfläche wie im Agent vs Human Modus, jedoch mit zwei menschlichen Spielern.
-Das Layout ist identisch: Board Cards in der Mitte, Pot-Anzeige, Spielerkarten oben und unten, Aktions-Buttons, History-View und Steuerungs-Buttons.
 Jeder Spieler sieht das Spiel aus seiner eigenen Perspektive mit seinen eigenen Karten und Aktions-Buttons.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.9\textwidth]{multiplayer_perspective1.png}
+\includegraphics[width=0.85\textwidth]{multiplayer_perspective1.png}
 \caption{Multiplayer GUI - Perspektive Spieler 1 (verlierende Hand)}
 \label{fig:multiplayer_p1}
 \end{figure}
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.9\textwidth]{multiplayer_perspective2.png}
+\includegraphics[width=0.85\textwidth]{multiplayer_perspective2.png}
 \caption{Multiplayer GUI - Perspektive Spieler 2 (gewinnende Hand)}
 \label{fig:multiplayer_p2}
 \end{figure}
 
+Das GUI zeigt eine Poker-Tisch-Oberfläche mit grünem Filz-Hintergrund.
+In der Mitte des Tisches werden die Board Cards (Community Cards) angezeigt, die von allen Spielern geteilt werden.
+Links neben den Board Cards wird der aktuelle Pot-Wert als Zahl angezeigt, begleitet von visuellen Chip-Stapeln, die den Pot-Betrag darstellen.
+
+Am oberen Rand des Fensters befindet sich der Gegenspieler (im Multiplayer Modus der andere menschliche Spieler).
+Die Karten des Gegenspielers werden angezeigt, sobald die Hand beendet ist.
+Unter den Karten wird die Hand-Stärke des Gegenspielers angezeigt (z.B. \enquote{High Card}, \enquote{Pair}, \enquote{Two Pair}, \enquote{Straight}).
+
+Am unteren Rand befindet sich der eigene Spieler mit seinen Hole Cards.
+Auch hier wird die Hand-Stärke unter den eigenen Karten angezeigt.
+Darunter befinden sich die Aktions-Buttons: \enquote{Check}, \enquote{Bet}, \enquote{Call} (mit dem zu zahlenden Betrag) und \enquote{Fold}.
+Diese Buttons sind nur aktiv, wenn der Spieler am Zug ist.
+
+Im oberen rechten Bereich befinden sich die Steuerungs-Buttons: \enquote{New Hand} zum Starten einer neuen Hand und \enquote{Beenden} zum Beenden des Spiels.
+Darunter befindet sich der History-View, der alle Aktionen während der aktuellen Hand chronologisch auflistet.
+Am Ende jeder Hand wird das Ergebnis angezeigt (z.B. \enquote{You wins 100!} oder \enquote{Opponent wins 100!}) sowie die Payoff-Informationen.
+\newpage
 \subsection{Agent vs Human Modus}
 
 Im Agent vs Human Modus spielt ein menschlicher Spieler gegen einen trainierten Agenten.
@@ -92,22 +106,18 @@ Bei mehr verfügbarer Zeit empfiehlt sich \texttt{small\_island\_holdem}, welche
 Beide Spiele wurden im Rahmen dieser Arbeit entwickelt.
 Die detaillierten Regeln können im Anhang der Bachelorarbeit im Ordner \texttt{latex/thesis} nachgeschlagen werden.
 
-Das Training wird über die TUI im Tab "Training Queue" konfiguriert.
+Das Training wird über die TUI im Tab \enquote{Training Queue} konfiguriert.
 Dort kann ein neuer Training Task erstellt werden, bei dem das Spiel, der Algorithmus, die Anzahl der Iterationen und weitere Parameter festgelegt werden können.
-Das Feld "Early Stop Exploitability" ermöglicht es, das Training automatisch zu beenden, sobald ein bestimmter Exploitability-Wert erreicht wird.
+Das Feld \enquote{Early Stop Exploitability} ermöglicht es, das Training automatisch zu beenden, sobald ein bestimmter Exploitability-Wert erreicht wird.
 Dies kann Zeit sparen, wenn bereits eine ausreichend gute Strategie erreicht wurde.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.8\textwidth]{training_task.png}
+\includegraphics[width=0.65\textwidth]{training_task.png}
 \caption{TUI-Dialog zur Erstellung eines neuen Training Tasks}
 \label{fig:training_task}
 \end{figure}
-
-Nach dem Start des Trainings kann der Trainingsverlauf im Tab "Current Task" überwacht werden.
-Dieses Fenster zeigt wichtige Informationen wie den aktuellen Fortschritt, die verstrichene Zeit, die geschätzte verbleibende Zeit sowie eine Tabelle mit Best Response Evaluations.
-Anhand dieser Metriken kann überprüft werden, ob das Training wie erwartet funktioniert und ob die Exploitability-Werte sinken.
-
+\newpage
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.9\textwidth]{current_task.png}
@@ -115,7 +125,11 @@ Anhand dieser Metriken kann überprüft werden, ob das Training wie erwartet fun
 \label{fig:current_task}
 \end{figure}
 
-Nach Abschluss des Trainings kann im Tab "Models" ein trainiertes Modell ausgewählt werden, um gegen den Agenten zu spielen.
+Nach dem Start des Trainings kann der Trainingsverlauf im Tab \enquote{Current Task} überwacht werden.
+Dieses Fenster zeigt wichtige Informationen wie den aktuellen Fortschritt, die verstrichene Zeit, die geschätzte verbleibende Zeit sowie eine Tabelle mit Best Response Evaluations.
+Anhand dieser Metriken kann überprüft werden, ob das Training wie erwartet funktioniert und ob die Exploitability-Werte sinken.
+
+Nach Abschluss des Trainings kann im Tab \enquote{Models} ein trainiertes Modell ausgewählt werden, um gegen den Agenten zu spielen.
 Falls die Liste der Modelle nicht aktuell ist, kann sie mit der Taste \texttt{r} aktualisiert werden.
 Nach der Auswahl eines Modells durch Anklicken kann mit der Taste \texttt{g} ein Spiel gegen den Agenten gestartet werden.
 Daraufhin öffnet sich automatisch das GUI-Fenster.
@@ -127,26 +141,13 @@ Daraufhin öffnet sich automatisch das GUI-Fenster.
 \label{fig:models_tab}
 \end{figure}
 
-Das GUI zeigt eine Poker-Tisch-Oberfläche mit grünem Filz-Hintergrund.
-In der Mitte des Tisches werden die Board Cards (Community Cards) angezeigt, die von allen Spielern geteilt werden.
-Links neben den Board Cards wird der aktuelle Pot-Wert als Zahl angezeigt, begleitet von visuellen Chip-Stapeln, die den Pot-Betrag darstellen.
-
-Am oberen Rand des Fensters befindet sich der Gegenspieler (im Agent vs Human Modus der "Strategy Agent", im Multiplayer Modus der andere menschliche Spieler).
-Die Karten des Gegenspielers werden angezeigt, sobald die Hand beendet ist.
-Unter den Karten wird die Hand-Stärke des Gegenspielers angezeigt (z.B. "High Card", "Pair", "Two Pair", "Straight").
-
-Am unteren Rand befindet sich der eigene Spieler mit seinen Hole Cards.
-Auch hier wird die Hand-Stärke unter den eigenen Karten angezeigt.
-Darunter befinden sich die Aktions-Buttons: "Check", "Bet", "Call" (mit dem zu zahlenden Betrag) und "Fold".
-Diese Buttons sind nur aktiv, wenn der Spieler am Zug ist.
-
-Im oberen rechten Bereich befinden sich die Steuerungs-Buttons: "New Hand" zum Starten einer neuen Hand und "Beenden" zum Beenden des Spiels.
-Darunter befindet sich der History-View, der alle Aktionen während der aktuellen Hand chronologisch auflistet.
-Am Ende jeder Hand wird das Ergebnis angezeigt (z.B. "You wins 100!" oder "Opponent wins 100!") sowie die Payoff-Informationen.
+Das GUI zeigt die gleiche Poker-Tisch-Oberfläche wie im Human vs Human Modus, jedoch mit einem trainierten Agenten als Gegenspieler statt einem menschlichen Spieler.
+Das Layout ist identisch: Board Cards in der Mitte, Pot-Anzeige, Spielerkarten oben und unten, Aktions-Buttons, History-View und Steuerungs-Buttons.
+Der einzige Unterschied ist, dass am oberen Rand der \enquote{Strategy Agent} als Gegenspieler angezeigt wird.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.9\textwidth]{gui_agent_vs_human.png}
+\includegraphics[width=0.85\textwidth]{gui_agent_vs_human.png}
 \caption{GUI für Agent vs Human Modus mit abgeschlossenem Spiel}
 \label{fig:gui_agent_vs_human}
 \end{figure}
@@ -156,7 +157,7 @@ Das History-Log dokumentiert alle Aktionen und zeigt das Ergebnis jeder Hand an.
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.9\textwidth]{gui_bluff.png}
+\includegraphics[width=0.85\textwidth]{gui_bluff.png}
 \caption{GUI mit erfolgreichem Bluff: Der menschliche Spieler gewinnt durch einen Bet, der den Agenten zum Folden bringt}
 \label{fig:gui_bluff}
 \end{figure}
