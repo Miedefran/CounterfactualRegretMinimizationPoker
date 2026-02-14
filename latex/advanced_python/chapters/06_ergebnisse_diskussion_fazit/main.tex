@@ -3,30 +3,30 @@
 \subsection{Ergebnisse \& Evaluation}
 
 Beide Spielmodi funktionieren zuverlässig.
-Im \textbf{Agent vs Human}-Modus werden trainierte Strategien aus der Bachelorarbeit ohne Konvertierung geladen; die zufällige Player-ID-Zuweisung variiert die Perspektive.
-Im \textbf{Human vs Human}-Modus ermöglicht der WebSocket-Server Echtzeit-Spiel mit geringer Latenz und Push-basierten State-Updates; Wiederverbindung bei Fehlern ist implementiert.
+Im \textbf{Agent vs Human}-Modus werden trainierte Strategien aus der Bachelorarbeit ohne Konvertierung geladen. Die zufällige Player-ID-Zuweisung variiert die Perspektive.
+Im \textbf{Human vs Human}-Modus ermöglicht der WebSocket-Server Echtzeit-Spiel mit geringer Latenz und Push-basierten State-Updates. Wiederverbindung bei Fehlern ist implementiert.
 Die Game-Logik ist in \texttt{PokerGameLogic} gekapselt und wird von HTTP- und WebSocket-Servern gemeinsam genutzt.
-Alle automatisierten Tests bestehen; szenarien-basierte Tests decken Server und Game-Logik ab und laufen ohne GUI (CI/CD-tauglich).
-\texttt{threading.Lock} mit kurzen kritischen Abschnitten verhindert Race Conditions ohne spürbaren Overhead; Input-Validierung (XSS-Schutz) und Rate Limiting sind umgesetzt.
+Alle automatisierten Tests bestehen. Szenarien-basierte Tests decken Server und Game-Logik ab und laufen ohne GUI (CI/CD-tauglich).
+\texttt{threading.Lock} mit kurzen kritischen Abschnitten verhindert Race Conditions ohne spürbaren Overhead. Input-Validierung (XSS-Schutz) und Rate Limiting sind umgesetzt.
 
 \paragraph{Einschränkungen.}
-Es werden nur zwei Spieler (Heads-Up) unterstützt; Spielstände werden nicht persistiert, Replays gibt es nicht.
-Große Strategiedateien können beim Laden einige Sekunden benötigen; für den einmaligen Start ist das akzeptabel.
-Der Server bietet keine Authentifizierung; für lokale Nutzung ausreichend, für Produktion wären weitere Maßnahmen nötig.
+Es werden nur zwei Spieler (Heads-Up) unterstützt. Spielstände werden nicht persistiert, Replays gibt es nicht.
+Große Strategiedateien können beim Laden einige Sekunden benötigen. Für den einmaligen Start ist das akzeptabel.
+Der Server bietet keine Authentifizierung. Für lokale Nutzung ist das ausreichend, für Produktion wären weitere Maßnahmen nötig.
 
 \paragraph{Performance.}
-WebSocket liefert Updates ohne Polling-Verzögerung; die GUI bleibt durch Auslagerung der Kommunikation in einen \texttt{QThread} auch unter Last responsiv.
+WebSocket liefert Updates ohne Polling-Verzögerung. Die GUI bleibt durch Auslagerung der Kommunikation in einen \texttt{QThread} auch unter Last responsiv.
 
 \subsection{Diskussion}
 
-Die Trennung in GUI, Client, Server und Logik erleichtert Wartung und Erweiterung; beide Modi nutzen dieselben UI-Komponenten (DRY).
+Die Trennung in GUI, Client, Server und Logik erleichtert Wartung und Erweiterung. Beide Modi nutzen dieselben UI-Komponenten (DRY).
 Entscheidend waren die Wahl von PyQt6 (Signals/Slots, lose Kopplung), WebSocket statt HTTP-Polling für Echtzeit-Multiplayer, pytest für lesbare Tests mit Fixtures sowie \texttt{threading.Lock} mit Kontext-Managern für Thread-Safety ohne unnötige Komplexität.
 
 Die Arbeit zeigt zentrale Advanced-Python-Themen: Observer-Pattern via Signals/Slots, Integration von asyncio und Qt-Event-Loop im \texttt{WebSocketWorker}, sichere Nebenläufigkeit mit Lock und \texttt{with self.lock}, wiederverwendbares Rate Limiting per Decorator sowie die Wiederverwendung der gekapselten Game-Logik aus der Bachelorarbeit.
 
 \subsection{Fazit}
 
-Die Poker-GUI mit PyQt6 für Agent vs Human und Human vs Human wurde umgesetzt; beide Modi laufen stabil, die Architektur ermöglicht Wiederverwendung und wartbare Erweiterungen.
-WebSocket reduziert die Latenz gegenüber Polling; Thread-Safety und Tests sind gegeben.
+Die Poker-GUI mit PyQt6 für Agent vs Human und Human vs Human wurde umgesetzt. Beide Modi laufen stabil, die Architektur ermöglicht Wiederverwendung und wartbare Erweiterungen.
+WebSocket reduziert die Latenz gegenüber Polling. Thread-Safety und Tests sind gegeben.
 
-Mögliche Erweiterungen sind mehr Spieler, Turnier-Modus, Replay-Funktion, Authentifizierung und UI-Verbesserungen; die modulare Architektur erlaubt solche Schritte ohne große Umstrukturierung.
+Mögliche Erweiterungen sind mehr Spieler, Turnier-Modus, Replay-Funktion, Authentifizierung und UI-Verbesserungen. Die modulare Architektur erlaubt solche Schritte ohne große Umstrukturierung.

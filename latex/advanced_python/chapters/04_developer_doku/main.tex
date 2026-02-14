@@ -37,7 +37,7 @@ uv run python src/tui/app.py
 \subsection{Human vs Human Modus}
 
 Im Modus Human vs Human spielen zwei Spieler über einen Server gegeneinander.
-Nach dem Start der TUI öffnet sich der Multiplayer-Tab; dort lassen sich Server und Client konfigurieren.
+Nach dem Start der TUI öffnet sich der Multiplayer-Tab. Dort lassen sich Server und Client konfigurieren.
 \newpage
 \begin{figure}[h]
 \centering
@@ -51,7 +51,7 @@ Im Server-Bereich sind Spiel (Dropdown), Port (Eingabefeld) und Host (Dropdown) 
 Über \enquote{Start Server} und \enquote{Stop Server} wird der Server gestartet bzw.\ gestoppt.
 Im Status-Bereich werden Laufstatus, lokale IP-Adresse für Remote-Verbindungen und die Connection-URL angezeigt.
 Im Client-Bereich startet \enquote{Start Local Client} einen lokalen Client.
-Für Remote-Verbindungen sind Server-IP, Port und Spielername in den jeweiligen Feldern einzutragen; \enquote{Start Remote Client} startet den Remote-Client mit diesen Einstellungen.
+Für Remote-Verbindungen sind Server-IP, Port und Spielername in den jeweiligen Feldern einzutragen. \enquote{Start Remote Client} startet den Remote-Client mit diesen Einstellungen.
 
 \begin{figure}[h]
 \centering
@@ -86,7 +86,7 @@ Dessen Karten werden erst nach Ende der Hand aufgedeckt.
 Darunter wird die Handstärke angezeigt (z.\ B.\ \enquote{High Card}, \enquote{Pair}, \enquote{Two Pair}, \enquote{Straight}).
 
 Unten erscheinen die eigenen Hole Cards und die zugehörige Handstärke.
-Darunter liegen die Aktionsbuttons \enquote{Check}, \enquote{Bet}, \enquote{Call} (mit zu zahlendem Betrag) und \enquote{Fold}; sie sind nur aktiv, wenn der Spieler am Zug ist.
+Darunter liegen die Aktionsbuttons \enquote{Check}, \enquote{Bet}, \enquote{Call} (mit zu zahlendem Betrag) und \enquote{Fold}. Sie sind nur aktiv, wenn der Spieler am Zug ist.
 
 Rechts oben befinden sich \enquote{New Hand} für eine neue Hand und \enquote{Beenden} zum Beenden des Spiels.
 Darunter listet der History-View alle Aktionen der aktuellen Hand chronologisch auf.
@@ -96,15 +96,15 @@ Am Handende werden Ergebnis (z.\ B.\ \enquote{You wins 100!} bzw.\ \enquote{Oppo
 
 Im Modus Agent vs Human spielt ein Mensch gegen einen trainierten Agenten.
 Vor dem ersten Spiel muss eine Strategie für das gewählte Spiel trainiert werden.
-Dafür kann ein beliebiger Algorithmus genutzt werden; empfohlen wird \texttt{discounted\_cfr\_with\_flat\_tree}, da er die stärksten Ergebnisse liefert.
+Dafür kann ein beliebiger Algorithmus genutzt werden. Empfohlen wird \texttt{discounted\_cfr\_with\_flat\_tree}, da er die stärksten Ergebnisse liefert.
 
 Für die Spielauswahl gelten zwei Empfehlungen.
 Bei wenig Zeit eignet sich \texttt{twelve\_card\_poker}, da es schneller trainiert.
-Bei mehr Zeit empfiehlt sich \texttt{small\_island\_holdem}; es ist komplexer und benötigt längere Trainingszeiten.
-Beide Spiele stammen aus dieser Arbeit; die genauen Regeln stehen im Anhang der Bachelorarbeit im Ordner \texttt{latex/thesis}.
+Bei mehr Zeit empfiehlt sich \texttt{small\_island\_holdem}, da es komplexer ist und längere Trainingszeiten benötigt.
+Beide Spiele stammen aus der Bachelorarbeit. Die genauen Regeln stehen dort im Anhang im Ordner \texttt{latex/thesis}.
 
 Das Training wird in der TUI im Tab \enquote{Training Queue} konfiguriert.
-Dort lässt sich ein neuer Training Task anlegen; dabei sind Spiel, Algorithmus, Iterationsanzahl und weitere Parameter wählbar.
+Dort lässt sich ein neuer Training Task anlegen. Dabei sind Spiel, Algorithmus, Iterationsanzahl und weitere Parameter wählbar.
 Über \enquote{Early Stop Exploitability} kann das Training automatisch beendet werden, sobald ein vorgegebener Exploitability-Wert erreicht ist, was Zeit spart, sobald die Strategie ausreichend gut ist.
 
 \begin{figure}[h]
@@ -127,7 +127,7 @@ An diesen Metriken lässt sich prüfen, ob das Training wie erwartet läuft und 
 
 Nach dem Training kann im Tab \enquote{Models} ein trainiertes Modell zum Spiel gegen den Agenten ausgewählt werden.
 Eine veraltete Modellliste wird mit \texttt{r} aktualisiert.
-Nach Anklicken eines Modells startet \texttt{g} das Spiel; das GUI-Fenster öffnet sich automatisch.
+Nach Anklicken eines Modells startet \texttt{g} das Spiel. Das GUI-Fenster öffnet sich automatisch.
 
 \begin{figure}[h]
 \centering
@@ -137,7 +137,7 @@ Nach Anklicken eines Modells startet \texttt{g} das Spiel; das GUI-Fenster öffn
 \end{figure}
 
 Die GUI entspricht der des Human-vs-Human-Modus, mit einem trainierten Agenten statt eines menschlichen Gegenspielers.
-Layout und Elemente (Board Cards, Pot, Spielerkarten, Aktionsbuttons, History-View, Steuerung) sind identisch; nur oben erscheint der \enquote{Strategy Agent} als Gegner.
+Layout und Elemente (Board Cards, Pot, Spielerkarten, Aktionsbuttons, History-View, Steuerung) sind identisch. Nur oben erscheint der \enquote{Strategy Agent} als Gegner.
 
 \begin{figure}[h]
 \centering

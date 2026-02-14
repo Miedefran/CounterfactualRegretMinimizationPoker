@@ -81,7 +81,7 @@ class AgentVsHumanLayout(BasePokerLayout):
 Die WebSocket-Kommunikation nutzt asyncio für Push-basierte Updates statt Polling.
 Der Server sendet State-Updates automatisch an alle verbundenen Clients, sobald sich der Spielzustand ändert.
 Der Client verwendet einen separaten \texttt{QThread} mit eigener asyncio-Event-Loop, um die Qt-Event-Loop nicht zu blockieren.
-Auf dem Server genügt nach Registrierung eines Clients der Versand der \texttt{player\_id} und bei jeder Zustandsänderung ein Broadcast an alle Verbindungen; eingehende Aktionen werden in \texttt{handle\_action} verarbeitet und lösen erneut einen State-Broadcast aus.
+Auf dem Server genügt nach Registrierung eines Clients der Versand der \texttt{player\_id} und bei jeder Zustandsänderung ein Broadcast an alle Verbindungen. Eingehende Aktionen werden in \texttt{handle\_action} verarbeitet und lösen erneut einen State-Broadcast aus.
 Im Client (Listing~\ref{lst:ws-client}) laufen asyncio und Qt getrennt: Der Worker-Thread startet eine eigene Event-Loop, empfängt Nachrichten und leitet sie per PyQt-Signal an die GUI weiter.
 
 \begin{lstlisting}[caption={WebSocket-Client: QThread mit asyncio-Event-Loop}]
