@@ -6,45 +6,32 @@
 
 \subsection{Architektur-Übersicht}
 
-Die Architektur wurde so konzipiert, dass sie zwei grundlegend verschiedene Spielmodi unterstützt: den lokalen Agent-vs-Human-Modus und den Multiplayer-Modus.
-Beide Modi teilen sich die gleichen GUI-Komponenten, um Code-Duplikation zu vermeiden und die Wartbarkeit zu erhöhen.
-Die Spiel-Logik, bestehend aus Game-Environments und CFR-Solver, stammt aus der Bachelorarbeit und wird hier wiederverwendet.
+Die Architektur unterstützt zwei Spielmodi.
+Im lokalen Modus (Agent vs Human) spielt ein Mensch gegen eine trainierte KI.
+Im Multiplayer-Modus (Human vs Human) spielen zwei Menschen über einen Server gegeneinander.
+Beide Modi nutzen dieselben GUI-Komponenten, die Spiellogik (Game-Environments und CFR-Solver) stammt aus der Bachelorarbeit und wird unverändert wiederverwendet.
 
-Die Architektur folgt einem Schichten-Modell mit vier Hauptschichten.
-Die \textbf{GUI-Schicht} besteht aus PyQt6-Komponenten in \texttt{src/gui/components/} und \texttt{src/gui/layouts/}.
-Diese Komponenten sind wiederverwendbar für beide Modi und stellen die visuelle Darstellung des Spiels bereit.
-Die \textbf{Client-Schicht} existiert nur im Multiplayer-Modus und umfasst HTTP- und WebSocket-Clients für die Kommunikation mit dem Server.
-Beide Client-Typen haben ein kompatibles Interface mit gleichen Signals, sodass zwischen den Protokollen gewechselt werden kann.
-Die \textbf{Server-Schicht} existiert ebenfalls nur im Multiplayer-Modus und besteht aus HTTP- und WebSocket-Servern.
-Der HTTP-Server basiert auf Flask und bietet REST-Endpoints, während der WebSocket-Server asyncio-basiert ist.
-Beide Server-Typen verwenden die gleiche Game-Logik-Klasse (\texttt{PokerGameLogic}), was Code-Wiederverwendung ermöglicht.
-Die \texttt{PokerGameLogic}-Klasse kapselt alle Spiel-Logik-Funktionen ohne Transport-spezifische Details und verwaltet Client-Registrierung, State-Management und Action-Handling.
-Die \textbf{Logik-Schicht} enthält die geteilte Spiel-Logik für den Server sowie direktes Game-Objekt für lokale Spiele.
+Die Architektur folgt einem Schichtenmodell mit vier Ebenen.
+Die \textbf{GUI-Schicht} (PyQt6 in \texttt{src/gui/components/} und \texttt{src/gui/layouts/}) stellt die Darstellung bereit und ist für beide Modi gleich.
+Die \textbf{Client-Schicht} gibt es nur im Multiplayer-Modus.
+HTTP- und WebSocket-Clients haben ein einheitliches Interface mit denselben Signals, sodass das Protokoll austauschbar ist.
+Die \textbf{Server-Schicht} (ebenfalls nur Multiplayer) besteht aus HTTP- und WebSocket-Servern.
+Beide bauen auf derselben Klasse \texttt{PokerGameLogic} auf, die Spiellogik ohne transportbezogene Details kapselt und Registrierung, Zustand und Aktionen verwaltet.
+Der HTTP-Server nutzt Flask mit REST-Endpoints, der WebSocket-Server läuft asyncio-basiert.
+Die \textbf{Logik-Schicht} ist entweder diese geteilte \texttt{PokerGameLogic} auf dem Server oder ein lokales Game-Objekt.
 
-Die Kommunikation zwischen den Schichten unterscheidet sich je nach Modus.
-Im \textbf{Lokalen Modus} (Agent vs Human) kommuniziert die GUI direkt mit dem Game-Objekt über Methodenaufrufe.
-Es gibt keine Netzwerk-Kommunikation, da alles lokal auf einem Rechner läuft.
-Die GUI erstellt ein Game-Objekt und einen StrategyAgent, der die trainierte Strategie verwendet, um automatisch Aktionen für die KI zu generieren.
-Im \textbf{Multiplayer-Modus} (Human vs Human) kommuniziert die GUI über die Client-Schicht mit dem Server.
-Zwei Clients können sich mit dem Server verbinden und erhalten jeweils eine Player-ID (0 oder 1).
-Der Server verwaltet den Spielzustand und validiert alle Aktionen.
-Wenn ein Client eine Aktion sendet, wird diese vom Server validiert und ausgeführt, und der neue Spielzustand wird an beide Clients gesendet.
+Im lokalen Modus spricht die GUI direkt mit dem Game-Objekt und einem \texttt{StrategyAgent} für die KI.
+Es findet keine Netzwerkkommunikation statt.
+Im Multiplayer-Modus verbinden sich zwei Clients mit dem Server, erhalten je eine Player-ID (0 oder 1) und tauschen über den Server alle Aktionen und Zustände aus.
+Der Server prüft und führt Aktionen aus und verteilt den aktualisierten Spielzustand an beide Clients.
 
-Die wichtigsten wiederverwendbaren Komponenten sind die GUI-Komponenten, die in beiden Modi verwendet werden.
-Beispielsweise verwenden beide Modi die \texttt{ActionButtons}-Komponente, die Poker-Tisch-Darstellung (\texttt{PokerTable}) und die Player-Widgets (\texttt{TopPlayerWidget}, \texttt{BottomPlayerWidget}).
-Dies reduziert Code-Duplikation erheblich und erleichtert die Wartung.
-Die Layout-Hierarchie folgt dem Muster \texttt{BasePokerLayout} $\rightarrow$ \texttt{AgentVsHumanLayout} $\rightarrow$ \texttt{AgentVsHumanGUI}/\texttt{HumanVsHumanGUI}, wobei die Basis-Layouts die gemeinsame Funktionalität bereitstellen.
+Die Layout-Hierarchie lautet \texttt{BasePokerLayout} $\rightarrow$ \texttt{AgentVsHumanLayout} $\rightarrow$ \texttt{AgentVsHumanGUI} bzw.\ \texttt{HumanVsHumanGUI}.
+Konkrete Beispiele für wiederverwendete Komponenten sind \texttt{ActionButtons}, \texttt{PokerTable} und die Player-Widgets.
+Entscheidende Prinzipien sind Wiederverwendung (DRY), klare Trennung der Schichten und Thread-Safety im Multiplayer durch \texttt{threading.Lock} in \texttt{PokerGameLogic}.
 
-Die Design-Prinzipien umfassen Wiederverwendbarkeit nach dem DRY-Prinzip, Trennung von Concerns und Thread-Safety.
-Die klare Trennung zwischen GUI, Client, Server und Logik ermöglicht es, Komponenten unabhängig voneinander zu entwickeln und zu testen.
-Im Multiplayer-Modus wird Thread-Safety durch \texttt{threading.Lock} in der \texttt{PokerGameLogic}-Klasse gewährleistet, da mehrere Clients gleichzeitig auf die Spiel-Logik zugreifen können.
-
-Die Projektstruktur ist modular organisiert und spiegelt die Schichten-Trennung wider.
-\texttt{src/gui/components/} enthält wiederverwendbare UI-Komponenten wie \texttt{ActionButtons}, \texttt{PokerTable}, \texttt{PlayerWidget} und \texttt{VisualCard}.
-\texttt{src/gui/layouts/} enthält die Layout-Hierarchie mit \texttt{BasePokerLayout} als Basis-Layout und \texttt{AgentVsHumanLayout} als erweitertes Layout für beide Spielmodi.
-\texttt{src/gui/server/} enthält Server- und Client-Implementierungen, wobei \texttt{game\_logic.py} die gemeinsame Spiel-Logik enthält.
-\texttt{src/gui/runner/} enthält CLI-Runner-Skripte für einfachen Start der verschiedenen Modi.
-Die wichtigsten verwendeten Tools und Frameworks sind \textbf{PyQt6} als GUI-Framework, \textbf{Flask} als HTTP-Server, \textbf{websockets} als WebSocket-Server und \textbf{pytest} als Testing-Framework.
+Die Projektstruktur spiegelt das wider.
+In \texttt{src/gui/components/} und \texttt{src/gui/layouts/} liegen die UI-Bausteine, in \texttt{src/gui/server/} Server, Clients und \texttt{game\_logic.py}, in \texttt{src/gui/runner/} die Startskripte.
+Verwendet werden PyQt6, Flask, \texttt{websockets} und pytest.
 
 \subsection{Komponenten}
 
@@ -56,40 +43,25 @@ Die Layout-Hierarchie nutzt Vererbung, um Code-Wiederverwendung zu ermöglichen.
 
 Für die Anordnung der Komponenten verwendet das GUI PyQt6 Layout-Manager: \texttt{QVBoxLayout} ordnet Widgets vertikal an, \texttt{QHBoxLayout} horizontal.
 Der Stretch-Faktor wird durch \texttt{addStretch()} eingefügt und erzeugt flexiblen Platz, der sich automatisch an die Fenstergröße anpasst.
-Dies ermöglicht es, Widgets zu zentrieren oder am Rand zu positionieren, wie beispielsweise die Player-Widgets, die durch \texttt{addStretch()} links und rechts zentriert werden.
+Ein kompakter Ausschnitt der Layout-Hierarchie zeigt Listing~\ref{lst:layout}.
 
-
-\begin{lstlisting}[language=Python, caption={Layout-Hierarchie mit Vererbung}]
+\begin{lstlisting}[caption={Layout-Hierarchie (Ausschnitt)}]
 class BasePokerLayout(QMainWindow):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("CFR Poker Visualizer")
         self.setMinimumSize(1400, 900)
-        
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         self.main_layout = QVBoxLayout(central_widget)
-        
         self.setup_ui()
-    
+
     def setup_ui(self):
-        # Top Player Widget
         self.player_top_widget = TopPlayerWidget(0, "Strategy Agent", self)
-        
-        # Poker Table Container
         table_container = QWidget()
         self.poker_table = PokerTable()
-        table_layout = QVBoxLayout(table_container)
-        table_layout.addWidget(self.poker_table)
-        
-        # Community Cards Widget
-        self.community_cards_widget = QWidget(self.poker_table)
-        self.community_cards_layout = QHBoxLayout(self.community_cards_widget)
-        
-        # Bottom Player Widget
+        # ... Table- und Community-Cards-Setup ...
         self.player_bottom_widget = BottomPlayerWidget(1, "Player", self)
-        
-        # Add to main layout
         self.main_layout.addWidget(self.player_top_widget)
         self.main_layout.addWidget(table_container)
         self.main_layout.addWidget(self.player_bottom_widget)
@@ -98,114 +70,46 @@ class AgentVsHumanLayout(BasePokerLayout):
     def __init__(self, parent=None):
         super().__init__(parent)
         QTimer.singleShot(100, self.setup_action_buttons)
-    
+
     def setup_action_buttons(self):
         self.action_buttons = ActionButtons()
-        # Füge Action-Buttons zum Layout hinzu
         self.control_area.layout().addWidget(self.action_buttons)
-\end{lstlisting}
+\end{lstlisting}\label{lst:layout}
 
 \subsubsection{WebSocket Client-Server-Kommunikation}
 
 Die WebSocket-Kommunikation nutzt asyncio für Push-basierte Updates statt Polling.
 Der Server sendet State-Updates automatisch an alle verbundenen Clients, sobald sich der Spielzustand ändert.
-Der Client verwendet einen separaten \texttt{QThread} mit eigener asyncio-Event-Loop, um die Qt Event Loop nicht zu blockieren.
+Der Client verwendet einen separaten \texttt{QThread} mit eigener asyncio-Event-Loop, um die Qt-Event-Loop nicht zu blockieren.
+Auf dem Server genügt nach Registrierung eines Clients der Versand der \texttt{player\_id} und bei jeder Zustandsänderung ein Broadcast an alle Verbindungen; eingehende Aktionen werden in \texttt{handle\_action} verarbeitet und lösen erneut einen State-Broadcast aus.
+Im Client (Listing~\ref{lst:ws-client}) laufen asyncio und Qt getrennt: Der Worker-Thread startet eine eigene Event-Loop, empfängt Nachrichten und leitet sie per PyQt-Signal an die GUI weiter.
 
-\begin{lstlisting}[language=Python, caption={WebSocket-Server: Verbindungs-Handling und State-Broadcast}]
-async def _handle_connection(self, websocket, path):
-    """Behandelt eine neue WebSocket-Verbindung."""
-    player_id = None
-    try:
-        # Registriere Client und sende player_id
-        for pid in range(self.game_logic.max_players):
-            if self.game_logic.register_client(pid):
-                player_id = pid
-                await websocket.send(json.dumps({
-                    "type": "player_id",
-                    "player_id": pid
-                }))
-                break
-        
-        if player_id is None:
-            await websocket.send(json.dumps({
-                "type": "error",
-                "message": "Server full"
-            }))
-            return
-        
-        self.connections[player_id] = websocket
-        await self._broadcast_state()
-        
-        # Empfange Nachrichten vom Client
-        async for message in websocket:
-            data = json.loads(message)
-            if data.get("type") == "action":
-                success = self.game_logic.handle_action(
-                    player_id, data["action"], data.get("bet_size", 0)
-                )
-                if success:
-                    await self._broadcast_state()
-    
-    finally:
-        # Cleanup bei Disconnect
-        if player_id is not None:
-            self.connections.pop(player_id, None)
-            self.game_logic.unregister_client(player_id)
-            await self._broadcast_state()
-
-async def _broadcast_state(self):
-    """Sendet State an alle verbundenen Clients."""
-    for pid, ws in list(self.connections.items()):
-        try:
-            state = self.game_logic.get_state_update(pid)
-            await ws.send(json.dumps({
-                "type": "state",
-                "state": state
-            }))
-        except Exception as e:
-            logger.error(f"Error sending state to player {pid}: {e}")
-            self.connections.pop(pid, None)
-\end{lstlisting}
-
-\begin{lstlisting}[language=Python, caption={WebSocket-Client: Asyncio + QThread Integration}]
+\begin{lstlisting}[caption={WebSocket-Client: QThread mit asyncio-Event-Loop}]
 class WebSocketWorker(QThread):
     state_received = pyqtSignal(dict)
-    error_occurred = pyqtSignal(str)
     connected_signal = pyqtSignal(int)
-    
+
     def run(self):
-        """Startet die asyncio-Event-Loop im Worker-Thread."""
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         try:
             self.loop.run_until_complete(self._connect_and_listen())
         finally:
             self.loop.close()
-    
+
     async def _connect_and_listen(self):
-        """Verbindet zum Server und lauscht auf Nachrichten."""
         self.websocket = await connect(self.server_url)
-        
-        # Empfange player_id
         msg = await self.websocket.recv()
         data = json.loads(msg)
         self.player_id = data.get("player_id")
         self.connected_signal.emit(self.player_id)
-        
-        # Empfange initialen State
-        msg = await self.websocket.recv()
-        data = json.loads(msg)
-        if data.get("type") == "state":
-            self.state_received.emit(data["state"])
-        
-        # Lausche auf weitere Nachrichten
         async for message in self.websocket:
             data = json.loads(message)
             if data.get("type") == "state":
                 self.state_received.emit(data["state"])
-\end{lstlisting}
+\end{lstlisting}\label{lst:ws-client}
 
-Die Integration von asyncio mit Qt erfolgt durch einen separaten \texttt{QThread}, der eine eigene asyncio-Event-Loop besitzt.
+Die Integration von asyncio mit Qt erfolgt durch diesen separaten \texttt{QThread}, der eine eigene asyncio-Event-Loop besitzt.
 Async-Events werden über PyQt6 Signals an den GUI-Thread übertragen, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
 Dies ermöglicht Push-basierte Kommunikation ohne Blockierung der GUI und verbessert die Effizienz erheblich im Vergleich zu HTTP-Polling.
 
@@ -213,34 +117,27 @@ Dies ermöglicht Push-basierte Kommunikation ohne Blockierung der GUI und verbes
 
 Die Tests folgen einem szenarien-basierten Ansatz, der typische Anwendungsfälle abdeckt.
 Dies macht die Tests verständlicher und aussagekräftiger als viele kleine Edge-Case-Tests.
-Für WebSocket-Tests wird \textbf{pytest-asyncio} verwendet, um asynchrone Test-Funktionen zu ermöglichen.
+Für WebSocket-Tests wird \textbf{pytest-asyncio} verwendet, um asynchrone Test-Funktionen zu ermöglichen (Listing~\ref{lst:test}).
 
-\begin{lstlisting}[language=Python, caption={Szenarien-basierter WebSocket-Test}]
+\begin{lstlisting}[caption={Szenarien-basierter WebSocket-Test (Ausschnitt)}]
 @pytest.fixture(scope="module")
 def ws_server_url():
-    """Startet WebSocket-Server im Hintergrund-Thread."""
     port = _free_port()
     game = KuhnPokerGame()
     server = PokerWebSocketServer(game, host="localhost", port=port)
-    # Server im Thread starten...
+    # ... Server im Thread starten ...
     yield f"ws://localhost:{port}"
 
 async def test_zwei_clients_verbinden_bekommen_player_id_und_state(ws_server_url):
-    """Zwei Clients verbinden sich; jeder bekommt eine player_id."""
     async with websockets.connect(ws_server_url) as ws1, \
-              websockets.connect(ws_server_url) as ws2:
+                 websockets.connect(ws_server_url) as ws2:
         msgs1 = await _recv_n(ws1, 3)
         msgs2 = await _recv_n(ws2, 3)
-    
-    player_id_msg1 = next(m for m in msgs1 if m.get("type") == "player_id")
-    player_id_msg2 = next(m for m in msgs2 if m.get("type") == "player_id")
-    assert player_id_msg1["player_id"] == 0
-    assert player_id_msg2["player_id"] == 1
-    
-    state_msg1 = next(m for m in msgs1 if m.get("type") == "state")
-    assert "legal_actions" in state_msg1["state"]
-    assert "current_player" in state_msg1["state"]
-\end{lstlisting}
+    assert next(m for m in msgs1 if m.get("type") == "player_id")["player_id"] == 0
+    assert next(m for m in msgs2 if m.get("type") == "player_id")["player_id"] == 1
+    state_msg = next(m for m in msgs1 if m.get("type") == "state")
+    assert "legal_actions" in state_msg["state"] and "current_player" in state_msg["state"]
+\end{lstlisting}\label{lst:test}
 
 Die Tests decken die wichtigsten Szenarien ab: Client-Registrierung, State-Updates, Action-Verarbeitung und Fehlerbehandlung.
 GUI-Darstellung und Animationen wurden manuell geprüft, da diese schwer automatisiert werden können.

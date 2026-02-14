@@ -3,57 +3,63 @@
 
 \subsection{PyQt6}
 
-\textbf{PyQt6} wurde als GUI-Framework gewählt, da es das Signal-Slot-Pattern unterstützt, welches lose Kopplung zwischen Komponenten ermöglicht.
-Ein weiterer Grund für die Wahl war, dass Ich im Rahmen eines anderen Moduls bereits mit QT in C++ gearbeitet habe und aus diesem Grund viele Konzepte bereits bekannt waren.
+\textbf{PyQt6} wurde als GUI-Framework gewählt, da es das Signal-Slot-Pattern unterstützt und damit lose Kopplung zwischen Komponenten ermöglicht.
+Ein weiterer Grund für die Wahl war, dass im Rahmen eines anderen Moduls bereits mit Qt in C++ gearbeitet wurde und viele Konzepte daher vertraut waren.
 
 Das Signal-Slot-Pattern ist ein zentrales Konzept von PyQt6 und implementiert das Observer-Pattern.
-Signale werden mit \texttt{pyqtSignal} definiert und können von Komponenten emittiert werden, ohne zu wissen, wer diese empfängt.
-Slots sind Methoden, die mit Signalen verbunden werden können.
-Diese lose Kopplung ermöglicht es, Komponenten unabhängig voneinander zu entwickeln und zu testen.
+Signale werden mit \texttt{pyqtSignal} definiert und von Komponenten emittiert, ohne dass der Emittent weiß, wer sie empfängt.
+Slots sind die Methoden, die an Signale gebunden werden.
+Damit lassen sich Komponenten unabhängig voneinander entwickeln und testen.
 
-\textbf{QTimer} wird für verzögerte Ausführung verwendet, ohne die GUI zu blockieren.
-Dies wird beispielsweise verwendet, um Initialisierungsschritte zu verzögern oder um Agent-Aktionen mit einer kurzen Pause auszuführen.
+\textbf{QTimer} ermöglicht verzögerte Ausführung, ohne die GUI zu blockieren.
+Eingesetzt wird es unter anderem, um Initialisierungsschritte zu verzögern oder Aktionen des Agenten mit einer kurzen Pause auszuführen.
 
-\textbf{QPainter} wird für Custom Painting verwendet, um eigene Grafiken zu zeichnen, wie beispielsweise der Poker-Tisch, der über die \texttt{paintEvent()}-Methode implementiert wird.
+\textbf{QPainter} dient dem Custom Painting, also dem Zeichnen eigener Grafiken.
+So wird etwa der Pokertisch in der \texttt{paintEvent()}-Methode implementiert.
 
-Widgets können zudem über \texttt{setStyleSheet()} mit CSS-ähnlicher Syntax gestylt werden, um Farben, Borders und andere visuelle Eigenschaften zu definieren.
-Die Spielkarten verwenden Stylesheets für das Widget-Styling, während der Inhalt über HTML gerendert wird.
+Über \texttt{setStyleSheet()} lassen sich Widgets mit CSS-ähnlicher Syntax gestalten, etwa Farben, Rahmen und weitere visuelle Eigenschaften.
+Die Spielkarten nutzen Stylesheets für das Styling der Widgets, der Inhalt wird über HTML gerendert.
 
 \subsection{Netzwerk-Kommunikation}
 
-Für die Echtzeit-Kommunikation im Multiplayer-Modus wurden zunächst \textbf{HTTP} mit Polling verwendet.
-Bei HTTP-Polling muss der Client regelmäßig den Server abfragen, um Updates zu erhalten.
-Dies führt zu einer Mindestlatenz von der Polling-Intervall-Zeit (z.B. 100ms) und erzeugt unnötigen Netzwerk-Traffic, auch wenn keine Updates vorhanden sind.
-Zudem ist die Kommunikation unidirektional: Der Client fragt an, der Server antwortet, aber der Server kann nicht proaktiv Updates senden.
+Für die Echtzeit-Kommunikation im Multiplayer-Modus kam zunächst \textbf{HTTP} mit Polling zum Einsatz.
+Dabei muss der Client den Server regelmäßig abfragen, um Updates zu erhalten.
+Daraus folgt eine Mindestlatenz in Höhe des Pollingintervalls (z.\,B.\ 100\,ms) sowie unnötiger Netzwerkverkehr, selbst wenn keine Änderungen anstehen.
+Hinzu kommt, dass die Kommunikation unidirektional ist.
+Der Client fragt an, der Server antwortet.
+Der Server kann jedoch nicht proaktiv Updates senden.
 
-Als Verbesserung wurde \textbf{WebSocket} implementiert, welches nun als Standard verwendet wird.
-WebSocket bietet Push-basierte, bidirektionale Kommunikation mit niedriger Latenz.
-Der Server kann Updates direkt an Clients senden, sobald sie verfügbar sind, ohne dass Clients regelmäßig anfragen müssen.
-Dies reduziert die Latenz erheblich und verbessert die Spielerfahrung, da State-Updates praktisch sofort übertragen werden.
-HTTP bleibt als Fallback-Option verfügbar.
+Als Verbesserung wurde \textbf{WebSocket} implementiert, das nun als Standard dient.
+WebSocket ermöglicht bidirektionale Kommunikation mit Push und geringer Latenz.
+Der Server kann Clients Updates unmittelbar zustellen, sobald sie verfügbar sind, ohne dass diese regelmäßig anfragen müssen.
+Dadurch sinkt die Latenz deutlich und die Spielerfahrung verbessert sich, da State-Updates praktisch sofort ankommen.
+HTTP bleibt als Fallback verfügbar.
 
-Für beide Protokolle wird \textbf{SSL/TLS-Verschlüsselung} unterstützt, um die Kommunikation zu schützen.
-HTTPS für HTTP und WSS für WebSocket ermöglichen verschlüsselte Verbindungen, die verhindern, dass Daten während der Übertragung abgefangen oder manipuliert werden können.
-Dies ist besonders wichtig, wenn der Server über das Internet erreichbar ist.
+Für beide Protokolle ist \textbf{SSL/TLS-Verschlüsselung} vorgesehen, um die Kommunikation zu schützen.
+HTTPS (HTTP) und WSS (WebSocket) ermöglichen verschlüsselte Verbindungen.
+Daten können während der Übertragung weder abgefangen noch manipuliert werden.
+Besonders relevant ist das, wenn der Server über das Internet erreichbar ist.
 
 \subsection{Asynchrone Programmierung}
 
-\textbf{asyncio} wird für die WebSocket-Kommunikation verwendet, da die \texttt{websockets}-Bibliothek asyncio-basiert ist.
-Asynchrone Programmierung ermöglicht es, Netzwerk-Operationen nicht-blockierend auszuführen, sodass der Thread nicht auf Antworten warten muss.
-Stattdessen wird die Kontrolle an die Event-Loop zurückgegeben, bis die Operation abgeschlossen ist.
+\textbf{asyncio} kommt für die WebSocket-Kommunikation zum Einsatz, da die \texttt{websockets}-Bibliothek darauf aufbaut.
+Asynchrone Programmierung erlaubt nicht blockierende Netzwerkoperationen.
+Der Thread muss nicht auf Antworten warten, sondern gibt die Kontrolle an die Event-Loop zurück, bis die Operation abgeschlossen ist.
 
-Das Problem entsteht, weil Qt-Anwendungen eine eigene Event-Loop für GUI-Updates verwenden, während asyncio eine separate Event-Loop benötigt.
-Wenn man asyncio direkt im GUI-Thread verwendet, würde dies die GUI blockieren.
-Die Lösung ist die Verwendung eines \texttt{QThread} mit einer eigenen asyncio-Event-Loop.
-Die \texttt{WebSocketWorker}-Klasse erbt von \texttt{QThread} und startet in der \texttt{run()}-Methode eine neue asyncio-Event-Loop.
-Async-Events werden dann über PyQt6 Signals an den GUI-Thread übertragen, wodurch eine saubere Trennung zwischen asynchroner Netzwerk-Kommunikation und GUI-Updates erreicht wird.
+Das Problem besteht darin, dass Qt-Anwendungen eine eigene Event-Loop für GUI-Updates nutzen, asyncio hingegen eine separate benötigt.
+Würde asyncio direkt im GUI-Thread laufen, blockierte dies die Oberfläche.
+Gelöst wird das durch einen \texttt{QThread} mit eigener asyncio-Event-Loop.
+Die Klasse \texttt{WebSocketWorker} erbt von \texttt{QThread} und startet in \texttt{run()} eine neue asyncio-Event-Loop.
+Über PyQt6-Signale werden asynchrone Ereignisse in den GUI-Thread übermittelt.
+Asynchrone Netzwerkkommunikation und GUI-Updates bleiben so sauber getrennt.
 
 \subsection{Testing}
 
-\textbf{pytest} wurde als Testing-Framework gewählt, da es Fixtures für wiederverwendbare Test-Setups bietet und im Vergleich zu unittest eine bessere Test-Organisation und lesbarere Syntax bietet.
-Fixtures ermöglichen es, wiederverwendbare Test-Setups zu erstellen, die in mehreren Tests verwendet werden können.
-Beispielsweise startet eine Fixture einen Server auf einem dynamischen Port und stellt diesen für mehrere Tests bereit.
+\textbf{pytest} wurde als Testing-Framework gewählt, da es Fixtures für wiederverwendbare Testsetups bietet und gegenüber \texttt{unittest} eine klarere Testorganisation sowie lesbarere Syntax aufweist.
+Fixtures erlauben wiederverwendbare Setups, die sich in mehreren Tests nutzen lassen.
+So kann etwa eine Fixture einen Server auf einem dynamischen Port starten und ihn mehreren Tests bereitstellen.
 
-Für asynchrone WebSocket-Tests wird \textbf{pytest-asyncio} verwendet, welches \texttt{async def} Test-Funktionen ermöglicht und die asyncio-Event-Loop automatisch verwaltet.
-Zudem wird \textbf{unittest.mock} für Mocking verwendet, beispielsweise um Zeit-abhängige Tests deterministisch zu machen.
+Für asynchrone WebSockettests kommt \textbf{pytest-asyncio} zum Einsatz.
+Es erlaubt \texttt{async def}-Testfunktionen und verwaltet die asyncio-Event-Loop automatisch.
+\textbf{unittest.mock} dient dem Mocking, unter anderem um zeitabhängige Tests deterministisch zu gestalten.
 

@@ -1,10 +1,9 @@
 \babel@toc {ngerman}{}\relax 
-\contentsline {figure}{\numberline {1}{\ignorespaces TUI Multiplayer-Interface mit Server- und Client-Konfiguration}}{14}{figure.caption.3}%
-\contentsline {figure}{\numberline {2}{\ignorespaces Connection Info mit Server-Konfiguration und SSL/WSS-Status}}{14}{figure.caption.4}%
-\contentsline {figure}{\numberline {3}{\ignorespaces Multiplayer GUI - Perspektive Spieler 1 (verlierende Hand)}}{15}{figure.caption.5}%
-\contentsline {figure}{\numberline {4}{\ignorespaces Multiplayer GUI - Perspektive Spieler 2 (gewinnende Hand)}}{15}{figure.caption.6}%
-\contentsline {figure}{\numberline {5}{\ignorespaces TUI-Dialog zur Erstellung eines neuen Training Tasks}}{17}{figure.caption.7}%
-\contentsline {figure}{\numberline {6}{\ignorespaces TUI Current Task Fenster zur Überwachung des Trainingsverlaufs}}{18}{figure.caption.8}%
-\contentsline {figure}{\numberline {7}{\ignorespaces TUI Models Tab zur Auswahl eines trainierten Modells}}{18}{figure.caption.9}%
-\contentsline {figure}{\numberline {8}{\ignorespaces GUI für Agent vs Human Modus mit abgeschlossenem Spiel}}{19}{figure.caption.10}%
-\contentsline {figure}{\numberline {9}{\ignorespaces GUI mit erfolgreichem Bluff: Der menschliche Spieler gewinnt durch einen Bet, der den Agenten zum Folden bringt}}{19}{figure.caption.11}%
+\contentsline {figure}{\numberline {1}{\ignorespaces TUI Multiplayer-Interface mit Server- und Client-Konfiguration}}{11}{figure.caption.3}%
+\contentsline {figure}{\numberline {2}{\ignorespaces Connection Info mit Server-Konfiguration und SSL/WSS-Status}}{11}{figure.caption.4}%
+\contentsline {figure}{\numberline {3}{\ignorespaces Multiplayer GUI - Perspektive Spieler 1 (verlierende Hand)}}{12}{figure.caption.5}%
+\contentsline {figure}{\numberline {4}{\ignorespaces Multiplayer GUI - Perspektive Spieler 2 (gewinnende Hand)}}{12}{figure.caption.6}%
+\contentsline {figure}{\numberline {5}{\ignorespaces TUI-Dialog zur Erstellung eines neuen Training Tasks}}{14}{figure.caption.7}%
+\contentsline {figure}{\numberline {6}{\ignorespaces TUI Current Task Fenster zur Überwachung des Trainingsverlaufs}}{15}{figure.caption.8}%
+\contentsline {figure}{\numberline {7}{\ignorespaces TUI Models Tab zur Auswahl eines trainierten Modells}}{15}{figure.caption.9}%
+\contentsline {figure}{\numberline {8}{\ignorespaces GUI für Agent vs Human Modus mit abgeschlossenem Spiel}}{16}{figure.caption.10}%
